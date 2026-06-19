@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel Admin Seguro | CanvaStore</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        :root { --primary: #8B3DFF; --bg: #F3F4F6; --text: #1F2937; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); padding: 30px; margin: 0; display: flex; justify-content: center; min-height: 100vh;}
+        
+        /* PANTALLA LOGIN */
+        #login-section { background: white; padding: 40px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 100%; max-width: 400px; margin: auto; text-align: center; }
+        #login-section input[type="email"], #login-section input[type="password"] { width: 100%; padding: 12px; margin: 10px 0; border: 2px solid #E5E7EB; border-radius: 8px; outline: none; box-sizing: border-box; transition: 0.3s;}
+        #login-section input:focus { border-color: var(--primary); }
+        .checkbox-container { display: flex; align-items: center; gap: 8px; font-size: 14px; color: #6B7280; margin: 10px 0 20px; text-align: left; }
+        
+        /* PANTALLA ADMIN */
+        #admin-section { width: 100%; max-width: 1100px; display: none; }
+        .panel-container { background: white; padding: 30px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); }
+        .header-panel { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 15px;}
+        h1 { color: var(--primary); margin: 0; }
+        
+        /* ESTADÍSTICAS */
+        .stats-container { display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap;}
+        .stat-box { background: #F9FAFB; border: 1px solid #E5E7EB; padding: 15px; border-radius: 10px; flex: 1; text-align: center; min-width: 150px;}
+        .stat-box h3 { margin: 0 0 5px 0; font-size: 24px; color: var(--primary); }
+        .stat-box p { margin: 0; font-size: 12px; color: #6B7280; font-weight: bold; }
+
+        .search-box { width: 300px; padding: 10px 15px; border: 2px solid #E5E7EB; border-radius: 10px; outline: none; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px; }
+        th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #eee; }
+        th { background-color: #f8f9fa; color: #6b7280; }
+        
+        .badge-pendiente { background: #FEF3C7; color: #D97706; padding: 5px 10px; border-radius: 20px; font-weight: bold; font-size: 12px; }
+        .badge-activo { background: #D1FAE5; color: #059669; padding: 5px 10px; border-radius: 20px; font-weight: bold; font-size: 12px; }
+        
+        /* BOTONES */
+        .btn-primary { background: var(--primary); color: white; border: none; padding: 12px; border-radius: 8px; cursor: pointer; font-weight: bold; width: 100%; transition: 0.3s;}
+        .btn-primary:hover { background: #7b20c9; }
+        .btn-aprobar { background: #10B981; color: white; border: none; padding: 8px 12px; border-radius: 8px; cursor: pointer; font-weight: bold; }
+        .btn-borrar { background: #FEE2E2; color: #DC2626; border: none; padding: 8px 12px; border-radius: 8px; cursor: pointer; font-weight: bold; }
+        .btn-logout { background: #374151; color: white; border: none; padding: 10px 15px; border-radius: 8px; cursor: pointer; font-weight: bold; }
+        .btn-manual { background: var(--primary); color: white; border: none; padding: 10px 15px; border-radius: 8px; cursor: pointer; font-weight: bold; }
+        .btn-seguridad { background: #F59E0B; color: white; border: none; padding: 10px 15px; border-radius: 8px; cursor: pointer; font-weight: bold; display: flex; align-items: center; gap: 5px;}
+        
+        /* BOTÓN COPIAR CORREO */
+        .correo-box { display: flex; align-items: center; gap: 8px; }
+        .btn-copiar { background: none; border: none; cursor: pointer; font-size: 16px; color: #6B7280; transition: 0.2s; padding: 0;}
+        .btn-copiar:hover { transform: scale(1.2); }
+
+        /* MODAL DE SEGURIDAD */
+        .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); display: none; justify-content: center; align-items: center; z-index: 1000; }
+        .modal-content { background: white; padding: 30px; border-radius: 15px; width: 90%; max-width: 500px; max-height: 80vh; overflow-y: auto; position: relative; }
+        .cerrar-modal { position: absolute; top: 15px; right: 20px; font-size: 24px; cursor: pointer; color: #6B7280; }
+        .dispositivo-item { display: flex; justify-content: space-between; align-items: center; padding: 15px 12px; border-bottom: 1px solid #eee; }
+        .dispositivo-info h4 { margin: 0 0 5px 0; color: var(--text); font-size: 15px;}
+        .dispositivo-info p { margin: 0; font-size: 13px; color: #6B7280; }
+    </style>
+</head>
+<body>
+
+    <!-- 1. PANTALLA DE LOGIN -->
+    <div id="login-section">
+        <h2>🔒 Acceso Restringido</h2>
+        <p style="color: #6B7280; font-size: 14px;">Ingresa tus credenciales de administrador.</p>
+        <input type="email" id="login-email" placeholder="Correo de Admin">
+        <input type="password" id="login-password" placeholder="Contraseña">
+        
+        <label class="checkbox-container">
+            <input type="checkbox" id="keep-logged" checked> Mantener sesión iniciada
+        </label>
+
+        <button class="btn-primary" onclick="iniciarSesion()">Ingresar al Panel</button>
+        <p id="login-error" style="color: red; font-size: 13px; display: none;">Credenciales incorrectas.</p>
+    </div>
+
+    <!-- 2. PANTALLA DEL PANEL -->
+    <div id="admin-section">
+        <div class="panel-container">
+            <div class="header-panel">
+                <div>
+                    <h1>👑 Panel de Ventas</h1>
+                    <p style="margin-top: 5px; color: #6b7280;">Administración Segura de CanvaStore</p>
+                </div>
+                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    <button class="btn-seguridad" onclick="abrirSeguridad()">🛡️ Historial de Accesos</button>
+                    <button class="btn-manual" onclick="registroManual()">+ Añadir Manual</button>
+                    <button class="btn-logout" onclick="cerrarSesion()">Salir</button>
+                </div>
+            </div>
+
+            <div class="stats-container">
+                <div class="stat-box">
+                    <h3 id="stat-activos">0</h3>
+                    <p>CLIENTES ACTIVOS</p>
+                </div>
+                <div class="stat-box">
+                    <h3 id="stat-pendientes">0</h3>
+                    <p>PAGOS POR REVISAR</p>
+                </div>
+            </div>
+
+            <input type="text" id="buscador" class="search-box" placeholder="Buscar cliente..." oninput="filtrarTabla()">
+
+            <div style="overflow-x: auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Correo</th>
+                            <th>Método</th>
+                            <th>N° Op / Token</th>
+                            <th>Estado</th>
+                            <th>Vencimiento</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabla-usuarios">
+                        <tr><td colspan="6">Cargando datos...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. MODAL DE SEGURIDAD -->
+    <div id="modal-seguridad" class="modal">
+        <div class="modal-content">
+            <span class="cerrar-modal" onclick="cerrarSeguridad()">&times;</span>
+            <h2 style="margin-top:0; color: var(--primary);">🛡️ Historial de Accesos</h2>
+            <p style="font-size: 13px; color: #6B7280; margin-bottom: 20px;">
+                Registro de seguridad inborrable. Si ves un ingreso que no reconoces, ve a Supabase y cambia tu contraseña inmediatamente.
+            </p>
+            
+            <div id="lista-dispositivos">
+                <p>Cargando registro...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const supabaseUrl = 'https://rhuhuvevynovfekwhlhb.supabase.co';
+        const supabaseKey = 'sb_publishable_-8XCScnvNf6QXMsnbyJK9Q_XhrOr9j5';
+        const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+        let usuariosGlobal = [];
+
+        // ===== 1. SISTEMA DE LOGIN Y SEGURIDAD =====
+        supabaseClient.auth.getSession().then(({ data: { session } }) => {
+            if (session) mostrarPanel();
+        });
+
+        function obtenerInfoDispositivo() {
+            const ua = navigator.userAgent;
+            let dispositivo = /Mobile|Android|iP(hone|od|ad)/.test(ua) ? "📱 Celular / Tablet" : "💻 Computadora";
+            let navegador = "Navegador Web";
+            if(ua.includes("Chrome")) navegador = "Google Chrome";
+            if(ua.includes("Firefox")) navegador = "Mozilla Firefox";
+            if(ua.includes("Safari") && !ua.includes("Chrome")) navegador = "Apple Safari";
+            if(ua.includes("Edge")) navegador = "Microsoft Edge";
+            
+            return { dispositivo, navegador };
+        }
+
+        async function iniciarSesion() {
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+            
+            const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+            
+            if (error) {
+                document.getElementById('login-error').style.display = 'block';
+            } else {
+                const info = obtenerInfoDispositivo();
+                await supabaseClient.from('admin_accesos').insert([{ 
+                    dispositivo: info.dispositivo, navegador: info.navegador 
+                }]);
+                mostrarPanel();
+            }
+        }
+
+        async function cerrarSesion() {
+            await supabaseClient.auth.signOut();
+            window.location.reload(); 
+        }
+
+        function mostrarPanel() {
+            document.getElementById('login-section').style.display = 'none';
+            document.getElementById('admin-section').style.display = 'block';
+            cargarUsuarios();
+        }
+
+        // ===== 2. LÓGICA DEL PANEL =====
+        async function cargarUsuarios() {
+            const { data, error } = await supabaseClient.from('usuarios_canva').select('*').order('creado_en', { ascending: false });
+            if (error) return;
+
+            usuariosGlobal = data;
+            actualizarEstadisticas(data);
+            renderizarTabla(data);
+        }
+
+        function actualizarEstadisticas(data) {
+            let activos = data.filter(u => u.estado === 'Activo').length;
+            let pendientes = data.filter(u => u.estado === 'Pendiente').length;
+            document.getElementById('stat-activos').innerText = activos;
+            document.getElementById('stat-pendientes').innerText = pendientes;
+        }
+
+        // FUNCIÓN PARA COPIAR AL PORTAPAPELES
+        function copiarCorreo(texto, boton) {
+            navigator.clipboard.writeText(texto).then(() => {
+                let original = boton.innerHTML;
+                boton.innerHTML = '✅';
+                setTimeout(() => { boton.innerHTML = original; }, 1500);
+            }).catch(err => console.error('Error al copiar', err));
+        }
+
+        function renderizarTabla(usuarios) {
+            const tabla = document.getElementById('tabla-usuarios');
+            tabla.innerHTML = ''; 
+            if(usuarios.length === 0) return tabla.innerHTML = '<tr><td colspan="6" style="text-align:center;">No hay clientes registrados aún.</td></tr>';
+
+            usuarios.forEach(user => {
+                let estadoBadge = user.estado === 'Pendiente' ? 'badge-pendiente' : 'badge-activo';
+                let codigoPago = user.num_operacion || user.token || 'Manual';
+                let fechaFin = user.fecha_fin || '---';
+                let botonAprobar = user.estado === 'Pendiente' ? `<button class="btn-aprobar" onclick="aprobarPago(${user.id})">Aprobar</button>` : `<span style="color:#059669; font-weight:bold;">✔️ Activo</span>`;
+
+                tabla.innerHTML += `
+                    <tr>
+                        <td>
+                            <div class="correo-box">
+                                <strong>${user.correo}</strong>
+                                <button class="btn-copiar" onclick="copiarCorreo('${user.correo}', this)" title="Copiar correo">📋</button>
+                            </div>
+                        </td>
+                        <td>${user.metodo_pago}</td>
+                        <td>${codigoPago}</td>
+                        <td><span class="${estadoBadge}">${user.estado}</span></td>
+                        <td>${fechaFin}</td>
+                        <td style="display:flex; gap:5px;">
+                            ${botonAprobar}
+                            <button class="btn-borrar" onclick="borrarUsuario(${user.id})">🗑️</button>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        function filtrarTabla() {
+            const texto = document.getElementById('buscador').value.toLowerCase();
+            const filtrados = usuariosGlobal.filter(u => 
+                (u.correo && u.correo.toLowerCase().includes(texto)) || 
+                (u.num_operacion && u.num_operacion.toLowerCase().includes(texto)) ||
+                (u.token && u.token.toLowerCase().includes(texto))
+            );
+            renderizarTabla(filtrados);
+        }
+
+        async function aprobarPago(id) {
+            let hoy = new Date(); let mesFin = new Date(); mesFin.setMonth(hoy.getMonth() + 1);
+            await supabaseClient.from('usuarios_canva').update({ estado: 'Activo', fecha_inicio: hoy.toISOString().split('T')[0], fecha_fin: mesFin.toISOString().split('T')[0] }).eq('id', id);
+            cargarUsuarios();
+        }
+
+        async function borrarUsuario(id) {
+            if (confirm("⚠️ ¿Borrar cliente permanentemente?")) {
+                await supabaseClient.from('usuarios_canva').delete().eq('id', id);
+                cargarUsuarios();
+            }
+        }
+
+        async function registroManual() {
+            const correo = prompt("Ingresa el correo del cliente:");
+            if (correo && correo.includes("@")) {
+                let hoy = new Date(); let mesFin = new Date(); mesFin.setMonth(hoy.getMonth() + 1);
+                await supabaseClient.from('usuarios_canva').insert([{ correo: correo, metodo_pago: 'Manual', estado: 'Activo', fecha_inicio: hoy.toISOString().split('T')[0], fecha_fin: mesFin.toISOString().split('T')[0] }]);
+                cargarUsuarios();
+            }
+        }
+
+        // ===== 3. MODAL DE DISPOSITIVOS (SIN BOTÓN DE BORRAR) =====
+        async function abrirSeguridad() {
+            document.getElementById('modal-seguridad').style.display = 'flex';
+            const contenedor = document.getElementById('lista-dispositivos');
+            contenedor.innerHTML = 'Cargando registro...';
+
+            const { data, error } = await supabaseClient.from('admin_accesos').select('*').order('fecha', { ascending: false }).limit(10);
+            
+            if (error || !data) return contenedor.innerHTML = 'Error al cargar el historial.';
+            contenedor.innerHTML = '';
+
+            data.forEach((acceso, index) => {
+                let fechaFormateada = new Date(acceso.fecha).toLocaleString('es-PE', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' });
+                let etiquetaActual = index === 0 ? '<span style="background:#10B981; color:white; padding:2px 6px; border-radius:10px; font-size:10px; margin-left:5px;">Sesión Actual</span>' : '';
+
+                contenedor.innerHTML += `
+                    <div class="dispositivo-item">
+                        <div class="dispositivo-info">
+                            <h4>${acceso.dispositivo} ${etiquetaActual}</h4>
+                            <p>${acceso.navegador} • ${fechaFormateada}</p>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function cerrarSeguridad() {
+            document.getElementById('modal-seguridad').style.display = 'none';
+        }
+    </script>
+</body>
+</html>
