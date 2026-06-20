@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Panel Admin Seguro | CanvaStore</title>
+    <title>Panel Admin Seguro | Tienda</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         :root { --primary: #8B3DFF; --bg: #F3F4F6; --text: #1F2937; }
@@ -21,7 +21,7 @@
         h1 { color: var(--primary); margin: 0; }
         
         /* PESTAÑAS (TABS) */
-        .tabs { display: flex; gap: 10px; margin-bottom: 25px; border-bottom: 2px solid #E5E7EB; padding-bottom: 15px;}
+        .tabs { display: flex; gap: 10px; margin-bottom: 25px; border-bottom: 2px solid #E5E7EB; padding-bottom: 15px; flex-wrap: wrap;}
         .tab-btn { padding: 10px 20px; border: none; background: #F3F4F6; color: #6B7280; font-weight: bold; border-radius: 8px; cursor: pointer; transition: 0.3s; font-size: 15px;}
         .tab-btn.active { background: var(--primary); color: white; }
         .tab-content { display: none; }
@@ -98,9 +98,9 @@
 
             <!-- CONTENIDO PESTAÑA: VENTAS -->
             <div id="tab-ventas" class="tab-content active">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
                     <input type="text" id="buscador" class="search-box" placeholder="Buscar cliente, operación o token..." oninput="filtrarTabla()">
-                    <button class="btn-manual" onclick="registroManual()">+ Añadir Manual</button>
+                    <button class="btn-manual" onclick="registroManual()">+ Añadir Cliente Manual</button>
                 </div>
 
                 <div class="stats-container">
@@ -110,7 +110,16 @@
 
                 <div style="overflow-x: auto;">
                     <table>
-                        <thead><tr><th>Correo</th><th>Método</th><th>N° Op / Token</th><th>Estado</th><th>Vencimiento</th><th>Acciones</th></tr></thead>
+                        <thead>
+                            <tr>
+                                <th>Correo del Cliente</th>
+                                <th>Servicio y Método</th>
+                                <th>N° Op / Token</th>
+                                <th>Estado</th>
+                                <th>Vencimiento</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
                         <tbody id="tabla-usuarios"><tr><td colspan="6">Cargando datos...</td></tr></tbody>
                     </table>
                 </div>
@@ -118,9 +127,9 @@
 
             <!-- CONTENIDO PESTAÑA: CATÁLOGO -->
             <div id="tab-catalogo" class="tab-content">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
                     <h2 style="margin: 0; font-size: 20px; color: #374151;">Servicios Activos en Tienda</h2>
-                    <button class="btn-primary" onclick="abrirModalServicio()">+ Crear Servicio</button>
+                    <button class="btn-primary" onclick="abrirModalServicio()">+ Crear Nuevo Servicio</button>
                 </div>
 
                 <div style="overflow-x: auto;">
@@ -152,7 +161,7 @@
                     <input type="number" step="0.10" id="serv-precio" placeholder="Ej: 5.00">
                 </div>
                 <div class="input-group" style="flex: 1;">
-                    <label>Precio de Oferta (S/) (Opcional)</label>
+                    <label>Precio Oferta (S/) (Opcional)</label>
                     <input type="number" step="0.10" id="serv-promo" placeholder="Ej: 3.00">
                 </div>
             </div>
@@ -189,13 +198,28 @@
         // ===== LOGIN Y NAVEGACIÓN =====
         supabaseClient.auth.getSession().then(({ data: { session } }) => { if (session) mostrarPanel(); });
 
+        // Detección de dispositivo
+        function obtenerInfoDispositivo() {
+            const ua = navigator.userAgent;
+            let dispositivo = /Mobile|Android|iP(hone|od|ad)/.test(ua) ? "📱 Celular / Tablet" : "💻 Computadora";
+            let navegador = "Navegador Web";
+            if(ua.includes("Chrome")) navegador = "Google Chrome";
+            if(ua.includes("Firefox")) navegador = "Mozilla Firefox";
+            if(ua.includes("Safari") && !ua.includes("Chrome")) navegador = "Apple Safari";
+            if(ua.includes("Edge")) navegador = "Microsoft Edge";
+            return { dispositivo, navegador };
+        }
+
         async function iniciarSesion() {
             const email = document.getElementById('login-email').value;
             const password = document.getElementById('login-password').value;
             const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+            
             if (error) {
                 document.getElementById('login-error').style.display = 'block';
             } else {
+                const info = obtenerInfoDispositivo();
+                await supabaseClient.from('admin_accesos').insert([{ dispositivo: info.dispositivo, navegador: info.navegador }]);
                 mostrarPanel();
             }
         }
@@ -241,14 +265,26 @@
                 let badge = user.estado === 'Pendiente' ? 'badge-pendiente' : 'badge-activo';
                 let op = user.num_operacion || user.token || 'Manual';
                 let btn = user.estado === 'Pendiente' ? `<button class="btn-aprobar" onclick="aprobarPago(${user.id})">Aprobar</button>` : `<span style="color:#059669; font-weight:bold;">✔️ Activo</span>`;
+                
+                // MUESTRA EL SERVICIO COMPRADO AQUÍ
+                let servicioComprado = user.servicio ? user.servicio : 'Canva Pro Edu';
 
                 tabla.innerHTML += `
                     <tr>
-                        <td><div class="correo-box"><strong>${user.correo}</strong><button class="btn-copiar" onclick="copiarCorreo('${user.correo}', this)">📋</button></div></td>
-                        <td>${user.metodo_pago}</td><td>${op}</td>
+                        <td>
+                            <div class="correo-box">
+                                <strong>${user.correo}</strong>
+                                <button class="btn-copiar" onclick="copiarCorreo('${user.correo}', this)" title="Copiar Correo">📋</button>
+                            </div>
+                        </td>
+                        <td>
+                            <strong>${servicioComprado}</strong><br>
+                            <span style="font-size:12px; color:#6B7280;">${user.metodo_pago}</span>
+                        </td>
+                        <td>${op}</td>
                         <td><span class="${badge}">${user.estado}</span></td>
                         <td>${user.fecha_fin || '---'}</td>
-                        <td style="display:flex; gap:5px;">${btn} <button class="btn-borrar" onclick="borrarUsuario(${user.id})">🗑️</button></td>
+                        <td style="display:flex; gap:5px;">${btn} <button class="btn-borrar" onclick="borrarUsuario(${user.id})" title="Borrar">🗑️</button></td>
                     </tr>`;
             });
         }
@@ -269,10 +305,15 @@
         }
 
         async function registroManual() {
-            const correo = prompt("Ingresa el correo del cliente:");
+            const correo = prompt("Ingresa el correo del cliente (Pago manual/efectivo):");
             if (correo && correo.includes("@")) {
+                let nombreServicio = prompt("¿Qué servicio adquirió? (Ej: Canva Pro Edu, Netflix...)") || "Canva Pro Edu";
                 let hoy = new Date(); let fin = new Date(); fin.setMonth(hoy.getMonth() + 1);
-                await supabaseClient.from('usuarios_canva').insert([{ correo, metodo_pago: 'Manual', estado: 'Activo', fecha_inicio: hoy.toISOString().split('T')[0], fecha_fin: fin.toISOString().split('T')[0] }]);
+                
+                await supabaseClient.from('usuarios_canva').insert([{ 
+                    correo: correo, servicio: nombreServicio, metodo_pago: 'Manual', estado: 'Activo', 
+                    fecha_inicio: hoy.toISOString().split('T')[0], fecha_fin: fin.toISOString().split('T')[0] 
+                }]);
                 cargarUsuarios();
             }
         }
@@ -283,7 +324,7 @@
             const tabla = document.getElementById('tabla-servicios');
             tabla.innerHTML = '';
             
-            if(!data || data.length === 0) return tabla.innerHTML = '<tr><td colspan="5" style="text-align:center;">No hay servicios.</td></tr>';
+            if(!data || data.length === 0) return tabla.innerHTML = '<tr><td colspan="5" style="text-align:center;">No hay servicios en el catálogo.</td></tr>';
 
             data.forEach(serv => {
                 let precioHTML = serv.precio_promocional 
@@ -344,10 +385,8 @@
             const datos = { nombre, precio, precio_promocional: promo, etiqueta, caracteristicas: caract, activo: true };
 
             if(id) {
-                // Actualizar
                 await supabaseClient.from('servicios').update(datos).eq('id', id);
             } else {
-                // Crear nuevo
                 await supabaseClient.from('servicios').insert([datos]);
             }
 
@@ -356,7 +395,7 @@
         }
 
         async function borrarServicio(id) {
-            if (confirm("¿Borrar este servicio del catálogo? Desaparecerá de la tienda.")) { 
+            if (confirm("¿Borrar este servicio del catálogo? Desaparecerá de tu tienda para los clientes.")) { 
                 await supabaseClient.from('servicios').delete().eq('id', id); 
                 cargarServicios(); 
             }
@@ -369,6 +408,7 @@
             contenedor.innerHTML = 'Cargando registro...';
             const { data } = await supabaseClient.from('admin_accesos').select('*').order('fecha', { ascending: false }).limit(10);
             contenedor.innerHTML = '';
+            if (!data) return;
             data.forEach((acceso, index) => {
                 let fechaForm = new Date(acceso.fecha).toLocaleString('es-PE', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' });
                 let etiqueta = index === 0 ? '<span style="background:#10B981; color:white; padding:2px 6px; border-radius:10px; font-size:10px; margin-left:5px;">Sesión Actual</span>' : '';
