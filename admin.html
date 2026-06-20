@@ -9,19 +9,25 @@
         :root { --primary: #8B3DFF; --bg: #F3F4F6; --text: #1F2937; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); padding: 30px; margin: 0; display: flex; justify-content: center; min-height: 100vh;}
         
-        /* PANTALLA LOGIN */
+        /* LOGIN */
         #login-section { background: white; padding: 40px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 100%; max-width: 400px; margin: auto; text-align: center; }
-        #login-section input[type="email"], #login-section input[type="password"] { width: 100%; padding: 12px; margin: 10px 0; border: 2px solid #E5E7EB; border-radius: 8px; outline: none; box-sizing: border-box; transition: 0.3s;}
-        #login-section input:focus { border-color: var(--primary); }
+        #login-section input { width: 100%; padding: 12px; margin: 10px 0; border: 2px solid #E5E7EB; border-radius: 8px; outline: none; box-sizing: border-box; transition: 0.3s;}
         .checkbox-container { display: flex; align-items: center; gap: 8px; font-size: 14px; color: #6B7280; margin: 10px 0 20px; text-align: left; }
         
-        /* PANTALLA ADMIN */
+        /* PANEL PRINCIPAL */
         #admin-section { width: 100%; max-width: 1100px; display: none; }
         .panel-container { background: white; padding: 30px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); }
         .header-panel { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 15px;}
         h1 { color: var(--primary); margin: 0; }
         
-        /* ESTADÍSTICAS */
+        /* PESTAÑAS (TABS) */
+        .tabs { display: flex; gap: 10px; margin-bottom: 25px; border-bottom: 2px solid #E5E7EB; padding-bottom: 15px;}
+        .tab-btn { padding: 10px 20px; border: none; background: #F3F4F6; color: #6B7280; font-weight: bold; border-radius: 8px; cursor: pointer; transition: 0.3s; font-size: 15px;}
+        .tab-btn.active { background: var(--primary); color: white; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        /* ESTADÍSTICAS Y TABLAS */
         .stats-container { display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap;}
         .stat-box { background: #F9FAFB; border: 1px solid #E5E7EB; padding: 15px; border-radius: 10px; flex: 1; text-align: center; min-width: 150px;}
         .stat-box h3 { margin: 0 0 5px 0; font-size: 24px; color: var(--primary); }
@@ -34,107 +40,142 @@
         
         .badge-pendiente { background: #FEF3C7; color: #D97706; padding: 5px 10px; border-radius: 20px; font-weight: bold; font-size: 12px; }
         .badge-activo { background: #D1FAE5; color: #059669; padding: 5px 10px; border-radius: 20px; font-weight: bold; font-size: 12px; }
+        .precio-tachado { text-decoration: line-through; color: #9CA3AF; font-size: 12px; margin-right: 5px;}
         
         /* BOTONES */
-        .btn-primary { background: var(--primary); color: white; border: none; padding: 12px; border-radius: 8px; cursor: pointer; font-weight: bold; width: 100%; transition: 0.3s;}
-        .btn-primary:hover { background: #7b20c9; }
+        .btn-primary { background: var(--primary); color: white; border: none; padding: 12px; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.3s;}
+        .w-100 { width: 100%; }
         .btn-aprobar { background: #10B981; color: white; border: none; padding: 8px 12px; border-radius: 8px; cursor: pointer; font-weight: bold; }
         .btn-borrar { background: #FEE2E2; color: #DC2626; border: none; padding: 8px 12px; border-radius: 8px; cursor: pointer; font-weight: bold; }
         .btn-logout { background: #374151; color: white; border: none; padding: 10px 15px; border-radius: 8px; cursor: pointer; font-weight: bold; }
         .btn-manual { background: var(--primary); color: white; border: none; padding: 10px 15px; border-radius: 8px; cursor: pointer; font-weight: bold; }
         .btn-seguridad { background: #F59E0B; color: white; border: none; padding: 10px 15px; border-radius: 8px; cursor: pointer; font-weight: bold; display: flex; align-items: center; gap: 5px;}
-        
-        /* BOTÓN COPIAR CORREO */
         .correo-box { display: flex; align-items: center; gap: 8px; }
         .btn-copiar { background: none; border: none; cursor: pointer; font-size: 16px; color: #6B7280; transition: 0.2s; padding: 0;}
-        .btn-copiar:hover { transform: scale(1.2); }
-
-        /* MODAL DE SEGURIDAD */
+        
+        /* MODALES */
         .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); display: none; justify-content: center; align-items: center; z-index: 1000; }
         .modal-content { background: white; padding: 30px; border-radius: 15px; width: 90%; max-width: 500px; max-height: 80vh; overflow-y: auto; position: relative; }
         .cerrar-modal { position: absolute; top: 15px; right: 20px; font-size: 24px; cursor: pointer; color: #6B7280; }
-        .dispositivo-item { display: flex; justify-content: space-between; align-items: center; padding: 15px 12px; border-bottom: 1px solid #eee; }
-        .dispositivo-info h4 { margin: 0 0 5px 0; color: var(--text); font-size: 15px;}
-        .dispositivo-info p { margin: 0; font-size: 13px; color: #6B7280; }
+        .input-group { margin-bottom: 15px; text-align: left;}
+        .input-group label { display: block; font-size: 13px; font-weight: bold; color: #374151; margin-bottom: 5px;}
+        .input-group input, .input-group textarea { width: 100%; padding: 10px; border: 1px solid #D1D5DB; border-radius: 8px; box-sizing: border-box; outline: none;}
+        .input-group input:focus, .input-group textarea:focus { border-color: var(--primary); }
     </style>
 </head>
 <body>
 
-    <!-- 1. PANTALLA DE LOGIN -->
+    <!-- 1. PANTALLA LOGIN -->
     <div id="login-section">
         <h2>🔒 Acceso Restringido</h2>
         <p style="color: #6B7280; font-size: 14px;">Ingresa tus credenciales de administrador.</p>
         <input type="email" id="login-email" placeholder="Correo de Admin">
         <input type="password" id="login-password" placeholder="Contraseña">
-        
-        <label class="checkbox-container">
-            <input type="checkbox" id="keep-logged" checked> Mantener sesión iniciada
-        </label>
-
-        <button class="btn-primary" onclick="iniciarSesion()">Ingresar al Panel</button>
+        <label class="checkbox-container"><input type="checkbox" id="keep-logged" checked> Mantener sesión iniciada</label>
+        <button class="btn-primary w-100" onclick="iniciarSesion()">Ingresar al Panel</button>
         <p id="login-error" style="color: red; font-size: 13px; display: none;">Credenciales incorrectas.</p>
     </div>
 
-    <!-- 2. PANTALLA DEL PANEL -->
+    <!-- 2. PANEL ADMIN -->
     <div id="admin-section">
         <div class="panel-container">
             <div class="header-panel">
                 <div>
-                    <h1>👑 Panel de Ventas</h1>
-                    <p style="margin-top: 5px; color: #6b7280;">Administración Segura de CanvaStore</p>
+                    <h1>👑 Mi Negocio</h1>
+                    <p style="margin-top: 5px; color: #6b7280;">Administración General de la Tienda</p>
                 </div>
                 <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                    <button class="btn-seguridad" onclick="abrirSeguridad()">🛡️ Historial de Accesos</button>
-                    <button class="btn-manual" onclick="registroManual()">+ Añadir Manual</button>
+                    <button class="btn-seguridad" onclick="abrirSeguridad()">🛡️ Historial Accesos</button>
                     <button class="btn-logout" onclick="cerrarSesion()">Salir</button>
                 </div>
             </div>
 
-            <div class="stats-container">
-                <div class="stat-box">
-                    <h3 id="stat-activos">0</h3>
-                    <p>CLIENTES ACTIVOS</p>
+            <!-- PESTAÑAS -->
+            <div class="tabs">
+                <button id="btn-tab-ventas" class="tab-btn active" onclick="switchTab('ventas')">💰 Ventas y Clientes</button>
+                <button id="btn-tab-catalogo" class="tab-btn" onclick="switchTab('catalogo')">📦 Catálogo de Servicios</button>
+            </div>
+
+            <!-- CONTENIDO PESTAÑA: VENTAS -->
+            <div id="tab-ventas" class="tab-content active">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <input type="text" id="buscador" class="search-box" placeholder="Buscar cliente, operación o token..." oninput="filtrarTabla()">
+                    <button class="btn-manual" onclick="registroManual()">+ Añadir Manual</button>
                 </div>
-                <div class="stat-box">
-                    <h3 id="stat-pendientes">0</h3>
-                    <p>PAGOS POR REVISAR</p>
+
+                <div class="stats-container">
+                    <div class="stat-box"><h3 id="stat-activos">0</h3><p>CLIENTES ACTIVOS</p></div>
+                    <div class="stat-box"><h3 id="stat-pendientes">0</h3><p>PAGOS POR REVISAR</p></div>
+                </div>
+
+                <div style="overflow-x: auto;">
+                    <table>
+                        <thead><tr><th>Correo</th><th>Método</th><th>N° Op / Token</th><th>Estado</th><th>Vencimiento</th><th>Acciones</th></tr></thead>
+                        <tbody id="tabla-usuarios"><tr><td colspan="6">Cargando datos...</td></tr></tbody>
+                    </table>
                 </div>
             </div>
 
-            <input type="text" id="buscador" class="search-box" placeholder="Buscar cliente..." oninput="filtrarTabla()">
+            <!-- CONTENIDO PESTAÑA: CATÁLOGO -->
+            <div id="tab-catalogo" class="tab-content">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <h2 style="margin: 0; font-size: 20px; color: #374151;">Servicios Activos en Tienda</h2>
+                    <button class="btn-primary" onclick="abrirModalServicio()">+ Crear Servicio</button>
+                </div>
 
-            <div style="overflow-x: auto;">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Correo</th>
-                            <th>Método</th>
-                            <th>N° Op / Token</th>
-                            <th>Estado</th>
-                            <th>Vencimiento</th>
-                            <th>Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tabla-usuarios">
-                        <tr><td colspan="6">Cargando datos...</td></tr>
-                    </tbody>
-                </table>
+                <div style="overflow-x: auto;">
+                    <table>
+                        <thead><tr><th>Servicio</th><th>Precio Visible</th><th>Etiqueta</th><th>Estado</th><th>Acciones</th></tr></thead>
+                        <tbody id="tabla-servicios"><tr><td colspan="5">Cargando catálogo...</td></tr></tbody>
+                    </table>
+                </div>
             </div>
+
         </div>
     </div>
 
-    <!-- 3. MODAL DE SEGURIDAD -->
+    <!-- MODAL: GESTIONAR SERVICIO -->
+    <div id="modal-servicio" class="modal">
+        <div class="modal-content">
+            <span class="cerrar-modal" onclick="cerrarModalServicio()">&times;</span>
+            <h2 id="titulo-modal-servicio" style="margin-top:0; color: var(--primary);">Nuevo Servicio</h2>
+            
+            <input type="hidden" id="serv-id">
+            
+            <div class="input-group">
+                <label>Nombre del Servicio</label>
+                <input type="text" id="serv-nombre" placeholder="Ej: Canva Pro Edu">
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <div class="input-group" style="flex: 1;">
+                    <label>Precio Normal (S/)</label>
+                    <input type="number" step="0.10" id="serv-precio" placeholder="Ej: 5.00">
+                </div>
+                <div class="input-group" style="flex: 1;">
+                    <label>Precio de Oferta (S/) (Opcional)</label>
+                    <input type="number" step="0.10" id="serv-promo" placeholder="Ej: 3.00">
+                </div>
+            </div>
+            <div class="input-group">
+                <label>Etiqueta (Opcional)</label>
+                <input type="text" id="serv-etiqueta" placeholder="Ej: Plan Estrella, Oferta, 50% DCTO">
+            </div>
+            <div class="input-group">
+                <label>Características (Separadas por coma)</label>
+                <textarea id="serv-caracteristicas" rows="3" placeholder="Ej: Plantillas Premium, Diseños 3D, Soporte 24/7"></textarea>
+            </div>
+
+            <button class="btn-primary w-100" onclick="guardarServicio()">Guardar Servicio</button>
+        </div>
+    </div>
+
+    <!-- MODAL: SEGURIDAD (Accesos) -->
     <div id="modal-seguridad" class="modal">
         <div class="modal-content">
             <span class="cerrar-modal" onclick="cerrarSeguridad()">&times;</span>
             <h2 style="margin-top:0; color: var(--primary);">🛡️ Historial de Accesos</h2>
-            <p style="font-size: 13px; color: #6B7280; margin-bottom: 20px;">
-                Registro de seguridad inborrable. Si ves un ingreso que no reconoces, ve a Supabase y cambia tu contraseña inmediatamente.
-            </p>
-            
-            <div id="lista-dispositivos">
-                <p>Cargando registro...</p>
-            </div>
+            <p style="font-size: 13px; color: #6B7280; margin-bottom: 20px;">Registro inborrable de seguridad.</p>
+            <div id="lista-dispositivos"><p>Cargando registro...</p></div>
         </div>
     </div>
 
@@ -145,75 +186,50 @@
 
         let usuariosGlobal = [];
 
-        // ===== 1. SISTEMA DE LOGIN Y SEGURIDAD =====
-        supabaseClient.auth.getSession().then(({ data: { session } }) => {
-            if (session) mostrarPanel();
-        });
-
-        function obtenerInfoDispositivo() {
-            const ua = navigator.userAgent;
-            let dispositivo = /Mobile|Android|iP(hone|od|ad)/.test(ua) ? "📱 Celular / Tablet" : "💻 Computadora";
-            let navegador = "Navegador Web";
-            if(ua.includes("Chrome")) navegador = "Google Chrome";
-            if(ua.includes("Firefox")) navegador = "Mozilla Firefox";
-            if(ua.includes("Safari") && !ua.includes("Chrome")) navegador = "Apple Safari";
-            if(ua.includes("Edge")) navegador = "Microsoft Edge";
-            
-            return { dispositivo, navegador };
-        }
+        // ===== LOGIN Y NAVEGACIÓN =====
+        supabaseClient.auth.getSession().then(({ data: { session } }) => { if (session) mostrarPanel(); });
 
         async function iniciarSesion() {
             const email = document.getElementById('login-email').value;
             const password = document.getElementById('login-password').value;
-            
-            const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
-            
+            const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
             if (error) {
                 document.getElementById('login-error').style.display = 'block';
             } else {
-                const info = obtenerInfoDispositivo();
-                await supabaseClient.from('admin_accesos').insert([{ 
-                    dispositivo: info.dispositivo, navegador: info.navegador 
-                }]);
                 mostrarPanel();
             }
         }
-
-        async function cerrarSesion() {
-            await supabaseClient.auth.signOut();
-            window.location.reload(); 
-        }
-
+        async function cerrarSesion() { await supabaseClient.auth.signOut(); window.location.reload(); }
+        
         function mostrarPanel() {
             document.getElementById('login-section').style.display = 'none';
             document.getElementById('admin-section').style.display = 'block';
             cargarUsuarios();
         }
 
-        // ===== 2. LÓGICA DEL PANEL =====
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(t => t.classList.remove('active'));
+            document.getElementById('tab-' + tabId).classList.add('active');
+            document.getElementById('btn-tab-' + tabId).classList.add('active');
+            
+            if(tabId === 'ventas') cargarUsuarios();
+            if(tabId === 'catalogo') cargarServicios();
+        }
+
+        // ===== PESTAÑA: VENTAS Y CLIENTES =====
         async function cargarUsuarios() {
-            const { data, error } = await supabaseClient.from('usuarios_canva').select('*').order('creado_en', { ascending: false });
-            if (error) return;
-
-            usuariosGlobal = data;
-            actualizarEstadisticas(data);
-            renderizarTabla(data);
+            const { data } = await supabaseClient.from('usuarios_canva').select('*').order('creado_en', { ascending: false });
+            usuariosGlobal = data || [];
+            document.getElementById('stat-activos').innerText = usuariosGlobal.filter(u => u.estado === 'Activo').length;
+            document.getElementById('stat-pendientes').innerText = usuariosGlobal.filter(u => u.estado === 'Pendiente').length;
+            renderizarTabla(usuariosGlobal);
         }
 
-        function actualizarEstadisticas(data) {
-            let activos = data.filter(u => u.estado === 'Activo').length;
-            let pendientes = data.filter(u => u.estado === 'Pendiente').length;
-            document.getElementById('stat-activos').innerText = activos;
-            document.getElementById('stat-pendientes').innerText = pendientes;
-        }
-
-        // FUNCIÓN PARA COPIAR AL PORTAPAPELES
         function copiarCorreo(texto, boton) {
             navigator.clipboard.writeText(texto).then(() => {
-                let original = boton.innerHTML;
-                boton.innerHTML = '✅';
-                setTimeout(() => { boton.innerHTML = original; }, 1500);
-            }).catch(err => console.error('Error al copiar', err));
+                let original = boton.innerHTML; boton.innerHTML = '✅'; setTimeout(() => { boton.innerHTML = original; }, 1500);
+            });
         }
 
         function renderizarTabla(usuarios) {
@@ -222,93 +238,144 @@
             if(usuarios.length === 0) return tabla.innerHTML = '<tr><td colspan="6" style="text-align:center;">No hay clientes registrados aún.</td></tr>';
 
             usuarios.forEach(user => {
-                let estadoBadge = user.estado === 'Pendiente' ? 'badge-pendiente' : 'badge-activo';
-                let codigoPago = user.num_operacion || user.token || 'Manual';
-                let fechaFin = user.fecha_fin || '---';
-                let botonAprobar = user.estado === 'Pendiente' ? `<button class="btn-aprobar" onclick="aprobarPago(${user.id})">Aprobar</button>` : `<span style="color:#059669; font-weight:bold;">✔️ Activo</span>`;
+                let badge = user.estado === 'Pendiente' ? 'badge-pendiente' : 'badge-activo';
+                let op = user.num_operacion || user.token || 'Manual';
+                let btn = user.estado === 'Pendiente' ? `<button class="btn-aprobar" onclick="aprobarPago(${user.id})">Aprobar</button>` : `<span style="color:#059669; font-weight:bold;">✔️ Activo</span>`;
 
                 tabla.innerHTML += `
                     <tr>
-                        <td>
-                            <div class="correo-box">
-                                <strong>${user.correo}</strong>
-                                <button class="btn-copiar" onclick="copiarCorreo('${user.correo}', this)" title="Copiar correo">📋</button>
-                            </div>
-                        </td>
-                        <td>${user.metodo_pago}</td>
-                        <td>${codigoPago}</td>
-                        <td><span class="${estadoBadge}">${user.estado}</span></td>
-                        <td>${fechaFin}</td>
-                        <td style="display:flex; gap:5px;">
-                            ${botonAprobar}
-                            <button class="btn-borrar" onclick="borrarUsuario(${user.id})">🗑️</button>
-                        </td>
-                    </tr>
-                `;
+                        <td><div class="correo-box"><strong>${user.correo}</strong><button class="btn-copiar" onclick="copiarCorreo('${user.correo}', this)">📋</button></div></td>
+                        <td>${user.metodo_pago}</td><td>${op}</td>
+                        <td><span class="${badge}">${user.estado}</span></td>
+                        <td>${user.fecha_fin || '---'}</td>
+                        <td style="display:flex; gap:5px;">${btn} <button class="btn-borrar" onclick="borrarUsuario(${user.id})">🗑️</button></td>
+                    </tr>`;
             });
         }
 
         function filtrarTabla() {
-            const texto = document.getElementById('buscador').value.toLowerCase();
-            const filtrados = usuariosGlobal.filter(u => 
-                (u.correo && u.correo.toLowerCase().includes(texto)) || 
-                (u.num_operacion && u.num_operacion.toLowerCase().includes(texto)) ||
-                (u.token && u.token.toLowerCase().includes(texto))
-            );
-            renderizarTabla(filtrados);
+            const txt = document.getElementById('buscador').value.toLowerCase();
+            renderizarTabla(usuariosGlobal.filter(u => (u.correo && u.correo.toLowerCase().includes(txt)) || (u.num_operacion && u.num_operacion.toLowerCase().includes(txt)) || (u.token && u.token.toLowerCase().includes(txt))));
         }
 
         async function aprobarPago(id) {
-            let hoy = new Date(); let mesFin = new Date(); mesFin.setMonth(hoy.getMonth() + 1);
-            await supabaseClient.from('usuarios_canva').update({ estado: 'Activo', fecha_inicio: hoy.toISOString().split('T')[0], fecha_fin: mesFin.toISOString().split('T')[0] }).eq('id', id);
+            let hoy = new Date(); let fin = new Date(); fin.setMonth(hoy.getMonth() + 1);
+            await supabaseClient.from('usuarios_canva').update({ estado: 'Activo', fecha_inicio: hoy.toISOString().split('T')[0], fecha_fin: fin.toISOString().split('T')[0] }).eq('id', id);
             cargarUsuarios();
         }
 
         async function borrarUsuario(id) {
-            if (confirm("⚠️ ¿Borrar cliente permanentemente?")) {
-                await supabaseClient.from('usuarios_canva').delete().eq('id', id);
-                cargarUsuarios();
-            }
+            if (confirm("⚠️ ¿Borrar cliente permanentemente?")) { await supabaseClient.from('usuarios_canva').delete().eq('id', id); cargarUsuarios(); }
         }
 
         async function registroManual() {
             const correo = prompt("Ingresa el correo del cliente:");
             if (correo && correo.includes("@")) {
-                let hoy = new Date(); let mesFin = new Date(); mesFin.setMonth(hoy.getMonth() + 1);
-                await supabaseClient.from('usuarios_canva').insert([{ correo: correo, metodo_pago: 'Manual', estado: 'Activo', fecha_inicio: hoy.toISOString().split('T')[0], fecha_fin: mesFin.toISOString().split('T')[0] }]);
+                let hoy = new Date(); let fin = new Date(); fin.setMonth(hoy.getMonth() + 1);
+                await supabaseClient.from('usuarios_canva').insert([{ correo, metodo_pago: 'Manual', estado: 'Activo', fecha_inicio: hoy.toISOString().split('T')[0], fecha_fin: fin.toISOString().split('T')[0] }]);
                 cargarUsuarios();
             }
         }
 
-        // ===== 3. MODAL DE DISPOSITIVOS (SIN BOTÓN DE BORRAR) =====
+        // ===== PESTAÑA: CATÁLOGO DE SERVICIOS =====
+        async function cargarServicios() {
+            const { data } = await supabaseClient.from('servicios').select('*').order('id', { ascending: true });
+            const tabla = document.getElementById('tabla-servicios');
+            tabla.innerHTML = '';
+            
+            if(!data || data.length === 0) return tabla.innerHTML = '<tr><td colspan="5" style="text-align:center;">No hay servicios.</td></tr>';
+
+            data.forEach(serv => {
+                let precioHTML = serv.precio_promocional 
+                    ? `<span class="precio-tachado">S/ ${parseFloat(serv.precio).toFixed(2)}</span> <strong>S/ ${parseFloat(serv.precio_promocional).toFixed(2)}</strong>`
+                    : `<strong>S/ ${parseFloat(serv.precio).toFixed(2)}</strong>`;
+                
+                let etiqueta = serv.etiqueta ? `<span style="background:#E5E7EB; padding:3px 8px; border-radius:10px; font-size:11px;">${serv.etiqueta}</span>` : '---';
+                let estado = serv.activo ? '<span class="badge-activo">Visible</span>' : '<span class="badge-pendiente">Oculto</span>';
+
+                tabla.innerHTML += `
+                    <tr>
+                        <td><strong>${serv.nombre}</strong></td>
+                        <td>${precioHTML}</td>
+                        <td>${etiqueta}</td>
+                        <td>${estado}</td>
+                        <td style="display:flex; gap:5px;">
+                            <button class="btn-primary" style="padding: 6px 12px; font-size:12px;" onclick='editarServicio(${JSON.stringify(serv)})'>✏️ Editar</button>
+                            <button class="btn-borrar" style="font-size:12px;" onclick="borrarServicio(${serv.id})">🗑️</button>
+                        </td>
+                    </tr>`;
+            });
+        }
+
+        function abrirModalServicio() {
+            document.getElementById('serv-id').value = '';
+            document.getElementById('serv-nombre').value = '';
+            document.getElementById('serv-precio').value = '';
+            document.getElementById('serv-promo').value = '';
+            document.getElementById('serv-etiqueta').value = '';
+            document.getElementById('serv-caracteristicas').value = '';
+            document.getElementById('titulo-modal-servicio').innerText = 'Nuevo Servicio';
+            document.getElementById('modal-servicio').style.display = 'flex';
+        }
+
+        function editarServicio(serv) {
+            document.getElementById('serv-id').value = serv.id;
+            document.getElementById('serv-nombre').value = serv.nombre;
+            document.getElementById('serv-precio').value = serv.precio;
+            document.getElementById('serv-promo').value = serv.precio_promocional || '';
+            document.getElementById('serv-etiqueta').value = serv.etiqueta || '';
+            document.getElementById('serv-caracteristicas').value = serv.caracteristicas || '';
+            document.getElementById('titulo-modal-servicio').innerText = 'Editar Servicio';
+            document.getElementById('modal-servicio').style.display = 'flex';
+        }
+
+        function cerrarModalServicio() { document.getElementById('modal-servicio').style.display = 'none'; }
+
+        async function guardarServicio() {
+            const id = document.getElementById('serv-id').value;
+            const nombre = document.getElementById('serv-nombre').value.trim();
+            const precio = parseFloat(document.getElementById('serv-precio').value);
+            const promo = parseFloat(document.getElementById('serv-promo').value) || null;
+            const etiqueta = document.getElementById('serv-etiqueta').value.trim();
+            const caract = document.getElementById('serv-caracteristicas').value.trim();
+
+            if(!nombre || isNaN(precio)) return alert("El nombre y el precio normal son obligatorios.");
+
+            const datos = { nombre, precio, precio_promocional: promo, etiqueta, caracteristicas: caract, activo: true };
+
+            if(id) {
+                // Actualizar
+                await supabaseClient.from('servicios').update(datos).eq('id', id);
+            } else {
+                // Crear nuevo
+                await supabaseClient.from('servicios').insert([datos]);
+            }
+
+            cerrarModalServicio();
+            cargarServicios();
+        }
+
+        async function borrarServicio(id) {
+            if (confirm("¿Borrar este servicio del catálogo? Desaparecerá de la tienda.")) { 
+                await supabaseClient.from('servicios').delete().eq('id', id); 
+                cargarServicios(); 
+            }
+        }
+
+        // ===== MODAL DE SEGURIDAD (Accesos) =====
         async function abrirSeguridad() {
             document.getElementById('modal-seguridad').style.display = 'flex';
             const contenedor = document.getElementById('lista-dispositivos');
             contenedor.innerHTML = 'Cargando registro...';
-
-            const { data, error } = await supabaseClient.from('admin_accesos').select('*').order('fecha', { ascending: false }).limit(10);
-            
-            if (error || !data) return contenedor.innerHTML = 'Error al cargar el historial.';
+            const { data } = await supabaseClient.from('admin_accesos').select('*').order('fecha', { ascending: false }).limit(10);
             contenedor.innerHTML = '';
-
             data.forEach((acceso, index) => {
-                let fechaFormateada = new Date(acceso.fecha).toLocaleString('es-PE', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' });
-                let etiquetaActual = index === 0 ? '<span style="background:#10B981; color:white; padding:2px 6px; border-radius:10px; font-size:10px; margin-left:5px;">Sesión Actual</span>' : '';
-
-                contenedor.innerHTML += `
-                    <div class="dispositivo-item">
-                        <div class="dispositivo-info">
-                            <h4>${acceso.dispositivo} ${etiquetaActual}</h4>
-                            <p>${acceso.navegador} • ${fechaFormateada}</p>
-                        </div>
-                    </div>
-                `;
+                let fechaForm = new Date(acceso.fecha).toLocaleString('es-PE', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' });
+                let etiqueta = index === 0 ? '<span style="background:#10B981; color:white; padding:2px 6px; border-radius:10px; font-size:10px; margin-left:5px;">Sesión Actual</span>' : '';
+                contenedor.innerHTML += `<div class="dispositivo-item"><div class="dispositivo-info"><h4>${acceso.dispositivo} ${etiqueta}</h4><p>${acceso.navegador} • ${fechaForm}</p></div></div>`;
             });
         }
-
-        function cerrarSeguridad() {
-            document.getElementById('modal-seguridad').style.display = 'none';
-        }
+        function cerrarSeguridad() { document.getElementById('modal-seguridad').style.display = 'none'; }
     </script>
 </body>
 </html>
