@@ -3,181 +3,188 @@ const supabaseUrl = 'https://rhuhuvevynovfekwhlhb.supabase.co';
 const supabaseKey = 'sb_publishable_-8XCScnvNf6QXMsnbyJK9Q_XhrOr9j5';
 const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
 
-// 2. CAPTURAR ELEMENTOS
-const btnObtener = document.getElementById('btn-obtener');
-const btnVerTiempo = document.getElementById('btn-ver-tiempo');
-const modalCompra = document.getElementById('modal-compra');
-const modalTiempo = document.getElementById('modal-tiempo');
-const btnCerrarCompra = document.getElementById('cerrar-compra');
-const btnCerrarTiempo = document.getElementById('cerrar-tiempo');
-
-const correoCompraInput = document.getElementById('correo-compra');
-const alertaCorreo = document.getElementById('alerta-correo');
-const btnConfirmarYape = document.getElementById('btn-confirmar-yape');
-const btnOtroMedio = document.getElementById('btn-otro-medio');
-const otpBoxes = document.querySelectorAll('.otp-box');
-
-const correoTiempoInput = document.getElementById('correo-tiempo');
-const btnBuscarTiempo = document.getElementById('btn-buscar-tiempo');
-const mensajeTiempo = document.getElementById('mensaje-tiempo');
-
-const btnDescargarQR = document.getElementById('btn-descargar-qr');
+// VARIABLES GLOBALES
+let productoSeleccionado = { nombre: '', precio: 0 };
 const numeroWhatsApp = "51928293163"; 
 
-// =====================================
-// FUNCIONES DE MEJORA UX (TOAST Y DESCARGA)
-// =====================================
+// ELEMENTOS DEL MODAL
+const modalCompra = document.getElementById('modal-compra');
+const modalTiempo = document.getElementById('modal-tiempo');
+const correoCompraInput = document.getElementById('correo-compra');
+const alertaCorreo = document.getElementById('alerta-correo');
+const otpBoxes = document.querySelectorAll('.otp-box');
 
-// Sistema de notificaciones elegante
+// =====================================
+// CARGAR CATÁLOGO DINÁMICO
+// =====================================
+async function cargarCatalogo() {
+    const contenedor = document.getElementById('contenedor-servicios');
+    const { data, error } = await supabaseClient.from('servicios').select('*').eq('activo', true).order('id', { ascending: true });
+    
+    if(error || !data || data.length === 0) {
+        return contenedor.innerHTML = '<p style="color:var(--text-light);">No hay servicios disponibles en este momento.</p>';
+    }
+
+    contenedor.innerHTML = ''; // Limpiar
+    
+    data.forEach(serv => {
+        let precioFinal = serv.precio_promocional ? parseFloat(serv.precio_promocional) : parseFloat(serv.precio);
+        let precioHTML = serv.precio_promocional 
+            ? `<span style="text-decoration:line-through; color:#9CA3AF; font-size:16px;">S/ ${parseFloat(serv.precio).toFixed(2)}</span> S/ ${precioFinal.toFixed(2)}`
+            : `S/ ${precioFinal.toFixed(2)}`;
+        
+        let etiquetaHTML = serv.etiqueta ? `<div class="card-badge">${serv.etiqueta}</div>` : '';
+        let listaCaract = serv.caracteristicas ? serv.caracteristicas.split(',').map(c => `<li>✔️ ${c.trim()}</li>`).join('') : '';
+
+        contenedor.innerHTML += `
+            <div class="card">
+                ${etiquetaHTML}
+                <h2>${serv.nombre}</h2>
+                <p class="price">${precioHTML} <span>/ mes</span></p>
+                <ul class="features">${listaCaract}</ul>
+                <div class="buttons">
+                    <button class="btn-primary" onclick="abrirCompra('${serv.nombre}', ${precioFinal})">Obtenerlo ahora</button>
+                    <button class="btn-secondary" onclick="abrirVerTiempo()">Consultar mi suscripción</button>
+                </div>
+            </div>
+        `;
+    });
+}
+
+// =====================================
+// FUNCIONES DE INTERFAZ (UX)
+// =====================================
 function mostrarNotificacion(mensaje, tipo = 'error') {
     const contenedor = document.getElementById('toast-container');
     const toast = document.createElement('div');
     toast.className = `toast toast-${tipo}`;
     toast.innerHTML = tipo === 'error' ? `⚠️ ${mensaje}` : `✅ ${mensaje}`;
-    
     contenedor.appendChild(toast);
-    
     setTimeout(() => toast.classList.add('show'), 10);
-    
-    setTimeout(() => {
-        toast.classList.remove('show');
-        setTimeout(() => toast.remove(), 300);
-    }, 3500);
+    setTimeout(() => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 300); }, 3500);
 }
 
-// Mostrar notificación al descargar QR (Descarga manejada por HTML ahora)
-btnDescargarQR.addEventListener('click', () => {
-    mostrarNotificacion('Descargando código QR a tu dispositivo...', 'success');
-});
+document.getElementById('btn-descargar-qr').addEventListener('click', () => mostrarNotificacion('Descargando código QR...', 'success'));
 
-// =====================================
-// LÓGICA DE MODALES Y CUADRITOS
-// =====================================
+// ABRIR Y CERRAR MODALES
+function abrirCompra(nombre, precio) {
+    productoSeleccionado = { nombre: nombre, precio: precio };
+    
+    // Actualizar los textos del modal dinámicamente
+    document.getElementById('titulo-producto-modal').innerText = `Comprando: ${nombre}`;
+    document.getElementById('texto-precio-yape').innerText = `S/ ${precio.toFixed(2)}`;
+    document.getElementById('btn-confirmar-yape').innerText = `Confirmar Pago de S/ ${precio.toFixed(2)}`;
 
-btnObtener.addEventListener('click', () => {
     modalCompra.classList.remove('oculto');
     correoCompraInput.value = ""; 
     correoCompraInput.style.borderColor = "#E5E7EB";
     alertaCorreo.style.display = "none";
     otpBoxes.forEach(box => box.value = ''); 
-});
+}
 
-btnVerTiempo.addEventListener('click', () => {
+function abrirVerTiempo() {
     modalTiempo.classList.remove('oculto');
-    correoTiempoInput.value = ""; 
-    mensajeTiempo.innerHTML = "";
-});
+    document.getElementById('correo-tiempo').value = ""; 
+    document.getElementById('mensaje-tiempo').innerHTML = "";
+}
 
-btnCerrarCompra.addEventListener('click', () => modalCompra.classList.add('oculto'));
-btnCerrarTiempo.addEventListener('click', () => modalTiempo.classList.add('oculto'));
+document.getElementById('cerrar-compra').addEventListener('click', () => modalCompra.classList.add('oculto'));
+document.getElementById('cerrar-tiempo').addEventListener('click', () => modalTiempo.classList.add('oculto'));
 
+// LOGICA DE CUADRITOS YAPE
 otpBoxes.forEach((box, index) => {
     box.addEventListener('input', (e) => {
         e.target.value = e.target.value.replace(/[^0-9]/g, '');
-        if(e.target.value && index < otpBoxes.length - 1) {
-            otpBoxes[index + 1].focus();
-        }
+        if(e.target.value && index < otpBoxes.length - 1) otpBoxes[index + 1].focus();
     });
     box.addEventListener('keydown', (e) => {
-        if(e.key === 'Backspace' && !e.target.value && index > 0) {
-            otpBoxes[index - 1].focus();
-        }
+        if(e.key === 'Backspace' && !e.target.value && index > 0) otpBoxes[index - 1].focus();
     });
 });
 
 function validarCorreoCompra() {
     const correo = correoCompraInput.value.trim();
     if(correo === "" || !correo.includes("@")) {
-        correoCompraInput.style.borderColor = "#DC2626";
-        alertaCorreo.style.display = "block";
-        return false;
+        correoCompraInput.style.borderColor = "#DC2626"; alertaCorreo.style.display = "block"; return false;
     }
-    correoCompraInput.style.borderColor = "#E5E7EB";
-    alertaCorreo.style.display = "none";
-    return correo;
+    correoCompraInput.style.borderColor = "#E5E7EB"; alertaCorreo.style.display = "none"; return correo;
 }
 
 // =====================================
-// PROCESAR PAGOS Y BUSCAR TIEMPO
+// PROCESAR PAGOS (Con servicio dinámico)
 // =====================================
-
-btnConfirmarYape.addEventListener('click', async () => {
+document.getElementById('btn-confirmar-yape').addEventListener('click', async () => {
     const correo = validarCorreoCompra();
     if(!correo) return mostrarNotificacion('Por favor, ingresa un correo válido.');
-
-    const operacion = Array.from(otpBoxes).map(box => box.value).join('');
     
-    if(operacion.length < 7) {
-        return mostrarNotificacion("Ingresa los 7 números de operación completos.");
-    }
+    const operacion = Array.from(otpBoxes).map(box => box.value).join('');
+    if(operacion.length < 7) return mostrarNotificacion("Ingresa los 7 números de operación completos.");
 
-    btnConfirmarYape.innerText = "Procesando...";
-    btnConfirmarYape.disabled = true;
+    const btn = document.getElementById('btn-confirmar-yape');
+    btn.innerText = "Procesando..."; btn.disabled = true;
 
     await supabaseClient.from('usuarios_canva').insert([{ 
-        correo: correo, metodo_pago: 'Yape', num_operacion: operacion, estado: 'Pendiente' 
+        correo: correo, servicio: productoSeleccionado.nombre, metodo_pago: 'Yape', num_operacion: operacion, estado: 'Pendiente' 
     }]);
 
-    const mensaje = `Hola, acabo de pagar *S/ 3.00* por Canva Edu vía Yape.\n\n📧 *Mi correo:* ${correo}\n🧾 *N° de Operación:* ${operacion}\n\nPor favor, actívame el servicio.`;
+    const mensaje = `Hola, acabo de pagar *S/ ${productoSeleccionado.precio.toFixed(2)}* por *${productoSeleccionado.nombre}* vía Yape.\n\n📧 *Mi correo:* ${correo}\n🧾 *N° de Operación:* ${operacion}\n\nPor favor, actívame el servicio.`;
     window.open(`https://wa.me/${numeroWhatsApp}?text=${encodeURIComponent(mensaje)}`, '_blank');
     
     modalCompra.classList.add('oculto');
-    btnConfirmarYape.innerText = "Confirmar Pago de S/ 3.00";
-    btnConfirmarYape.disabled = false;
+    btn.innerText = `Confirmar Pago de S/ ${productoSeleccionado.precio.toFixed(2)}`; btn.disabled = false;
 });
 
-btnOtroMedio.addEventListener('click', async () => {
+document.getElementById('btn-otro-medio').addEventListener('click', async () => {
     const correo = validarCorreoCompra();
     if(!correo) return mostrarNotificacion('Ingresa un correo válido antes de continuar.');
     
     const token = "TK-" + Math.random().toString(36).substr(2, 4).toUpperCase();
-    
-    btnOtroMedio.innerText = "Generando Token...";
-    btnOtroMedio.disabled = true;
+    const btn = document.getElementById('btn-otro-medio');
+    btn.innerText = "Generando Token..."; btn.disabled = true;
 
     await supabaseClient.from('usuarios_canva').insert([{ 
-        correo: correo, metodo_pago: 'Otro (Plin/BCP)', token: token, estado: 'Pendiente' 
+        correo: correo, servicio: productoSeleccionado.nombre, metodo_pago: 'Otro (Plin/BCP)', token: token, estado: 'Pendiente' 
     }]);
 
-    const mensaje = `Hola, quiero adquirir Canva Edu por S/3.00. Mi correo es: *${correo}*.\n\nNo tengo Yape, quiero pagar por otro medio. Mi token es: *${token}*`;
+    const mensaje = `Hola, quiero adquirir *${productoSeleccionado.nombre}* por S/${productoSeleccionado.precio.toFixed(2)}. Mi correo es: *${correo}*.\n\nNo tengo Yape, quiero pagar por otro medio. Mi token es: *${token}*`;
     window.open(`https://wa.me/${numeroWhatsApp}?text=${encodeURIComponent(mensaje)}`, '_blank');
     
     modalCompra.classList.add('oculto');
-    btnOtroMedio.innerText = "Pagar con Plin / BCP / BBVA";
-    btnOtroMedio.disabled = false;
+    btn.innerText = "Pagar con Plin / BCP / BBVA"; btn.disabled = false;
 });
 
-btnBuscarTiempo.addEventListener('click', async () => {
-    const correo = correoTiempoInput.value.trim();
+// =====================================
+// BUSCAR TIEMPO RESTANTE
+// =====================================
+document.getElementById('btn-buscar-tiempo').addEventListener('click', async () => {
+    const correo = document.getElementById('correo-tiempo').value.trim();
+    const msj = document.getElementById('mensaje-tiempo');
     if(correo === "" || !correo.includes("@")) return mostrarNotificacion("Ingresa un correo válido.");
     
-    btnBuscarTiempo.innerText = "Buscando...";
-    btnBuscarTiempo.disabled = true;
+    const btn = document.getElementById('btn-buscar-tiempo');
+    btn.innerText = "Buscando..."; btn.disabled = true;
     
-    const { data, error } = await supabaseClient
-        .from('usuarios_canva').select('*').eq('correo', correo).order('creado_en', { ascending: false });
-
-    btnBuscarTiempo.innerText = "Buscar mi tiempo";
-    btnBuscarTiempo.disabled = false;
+    const { data } = await supabaseClient.from('usuarios_canva').select('*').eq('correo', correo).order('creado_en', { ascending: false });
+    btn.innerText = "Buscar mi tiempo"; btn.disabled = false;
 
     if (data && data.length > 0) {
         let usuario = data[0]; 
-
         if (usuario.estado === 'Activo') {
-            let hoy = new Date();
-            let fin = new Date(usuario.fecha_fin);
-            let diferencia = fin.getTime() - hoy.getTime();
-            let dias = Math.ceil(diferencia / (1000 * 3600 * 24));
+            let hoy = new Date(); let fin = new Date(usuario.fecha_fin);
+            let dias = Math.ceil((fin.getTime() - hoy.getTime()) / (1000 * 3600 * 24));
             
             if (dias > 0) {
-                mensajeTiempo.innerHTML = `✅ Tu cuenta está activa.<br><br>Te quedan <strong style="color:var(--primary); font-size:26px;">${dias} días</strong> de servicio.`;
+                msj.innerHTML = `✅ Tu <b>${usuario.servicio || 'Servicio'}</b> está activo.<br><br>Te quedan <strong style="color:var(--primary); font-size:26px;">${dias} días</strong>.`;
             } else {
-                mensajeTiempo.innerHTML = `⚠️ Tu suscripción ha vencido.<br><br>Por favor, renuévala desde el catálogo.`;
+                msj.innerHTML = `⚠️ Tu suscripción de <b>${usuario.servicio || 'Servicio'}</b> ha vencido.<br>Renuévala desde el catálogo.`;
             }
         } else {
-            mensajeTiempo.innerHTML = `⏳ Tu pago está <strong>Pendiente de revisión</strong>.<br><br>En breve activaremos tu cuenta.`;
+            msj.innerHTML = `⏳ Tu pago por <b>${usuario.servicio || 'Servicio'}</b> está <strong>Pendiente de revisión</strong>.<br>En breve te activaremos.`;
         }
     } else {
-        mensajeTiempo.innerHTML = `❌ No encontramos ninguna suscripción con el correo:<br><b>${correo}</b>`;
+        msj.innerHTML = `❌ No encontramos ninguna compra registrada con:<br><b>${correo}</b>`;
     }
 });
+
+// INICIAR: Cargar servicios al abrir la página
+cargarCatalogo();
