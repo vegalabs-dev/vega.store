@@ -9,11 +9,14 @@
 <body>
 
     <div id="toast-container"></div>
-    <div class="blob blob-purple"></div>
-    <div class="blob blob-cyan"></div>
+
+    <!-- NUEVO: CAJA ESTRICTA PARA EVITAR QUE EL FONDO MUEVA LA PANTALLA -->
+    <div class="bg-blobs">
+        <div class="blob blob-purple"></div>
+        <div class="blob blob-cyan"></div>
+    </div>
 
     <header>
-        <!-- AQUÍ CAMBIAMOS EL LOGO -->
         <div class="logo">Vega<span>Store</span></div>
         <div class="search-bar">
             <input type="text" placeholder="Buscar servicios...">
@@ -45,7 +48,6 @@
             </div>
         </section>
 
-        <!-- CATÁLOGO (Se llena con JavaScript) -->
         <section id="catalogo" class="catalog" style="flex-wrap: wrap; gap: 30px;">
             <div id="contenedor-servicios" style="display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; width: 100%;">
                 <p style="color: var(--text-light); text-align: center; width: 100%;">Cargando el catálogo de servicios...</p>
