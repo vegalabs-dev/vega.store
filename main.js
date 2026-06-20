@@ -22,10 +22,10 @@ async function cargarCatalogo() {
     const { data, error } = await supabaseClient.from('servicios').select('*').eq('activo', true).order('id', { ascending: true });
     
     if(error || !data || data.length === 0) {
-        return contenedor.innerHTML = '<p style="color:var(--text-light);">No hay servicios disponibles en este momento.</p>';
+        return contenedor.innerHTML = '<p style="color:var(--text-light); text-align:center; width:100%;">No hay servicios disponibles en este momento. Añádelos desde tu panel de administrador.</p>';
     }
 
-    contenedor.innerHTML = ''; // Limpiar
+    contenedor.innerHTML = ''; // Limpiar el "Cargando..."
     
     data.forEach(serv => {
         let precioFinal = serv.precio_promocional ? parseFloat(serv.precio_promocional) : parseFloat(serv.precio);
@@ -66,11 +66,10 @@ function mostrarNotificacion(mensaje, tipo = 'error') {
 
 document.getElementById('btn-descargar-qr').addEventListener('click', () => mostrarNotificacion('Descargando código QR...', 'success'));
 
-// ABRIR Y CERRAR MODALES
-function abrirCompra(nombre, precio) {
+// Funciones llamadas desde el HTML (Los botones de las tarjetas dinámicas)
+window.abrirCompra = function(nombre, precio) {
     productoSeleccionado = { nombre: nombre, precio: precio };
     
-    // Actualizar los textos del modal dinámicamente
     document.getElementById('titulo-producto-modal').innerText = `Comprando: ${nombre}`;
     document.getElementById('texto-precio-yape').innerText = `S/ ${precio.toFixed(2)}`;
     document.getElementById('btn-confirmar-yape').innerText = `Confirmar Pago de S/ ${precio.toFixed(2)}`;
@@ -82,7 +81,7 @@ function abrirCompra(nombre, precio) {
     otpBoxes.forEach(box => box.value = ''); 
 }
 
-function abrirVerTiempo() {
+window.abrirVerTiempo = function() {
     modalTiempo.classList.remove('oculto');
     document.getElementById('correo-tiempo').value = ""; 
     document.getElementById('mensaje-tiempo').innerHTML = "";
@@ -111,7 +110,7 @@ function validarCorreoCompra() {
 }
 
 // =====================================
-// PROCESAR PAGOS (Con servicio dinámico)
+// PROCESAR PAGOS
 // =====================================
 document.getElementById('btn-confirmar-yape').addEventListener('click', async () => {
     const correo = validarCorreoCompra();
