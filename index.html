@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Servicios Digitales | MiTienda</title>
+    <title>Servicios Digitales | VegaStore</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -13,7 +13,8 @@
     <div class="blob blob-cyan"></div>
 
     <header>
-        <div class="logo">Edu<span>Store</span></div>
+        <!-- AQUÍ CAMBIAMOS EL LOGO -->
+        <div class="logo">Vega<span>Store</span></div>
         <div class="search-bar">
             <input type="text" placeholder="Buscar servicios...">
         </div>
@@ -44,7 +45,7 @@
             </div>
         </section>
 
-        <!-- EL CATÁLOGO AHORA SE LLENARÁ DESDE LA BASE DE DATOS -->
+        <!-- CATÁLOGO (Se llena con JavaScript) -->
         <section id="catalogo" class="catalog" style="flex-wrap: wrap; gap: 30px;">
             <div id="contenedor-servicios" style="display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; width: 100%;">
                 <p style="color: var(--text-light); text-align: center; width: 100%;">Cargando el catálogo de servicios...</p>
@@ -52,7 +53,7 @@
         </section>
     </main>
 
-    <!-- VENTANA DE COMPRA (Ahora se adapta al producto seleccionado) -->
+    <!-- VENTANA DE COMPRA -->
     <div id="modal-compra" class="modal oculto">
         <div class="modal-content">
             <span class="cerrar" id="cerrar-compra">&times;</span>
@@ -62,7 +63,7 @@
             <input type="email" id="correo-compra" placeholder="1. Escribe el correo a vincular" style="margin-top: 0;">
             
             <hr>
-            <!-- TEXTO DE PRECIO DINÁMICO -->
+            
             <p style="font-size: 14px; color: var(--text-light);">2. Escanea y Yapea exactamente <b id="texto-precio-yape" style="color: var(--primary); font-size: 16px;">S/ 0.00</b></p>
             
             <div class="qr-box">
@@ -87,7 +88,6 @@
                 <input type="text" maxlength="1" class="otp-box"><input type="text" maxlength="1" class="otp-box"><input type="text" maxlength="1" class="otp-box"><input type="text" maxlength="1" class="otp-box"><input type="text" maxlength="1" class="otp-box"><input type="text" maxlength="1" class="otp-box"><input type="text" maxlength="1" class="otp-box">
             </div>
             
-            <!-- BOTÓN DINÁMICO -->
             <button id="btn-confirmar-yape" class="btn-primary w-100">Confirmar Pago</button>
             <hr>
             <button id="btn-otro-medio" class="btn-secondary w-100">Pagar con Plin / BCP / BBVA</button>
