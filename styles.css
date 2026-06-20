@@ -1,4 +1,4 @@
-/* Variables de colores muy limpios */
+/* Variables de colores */
 :root {
     --primary: #8B3DFF;
     --primary-gradient: linear-gradient(135deg, #00C4CC, #8B3DFF);
@@ -11,10 +11,13 @@
 
 * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', system-ui, sans-serif; }
 
-body { 
+/* REGLA DE ORO ANTI-DESBORDAMIENTO EN CELULARES */
+html, body { 
     background-color: var(--bg-color); 
     color: var(--text-dark); 
     overflow-x: hidden; 
+    width: 100%;
+    max-width: 100vw;
     position: relative;
 }
 
@@ -125,9 +128,7 @@ button { padding: 14px 20px; border: none; border-radius: 12px; cursor: pointer;
     padding: 10px; position: absolute; z-index: 10; bottom: 150%; left: 50%; transform: translateX(-50%); 
     opacity: 0; transition: opacity 0.3s; font-size: 12px; box-shadow: 0 5px 15px rgba(0,0,0,0.2); 
 }
-.tooltip-text::after { 
-    content: ""; position: absolute; top: 100%; left: 50%; margin-left: -5px; border-width: 5px; border-style: solid; border-color: #1f2937 transparent transparent transparent; 
-}
+.tooltip-text::after { content: ""; position: absolute; top: 100%; left: 50%; margin-left: -5px; border-width: 5px; border-style: solid; border-color: #1f2937 transparent transparent transparent; }
 .tooltip-container:hover .tooltip-text, .tooltip-container:active .tooltip-text { visibility: visible; opacity: 1; }
 
 /* CUADRITOS DE YAPE (OTP) */
@@ -138,7 +139,7 @@ button { padding: 14px 20px; border: none; border-radius: 12px; cursor: pointer;
 }
 .otp-box:focus { border-color: var(--primary); background: #fff; box-shadow: 0 0 0 3px rgba(139, 61, 255, 0.15); }
 
-/* ===== NOTIFICACIONES ELEGANTES (TOASTS) ===== */
+/* NOTIFICACIONES ELEGANTES (TOASTS) */
 #toast-container { position: fixed; top: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 10px; }
 .toast {
     background: white; border-left: 5px solid; padding: 15px 20px; border-radius: 8px;
@@ -153,12 +154,12 @@ button { padding: 14px 20px; border: none; border-radius: 12px; cursor: pointer;
 .float-whatsapp {
     position: fixed; width: 60px; height: 60px; bottom: 30px; right: 30px;
     background-color: #25d366; color: #FFF; border-radius: 50px; text-align: center;
-    font-size: 30px; box-shadow: 0px 5px 15px rgba(37, 211, 102, 0.4); z-index: 100;
+    font-size: 30px; box-shadow: 0px 5px 15px rgba(37, 211, 102, 0.4); z-index: 9999;
     display: flex; justify-content: center; align-items: center; transition: transform 0.3s;
 }
 .float-whatsapp:hover { transform: scale(1.1); }
 
-/* RESPONSIVE */
+/* ===== RESPONSIVE (MÓVIL) ===== */
 @media (max-width: 768px) {
     header { flex-wrap: wrap; gap: 15px; justify-content: center; padding: 15px 20px; }
     .search-bar { order: 3; width: 100%; }
@@ -168,4 +169,11 @@ button { padding: 14px 20px; border: none; border-radius: 12px; cursor: pointer;
     .hero-visual { margin-top: 40px; width: 100%; }
     .blob-purple { top: 0; right: -50px; width: 250px; height: 250px; }
     .card { padding: 30px 20px; }
+    
+    .modal-content { padding: 30px 20px; } /* Ajuste interno de modal */
+    
+    /* Ajuste milimétrico del botón flotante en celular */
+    .float-whatsapp {
+        width: 55px; height: 55px; bottom: 20px; right: 20px; font-size: 28px;
+    }
 }
