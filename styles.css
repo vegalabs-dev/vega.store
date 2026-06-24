@@ -186,16 +186,19 @@ button { padding: 14px 20px; border: none; border-radius: 12px; cursor: pointer;
     .float-whatsapp { width: 55px; height: 55px; bottom: 20px; right: 20px; font-size: 28px; }
 }
 
-/* ===== TARJETITAS DE TIEMPO (PILLS) ===== */
+/* ===== TARJETITAS DE TIEMPO (ELEGANTES Y SOBRIAS) ===== */
 .plan-pills { display: flex; gap: 8px; justify-content: center; margin-bottom: 15px; flex-wrap: wrap; }
 .pill { 
     padding: 6px 14px; border: 2px solid #E5E7EB; background: #F9FAFB; border-radius: 20px; 
     font-size: 13px; font-weight: 700; color: var(--text-light); cursor: pointer; transition: 0.3s; 
 }
-.pill:hover { border-color: var(--primary); color: var(--primary); }
+.pill:hover { border-color: #111827; color: #111827; }
 .pill.active { 
-    background: var(--primary-gradient); color: white; border-color: transparent; 
-    box-shadow: 0 4px 10px rgba(139, 61, 255, 0.3); transform: scale(1.05);
+    background: #111827; /* Color oscuro muy elegante */
+    color: white; 
+    border-color: #111827; 
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15); 
+    transform: scale(1.02);
 }
 
 /* ===== FILTROS EN EL PANEL ADMIN ===== */
