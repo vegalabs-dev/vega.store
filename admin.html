@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Panel Admin Seguro | VegaStore</title>
+    <title>Panel Admin | VegaStore</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <link rel="stylesheet" href="styles.css"> <!-- Reutilizamos tu diseño base -->
+    <link rel="stylesheet" href="styles.css">
     <style>
         body { padding: 30px; margin: 0; display: flex; justify-content: center; min-height: 100vh; background: #F3F4F6;}
         .panel-container { background: white; padding: 30px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); width: 100%; max-width: 1100px;}
@@ -64,44 +64,38 @@
 
             <div class="tabs">
                 <button id="btn-tab-ventas" class="tab-btn active" onclick="switchTab('ventas')">💰 Ventas y Clientes</button>
-                <button id="btn-tab-catalogo" class="tab-btn" onclick="switchTab('catalogo')">📦 Catálogo de Servicios</button>
+                <button id="btn-tab-catalogo" class="tab-btn" onclick="switchTab('catalogo')">📦 Catálogo</button>
             </div>
 
-            <!-- PESTAÑA VENTAS -->
             <div id="tab-ventas" class="tab-content active">
-                
-                <!-- NUEVOS FILTROS -->
-                <div class="filtros-admin">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
                     <input type="text" id="buscador" class="search-box" placeholder="Buscar correo o token..." oninput="filtrarTabla()">
-                    <select id="filtro-servicio" class="filtro-select" onchange="filtrarTabla()"><option value="ALL">Todos los Servicios</option></select>
-                    <select id="filtro-orden" class="filtro-select" onchange="filtrarTabla()">
-                        <option value="RECIENTES">Más Recientes</option>
-                        <option value="VENCIMIENTO">Por Vencer Primero</option>
-                    </select>
+                    <select id="filtro-servicio" class="filtro-select" onchange="filtrarTabla()"><option value="ALL">Todos</option></select>
+                    <select id="filtro-orden" class="filtro-select" onchange="filtrarTabla()"><option value="RECIENTES">Más Recientes</option><option value="VENCIMIENTO">Por Vencer Primero</option></select>
+                    <button class="btn-manual" onclick="registroManual()">+ Añadir Manual</button>
                 </div>
 
                 <div class="stats-container">
-                    <div class="stat-box"><h3 id="stat-activos">0</h3><p>CLIENTES ACTIVOS</p></div>
-                    <div class="stat-box"><h3 id="stat-pendientes">0</h3><p>PAGOS POR REVISAR</p></div>
+                    <div class="stat-box"><h3 id="stat-activos">0</h3><p>ACTIVOS</p></div>
+                    <div class="stat-box"><h3 id="stat-pendientes">0</h3><p>POR REVISAR</p></div>
                 </div>
 
                 <div style="overflow-x: auto;">
                     <table>
-                        <thead><tr><th>Correo</th><th>Servicio y Meses</th><th>N° Op / Token</th><th>Estado</th><th>Vencimiento</th><th>Acciones</th></tr></thead>
+                        <thead><tr><th>Correo</th><th>Servicio y Tiempo</th><th>N° Op / Token</th><th>Estado</th><th>Vencimiento</th><th>Acciones</th></tr></thead>
                         <tbody id="tabla-usuarios"><tr><td colspan="6">Cargando...</td></tr></tbody>
                     </table>
                 </div>
             </div>
 
-            <!-- PESTAÑA CATÁLOGO -->
             <div id="tab-catalogo" class="tab-content">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                    <h2 style="margin:0;">Servicios en Tienda</h2>
+                    <h2 style="margin: 0; font-size: 20px; color: #374151;">Servicios en Tienda</h2>
                     <button class="btn-primary" onclick="abrirModalServicio()">+ Crear Servicio</button>
                 </div>
                 <div style="overflow-x: auto;">
                     <table>
-                        <thead><tr><th>Servicio</th><th>Etiqueta</th><th>Opciones de Tiempo</th><th>Acciones</th></tr></thead>
+                        <thead><tr><th>Servicio</th><th>Etiqueta</th><th>Planes Creados</th><th>Acciones</th></tr></thead>
                         <tbody id="tabla-servicios"><tr><td colspan="4">Cargando...</td></tr></tbody>
                     </table>
                 </div>
@@ -117,19 +111,16 @@
             <h2 id="titulo-modal-servicio" style="margin-top:0; color: #8B3DFF;">Servicio</h2>
             <input type="hidden" id="serv-id">
             
-            <div class="input-group"><label>Nombre del Servicio</label><input type="text" id="serv-nombre" placeholder="Ej: Canva Pro Edu"></div>
-            <div class="input-group"><label>Etiqueta Promocional</label><input type="text" id="serv-etiqueta" placeholder="Ej: Plan Estrella"></div>
+            <div class="input-group"><label>Nombre del Servicio</label><input type="text" id="serv-nombre"></div>
+            <div class="input-group"><label>Etiqueta Promocional (Ej: Destacado)</label><input type="text" id="serv-etiqueta"></div>
             <div class="input-group"><label>Características (Separadas por coma)</label><textarea id="serv-caracteristicas" rows="2"></textarea></div>
 
             <hr style="margin:20px 0; border:0; border-top:1px solid #eee;">
-            <h3 style="font-size:16px; margin-bottom:10px;">⏳ Opciones de Tiempo (Planes)</h3>
+            <h3 style="font-size:16px; margin-bottom:10px;">⏳ Opciones de Tiempo</h3>
+            <p style="font-size:12px; color:#6B7280; margin-bottom:15px;">Pon <b>0</b> en meses si es de <b>Pago Único (Permanente)</b>.</p>
             
-            <div id="contenedor-planes">
-                <!-- Se llenan con JS -->
-            </div>
-            
-            <button style="background: #F3F4F6; border: 1px dashed #9CA3AF; padding: 10px; width: 100%; border-radius: 8px; cursor: pointer; font-weight: bold; color: #374151; margin-bottom: 20px;" onclick="agregarFilaPlan()">+ Añadir otra opción de tiempo (Ej: 3 Meses)</button>
-
+            <div id="contenedor-planes"></div>
+            <button style="background: #F3F4F6; border: 1px dashed #9CA3AF; padding: 10px; width: 100%; border-radius: 8px; cursor: pointer; font-weight: bold; color: #374151; margin-bottom: 20px;" onclick="agregarFilaPlan()">+ Añadir otra opción</button>
             <button class="btn-primary w-100" onclick="guardarServicio()">Guardar Servicio</button>
         </div>
     </div>
@@ -165,7 +156,7 @@
             if(t === 'ventas') cargarUsuarios(); else cargarServicios();
         }
 
-        // ===== GESTIÓN DE USUARIOS Y FILTROS =====
+        // ===== USUARIOS =====
         async function cargarUsuarios() {
             const { data } = await supabaseClient.from('usuarios_canva').select('*').order('creado_en', { ascending: false });
             usuariosGlobal = data || [];
@@ -173,13 +164,10 @@
             document.getElementById('stat-activos').innerText = usuariosGlobal.filter(u => u.estado === 'Activo').length;
             document.getElementById('stat-pendientes').innerText = usuariosGlobal.filter(u => u.estado === 'Pendiente').length;
             
-            // Llenar Filtro de Servicios Únicos
             const selectServicios = document.getElementById('filtro-servicio');
-            selectServicios.innerHTML = '<option value="ALL">Todos los Servicios</option>';
-            let unicos = [...new Set(usuariosGlobal.map(u => u.servicio || 'Canva Pro Edu'))];
-            unicos.forEach(s => selectServicios.innerHTML += `<option value="${s}">${s}</option>`);
-
-            filtrarTabla(); // Aplica el orden y renderiza
+            selectServicios.innerHTML = '<option value="ALL">Todos</option>';
+            [...new Set(usuariosGlobal.map(u => u.servicio || 'Canva Pro Edu'))].forEach(s => selectServicios.innerHTML += `<option value="${s}">${s}</option>`);
+            filtrarTabla(); 
         }
 
         function filtrarTabla() {
@@ -187,25 +175,21 @@
             let servFiltro = document.getElementById('filtro-servicio').value;
             let orden = document.getElementById('filtro-orden').value;
 
-            // 1. Filtrar por texto y servicio
             let filtrados = usuariosGlobal.filter(u => {
                 let servUsuario = u.servicio || 'Canva Pro Edu';
                 let coincideTxt = (u.correo && u.correo.toLowerCase().includes(txt)) || (u.num_operacion && u.num_operacion.toLowerCase().includes(txt)) || (u.token && u.token.toLowerCase().includes(txt));
-                let coincideServ = (servFiltro === "ALL" || servUsuario === servFiltro);
-                return coincideTxt && coincideServ;
+                return coincideTxt && (servFiltro === "ALL" || servUsuario === servFiltro);
             });
 
-            // 2. Ordenar Inteligente
             if (orden === 'VENCIMIENTO') {
                 filtrados.sort((a, b) => {
                     let fA = a.fecha_fin ? new Date(a.fecha_fin).getTime() : 9999999999999;
                     let fB = b.fecha_fin ? new Date(b.fecha_fin).getTime() : 9999999999999;
-                    return fA - fB; // Los más cercanos a vencer arriba
+                    return fA - fB; 
                 });
             } else {
-                filtrados.sort((a, b) => new Date(b.creado_en) - new Date(a.creado_en)); // Recientes arriba
+                filtrados.sort((a, b) => new Date(b.creado_en) - new Date(a.creado_en));
             }
-
             renderizarTabla(filtrados);
         }
 
@@ -216,52 +200,75 @@
             usuarios.forEach(user => {
                 let badge = user.estado === 'Pendiente' ? 'badge-pendiente' : 'badge-activo';
                 let btn = user.estado === 'Pendiente' ? `<button class="btn-aprobar" onclick="aprobarPago(${user.id})">Aprobar</button>` : `<span style="color:#059669; font-weight:bold;">✔️ Activo</span>`;
-                let mesesTxt = user.meses == 1 ? "1 Mes" : `${user.meses || 1} Meses`;
+                
+                // Muestra si es Pago Único o Meses
+                let mesesTxt = user.meses == 0 ? "Pago Único" : (user.meses == 1 ? "1 Mes" : `${user.meses || 1} Meses`);
+                let fechaFinShow = user.fecha_fin ? user.fecha_fin : (user.meses == 0 ? '<strong style="color:var(--primary)">Permanente</strong>' : '---');
 
                 tabla.innerHTML += `<tr>
                     <td><div class="correo-box"><strong>${user.correo}</strong><button class="btn-copiar" onclick="navigator.clipboard.writeText('${user.correo}')">📋</button></div></td>
                     <td><strong>${user.servicio || 'Canva Pro Edu'}</strong><br><small style="color:#6b7280">${mesesTxt} • ${user.metodo_pago}</small></td>
                     <td>${user.num_operacion || user.token || '---'}</td>
                     <td><span class="${badge}">${user.estado}</span></td>
-                    <td>${user.fecha_fin || '---'}</td>
+                    <td>${fechaFinShow}</td>
                     <td style="display:flex; gap:5px;">${btn} <button class="btn-borrar" onclick="borrarUsuario(${user.id})">🗑️</button></td>
                 </tr>`;
             });
         }
 
-        // RENOVAR ACUMULATIVO
         async function aprobarPago(id) {
             let user = usuariosGlobal.find(u => u.id === id);
-            let mesesAdicionales = parseInt(user.meses) || 1;
+            let mesesAdicionales = parseInt(user.meses) || 0;
             
-            let inicio = new Date();
-            let fin = new Date();
-            
-            // Si el cliente ya era Activo y aún no vence, SUMARLE a la fecha actual de fin
-            if (user.estado === 'Activo' && user.fecha_fin) {
-                let fechaVencimientoActual = new Date(user.fecha_fin);
-                if (fechaVencimientoActual > new Date()) {
-                    fin = fechaVencimientoActual; // Empezamos a sumar desde su caducidad
-                    inicio = new Date(user.fecha_inicio); // Mantenemos su inicio original
-                }
-            }
-            
-            fin.setMonth(fin.getMonth() + mesesAdicionales);
+            let inicioStr = new Date().toISOString().split('T')[0];
+            let finStr = null; // Asumimos Pago Único
 
-            await supabaseClient.from('usuarios_canva').update({ estado: 'Activo', fecha_inicio: inicio.toISOString().split('T')[0], fecha_fin: fin.toISOString().split('T')[0] }).eq('id', id);
+            // Si compró meses (no es 0)
+            if (mesesAdicionales > 0) {
+                let inicio = new Date(); let fin = new Date();
+                if (user.estado === 'Activo' && user.fecha_fin) {
+                    let fActual = new Date(user.fecha_fin);
+                    if (fActual > new Date()) { fin = fActual; inicioStr = user.fecha_inicio; }
+                }
+                fin.setMonth(fin.getMonth() + mesesAdicionales);
+                finStr = fin.toISOString().split('T')[0];
+            }
+
+            await supabaseClient.from('usuarios_canva').update({ estado: 'Activo', fecha_inicio: inicioStr, fecha_fin: finStr }).eq('id', id);
             cargarUsuarios();
         }
 
-        async function borrarUsuario(id) { if(confirm("¿Borrar permanentemente?")) { await supabaseClient.from('usuarios_canva').delete().eq('id', id); cargarUsuarios(); } }
+        async function borrarUsuario(id) { if(confirm("¿Borrar?")) { await supabaseClient.from('usuarios_canva').delete().eq('id', id); cargarUsuarios(); } }
 
-        // ===== GESTIÓN DE SERVICIOS Y PLANES =====
+        async function registroManual() {
+            const correo = prompt("Ingresa el correo del cliente:");
+            if (correo && correo.includes("@")) {
+                let serv = prompt("¿Servicio? (Ej: Canva)") || "Canva Pro Edu";
+                let msInput = prompt("¿Cuántos meses? (Escribe 0 para Pago Único)", "1");
+                if (msInput !== null) {
+                    let ms = parseInt(msInput) || 0;
+                    let finStr = null;
+                    let inicioStr = new Date().toISOString().split('T')[0];
+                    if (ms > 0) {
+                        let fin = new Date(); fin.setMonth(fin.getMonth() + ms);
+                        finStr = fin.toISOString().split('T')[0];
+                    }
+                    await supabaseClient.from('usuarios_canva').insert([{ correo: correo, servicio: serv, meses: ms, metodo_pago: 'Manual', estado: 'Activo', fecha_inicio: inicioStr, fecha_fin: finStr }]);
+                    cargarUsuarios();
+                }
+            }
+        }
+
+        // ===== CATÁLOGO =====
         async function cargarServicios() {
             const { data } = await supabaseClient.from('servicios').select('*').order('id', { ascending: true });
             const tabla = document.getElementById('tabla-servicios'); tabla.innerHTML = '';
-            
             data.forEach(serv => {
                 let planes = serv.planes && serv.planes.length > 0 ? serv.planes : [{ meses: 1, precio: serv.precio, promo: serv.precio_promocional }];
-                let txtPlanes = planes.map(p => `<span style="background:#E5E7EB; padding:3px 6px; border-radius:8px; font-size:11px;">${p.meses}M (S/${p.promo || p.precio})</span>`).join(' ');
+                let txtPlanes = planes.map(p => {
+                    let t = p.meses == 0 ? 'Único' : `${p.meses}M`;
+                    return `<span style="background:#E5E7EB; padding:3px 6px; border-radius:8px; font-size:11px;">${t} (S/${p.promo || p.precio})</span>`;
+                }).join(' ');
 
                 tabla.innerHTML += `<tr>
                     <td><strong>${serv.nombre}</strong></td>
@@ -274,53 +281,52 @@
 
         function agregarFilaPlan(m = 1, p = '', pr = '') {
             const idFila = 'plan-' + Math.random().toString(36).substr(2, 5);
-            const html = `
-                <div class="plan-row" id="${idFila}">
-                    <div style="flex:0.5;"><label style="font-size:11px;">Meses</label><input type="number" class="plan-meses" value="${m}" min="1"></div>
+            document.getElementById('contenedor-planes').insertAdjacentHTML('beforeend', `
+                <div class="plan-row" id="${idFila}" style="display:flex; gap:10px; margin-bottom:10px; background:#F9FAFB; padding:10px; border-radius:8px; border:1px dashed #D1D5DB;">
+                    <div style="flex:0.5;"><label style="font-size:11px;">Meses (0=Único)</label><input type="number" class="plan-meses" value="${m}" min="0"></div>
                     <div style="flex:1;"><label style="font-size:11px;">Precio Normal</label><input type="number" class="plan-precio" value="${p}" step="0.10"></div>
                     <div style="flex:1;"><label style="font-size:11px;">Precio Oferta</label><input type="number" class="plan-promo" value="${pr}" step="0.10"></div>
-                    <button class="btn-quitar-plan" onclick="document.getElementById('${idFila}').remove()">X</button>
+                    <button class="btn-borrar" onclick="document.getElementById('${idFila}').remove()">X</button>
                 </div>
-            `;
-            document.getElementById('contenedor-planes').insertAdjacentHTML('beforeend', html);
+            `);
         }
 
         function abrirModalServicio() {
             document.getElementById('serv-id').value = ''; document.getElementById('serv-nombre').value = ''; document.getElementById('serv-etiqueta').value = ''; document.getElementById('serv-caracteristicas').value = '';
-            document.getElementById('contenedor-planes').innerHTML = ''; agregarFilaPlan(1); // Fila por defecto
+            document.getElementById('contenedor-planes').innerHTML = ''; agregarFilaPlan(1); 
             document.getElementById('modal-servicio').style.display = 'flex';
         }
 
         function editarServicio(serv) {
             document.getElementById('serv-id').value = serv.id; document.getElementById('serv-nombre').value = serv.nombre; document.getElementById('serv-etiqueta').value = serv.etiqueta || ''; document.getElementById('serv-caracteristicas').value = serv.caracteristicas || '';
             document.getElementById('contenedor-planes').innerHTML = '';
-            
             let planes = serv.planes && serv.planes.length > 0 ? serv.planes : [{ meses: 1, precio: serv.precio, promo: serv.precio_promocional }];
             planes.forEach(p => agregarFilaPlan(p.meses, p.precio, p.promo || ''));
             document.getElementById('modal-servicio').style.display = 'flex';
         }
 
         async function guardarServicio() {
-            const id = document.getElementById('serv-id').value;
-            const nombre = document.getElementById('serv-nombre').value;
-            
-            // Recolectar todos los planes creados
+            let id = document.getElementById('serv-id').value, nombre = document.getElementById('serv-nombre').value;
             let planesGuardar = [];
             document.querySelectorAll('.plan-row').forEach(row => {
-                let m = parseInt(row.querySelector('.plan-meses').value);
-                let p = parseFloat(row.querySelector('.plan-precio').value);
-                let pr = parseFloat(row.querySelector('.plan-promo').value);
-                if(m && !isNaN(p)) planesGuardar.push({ meses: m, precio: p, promo: isNaN(pr) ? null : pr });
+                let m = parseInt(row.querySelector('.plan-meses').value); let p = parseFloat(row.querySelector('.plan-precio').value); let pr = parseFloat(row.querySelector('.plan-promo').value);
+                if(m >= 0 && !isNaN(p)) planesGuardar.push({ meses: m, precio: p, promo: isNaN(pr) ? null : pr });
             });
-
-            if(!nombre || planesGuardar.length === 0) return alert("Debe tener nombre y al menos 1 opción de tiempo válida.");
-
+            if(!nombre || planesGuardar.length === 0) return alert("Faltan datos.");
             const datos = { nombre, etiqueta: document.getElementById('serv-etiqueta').value, caracteristicas: document.getElementById('serv-caracteristicas').value, planes: planesGuardar, activo: true };
             if(id) await supabaseClient.from('servicios').update(datos).eq('id', id); else await supabaseClient.from('servicios').insert([datos]);
-            
             document.getElementById('modal-servicio').style.display = 'none'; cargarServicios();
         }
         async function borrarServicio(id) { if (confirm("¿Borrar servicio?")) { await supabaseClient.from('servicios').delete().eq('id', id); cargarServicios(); } }
+
+        // ===== SEGURIDAD =====
+        async function abrirSeguridad() {
+            document.getElementById('modal-seguridad').style.display = 'flex';
+            const cont = document.getElementById('lista-dispositivos'); cont.innerHTML = 'Cargando...';
+            const { data } = await supabaseClient.from('admin_accesos').select('*').order('fecha', { ascending: false }).limit(10);
+            cont.innerHTML = '';
+            if (data) data.forEach(acc => cont.innerHTML += `<div style="padding:15px; border-bottom:1px solid #eee;"><h4>${acc.dispositivo}</h4><p style="margin:0;font-size:12px;color:#6b7280">${acc.navegador}</p></div>`);
+        }
     </script>
 </body>
 </html>
