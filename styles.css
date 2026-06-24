@@ -185,3 +185,28 @@ button { padding: 14px 20px; border: none; border-radius: 12px; cursor: pointer;
     
     .float-whatsapp { width: 55px; height: 55px; bottom: 20px; right: 20px; font-size: 28px; }
 }
+
+/* ===== TARJETITAS DE TIEMPO (PILLS) ===== */
+.plan-pills { display: flex; gap: 8px; justify-content: center; margin-bottom: 15px; flex-wrap: wrap; }
+.pill { 
+    padding: 6px 14px; border: 2px solid #E5E7EB; background: #F9FAFB; border-radius: 20px; 
+    font-size: 13px; font-weight: 700; color: var(--text-light); cursor: pointer; transition: 0.3s; 
+}
+.pill:hover { border-color: var(--primary); color: var(--primary); }
+.pill.active { 
+    background: var(--primary-gradient); color: white; border-color: transparent; 
+    box-shadow: 0 4px 10px rgba(139, 61, 255, 0.3); transform: scale(1.05);
+}
+
+/* ===== FILTROS EN EL PANEL ADMIN ===== */
+.filtros-admin { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px;}
+.filtro-select { 
+    padding: 10px 15px; border: 2px solid #E5E7EB; border-radius: 10px; 
+    outline: none; font-weight: bold; color: #374151; background: white; cursor: pointer;
+}
+.filtro-select:focus { border-color: var(--primary); }
+
+/* Diseño para añadir planes en el panel */
+.plan-row { display: flex; gap: 10px; align-items: center; margin-bottom: 10px; background: #F9FAFB; padding: 10px; border-radius: 8px; border: 1px dashed #D1D5DB;}
+.plan-row input { margin: 0 !important; padding: 8px !important; }
+.btn-quitar-plan { background: #FEE2E2; color: #DC2626; border: none; border-radius: 5px; cursor: pointer; padding: 8px 10px; font-weight: bold;}
