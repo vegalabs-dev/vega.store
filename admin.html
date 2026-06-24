@@ -5,98 +5,129 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Panel Admin | VegaStore</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <link rel="stylesheet" href="styles.css">
     <style>
-        body { padding: 30px; margin: 0; display: flex; justify-content: center; min-height: 100vh; background: #F3F4F6;}
-        .panel-container { background: white; padding: 30px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); width: 100%; max-width: 1100px;}
-        .header-panel { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 15px;}
-        h1 { color: #8B3DFF; margin: 0; }
+        :root { --primary: #8B3DFF; --bg: #F3F4F6; --text: #1F2937; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); padding: 30px; margin: 0; display: flex; justify-content: center; min-height: 100vh;}
         
-        .tabs { display: flex; gap: 10px; margin-bottom: 25px; border-bottom: 2px solid #E5E7EB; padding-bottom: 15px; flex-wrap: wrap;}
+        .panel-container { background: white; padding: 35px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); width: 100%; max-width: 1100px;}
+        .header-panel { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; flex-wrap: wrap; gap: 15px;}
+        h1 { color: var(--primary); margin: 0; display: flex; align-items: center; gap: 10px;}
+        
+        .tabs { display: flex; gap: 10px; margin-bottom: 30px; border-bottom: 2px solid #E5E7EB; padding-bottom: 15px; flex-wrap: wrap;}
         .tab-btn { padding: 10px 20px; border: none; background: #F3F4F6; color: #6B7280; font-weight: bold; border-radius: 8px; cursor: pointer; transition: 0.3s; font-size: 15px;}
-        .tab-btn.active { background: #8B3DFF; color: white; }
+        .tab-btn.active { background: var(--primary); color: white; }
         .tab-content { display: none; }
         .tab-content.active { display: block; }
 
-        .stats-container { display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap;}
-        .stat-box { background: #F9FAFB; border: 1px solid #E5E7EB; padding: 15px; border-radius: 10px; flex: 1; text-align: center; min-width: 150px;}
-        .stat-box h3 { margin: 0 0 5px 0; font-size: 24px; color: #8B3DFF; }
-        .stat-box p { margin: 0; font-size: 12px; color: #6B7280; font-weight: bold; }
+        /* ESTADÍSTICAS */
+        .stats-container { display: flex; gap: 20px; margin-bottom: 30px; flex-wrap: wrap;}
+        .stat-box { background: #F9FAFB; border: 1px solid #E5E7EB; padding: 20px; border-radius: 12px; flex: 1; text-align: center; min-width: 150px;}
+        .stat-box h3 { margin: 0 0 5px 0; font-size: 28px; color: var(--primary); }
+        .stat-box p { margin: 0; font-size: 13px; color: #6B7280; font-weight: bold; letter-spacing: 0.5px;}
+
+        /* FILTROS (Con más espacio y mejor diseño) */
+        .filtros-admin { display: flex; gap: 15px; margin-bottom: 30px; flex-wrap: wrap; align-items: center; background: #F9FAFB; padding: 15px; border-radius: 12px; border: 1px solid #E5E7EB;}
+        .search-box { flex: 1; min-width: 250px; padding: 12px 15px; border: 2px solid #E5E7EB; border-radius: 8px; outline: none; transition: 0.3s;}
+        .search-box:focus { border-color: var(--primary); }
+        .filtro-select { padding: 12px 15px; border: 2px solid #E5E7EB; border-radius: 8px; outline: none; font-weight: 600; color: #374151; background: white; cursor: pointer;}
 
         table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px; }
-        th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #eee; }
-        th { background-color: #f8f9fa; color: #6b7280; }
+        th, td { padding: 15px 12px; text-align: left; border-bottom: 1px solid #eee; }
+        th { background-color: #f8f9fa; color: #6b7280; font-weight: 600;}
         
-        .badge-pendiente { background: #FEF3C7; color: #D97706; padding: 5px 10px; border-radius: 20px; font-weight: bold; font-size: 12px; }
-        .badge-activo { background: #D1FAE5; color: #059669; padding: 5px 10px; border-radius: 20px; font-weight: bold; font-size: 12px; }
+        .badge-pendiente { background: #FEF3C7; color: #D97706; padding: 6px 12px; border-radius: 20px; font-weight: bold; font-size: 12px; }
+        .badge-activo { background: #D1FAE5; color: #059669; padding: 6px 12px; border-radius: 20px; font-weight: bold; font-size: 12px; }
         
+        /* BOTONES GLOBALES */
+        .btn-primary { background: var(--primary); color: white; border: none; padding: 12px 18px; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.3s;}
         .btn-aprobar { background: #10B981; color: white; border: none; padding: 8px 12px; border-radius: 8px; cursor: pointer; font-weight: bold; }
-        .btn-borrar { background: #FEE2E2; color: #DC2626; border: none; padding: 8px 12px; border-radius: 8px; cursor: pointer; font-weight: bold; }
-        
+        .btn-borrar { background: #FEE2E2; color: #DC2626; border: none; padding: 8px 12px; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.2s;}
+        .btn-borrar:hover { background: #FECACA; }
+        .btn-manual { background: var(--primary); color: white; border: none; padding: 12px 18px; border-radius: 8px; cursor: pointer; font-weight: bold; }
+        .correo-box { display: flex; align-items: center; gap: 8px; }
+        .btn-copiar { background: #F3F4F6; border: 1px solid #E5E7EB; border-radius: 6px; cursor: pointer; font-size: 14px; padding: 5px 8px; transition: 0.2s;}
+        .btn-copiar:hover { background: #E5E7EB; }
+
+        /* MODALES */
         .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); display: none; justify-content: center; align-items: center; z-index: 1000; overflow-y:auto; padding:20px;}
         .modal-content { background: white; padding: 30px; border-radius: 15px; width: 100%; max-width: 550px; position: relative; margin: auto;}
-        .cerrar-modal { position: absolute; top: 15px; right: 20px; font-size: 24px; cursor: pointer; color: #6B7280; }
-        
+        .cerrar-modal { position: absolute; top: 15px; right: 20px; font-size: 28px; cursor: pointer; color: #6B7280; transition: 0.2s;}
+        .cerrar-modal:hover { color: #111; }
         .input-group { margin-bottom: 15px; text-align: left;}
         .input-group label { display: block; font-size: 13px; font-weight: bold; color: #374151; margin-bottom: 5px;}
-        .input-group input, .input-group textarea { width: 100%; padding: 10px; border: 1px solid #D1D5DB; border-radius: 8px; box-sizing: border-box; outline: none;}
+        .input-group input, .input-group textarea { width: 100%; padding: 12px; border: 1px solid #D1D5DB; border-radius: 8px; box-sizing: border-box; outline: none; transition: 0.3s;}
+        .input-group input:focus, .input-group textarea:focus { border-color: var(--primary); }
     </style>
 </head>
 <body>
 
+    <!-- LOGIN -->
     <div id="login-section" style="background: white; padding: 40px; border-radius: 15px; width: 100%; max-width: 400px; margin: auto; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.1);">
         <h2>🔒 Acceso Restringido</h2>
-        <input type="email" id="login-email" placeholder="Correo de Admin" style="width: 100%; padding: 12px; margin: 10px 0; border: 2px solid #E5E7EB; border-radius: 8px;">
-        <input type="password" id="login-password" placeholder="Contraseña" style="width: 100%; padding: 12px; margin: 10px 0; border: 2px solid #E5E7EB; border-radius: 8px;">
-        <button class="btn-primary w-100" onclick="iniciarSesion()">Ingresar al Panel</button>
+        <input type="email" id="login-email" placeholder="Correo de Admin" style="width: 100%; padding: 14px; margin: 10px 0; border: 2px solid #E5E7EB; border-radius: 8px; outline: none;">
+        <input type="password" id="login-password" placeholder="Contraseña" style="width: 100%; padding: 14px; margin: 10px 0; border: 2px solid #E5E7EB; border-radius: 8px; outline: none;">
+        <button class="btn-primary" style="width: 100%; margin-top: 10px;" onclick="iniciarSesion()">Ingresar al Panel</button>
         <p id="login-error" style="color: red; font-size: 13px; display: none;">Credenciales incorrectas.</p>
     </div>
 
+    <!-- PANEL ADMIN -->
     <div id="admin-section" style="display:none; width:100%; max-width:1100px;">
         <div class="panel-container">
             <div class="header-panel">
-                <div><h1>👑 Panel de VegaStore</h1></div>
+                <div>
+                    <h1>👑 Panel de VegaStore</h1>
+                    <p style="margin-top: 5px; color: #6b7280; font-size: 14px;">Administración General</p>
+                </div>
                 <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                    <button class="btn-primary" style="background:#F59E0B;" onclick="document.getElementById('modal-seguridad').style.display='flex'">🛡️ Accesos</button>
+                    <button class="btn-primary" style="background:#F59E0B; display:flex; align-items:center; gap:5px;" onclick="document.getElementById('modal-seguridad').style.display='flex'">🛡️ Accesos</button>
                     <button class="btn-primary" style="background:#374151;" onclick="supabaseClient.auth.signOut(); window.location.reload();">Salir</button>
                 </div>
             </div>
 
             <div class="tabs">
                 <button id="btn-tab-ventas" class="tab-btn active" onclick="switchTab('ventas')">💰 Ventas y Clientes</button>
-                <button id="btn-tab-catalogo" class="tab-btn" onclick="switchTab('catalogo')">📦 Catálogo</button>
+                <button id="btn-tab-catalogo" class="tab-btn" onclick="switchTab('catalogo')">📦 Catálogo de Servicios</button>
             </div>
 
+            <!-- PESTAÑA VENTAS -->
             <div id="tab-ventas" class="tab-content active">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
-                    <input type="text" id="buscador" class="search-box" placeholder="Buscar correo o token..." oninput="filtrarTabla()">
-                    <select id="filtro-servicio" class="filtro-select" onchange="filtrarTabla()"><option value="ALL">Todos</option></select>
-                    <select id="filtro-orden" class="filtro-select" onchange="filtrarTabla()"><option value="RECIENTES">Más Recientes</option><option value="VENCIMIENTO">Por Vencer Primero</option></select>
-                    <button class="btn-manual" onclick="registroManual()">+ Añadir Manual</button>
+                
+                <!-- ESTADÍSTICAS -->
+                <div class="stats-container">
+                    <div class="stat-box"><h3 id="stat-activos">0</h3><p>CLIENTES ACTIVOS</p></div>
+                    <div class="stat-box"><h3 id="stat-pendientes">0</h3><p>PAGOS POR REVISAR</p></div>
                 </div>
 
-                <div class="stats-container">
-                    <div class="stat-box"><h3 id="stat-activos">0</h3><p>ACTIVOS</p></div>
-                    <div class="stat-box"><h3 id="stat-pendientes">0</h3><p>POR REVISAR</p></div>
+                <!-- FILTROS (Con diseño arreglado) -->
+                <div class="filtros-admin">
+                    <input type="text" id="buscador" class="search-box" placeholder="Buscar correo o token..." oninput="filtrarTabla()">
+                    <select id="filtro-servicio" class="filtro-select" onchange="filtrarTabla()"><option value="ALL">Todos los Servicios</option></select>
+                    <select id="filtro-orden" class="filtro-select" onchange="filtrarTabla()">
+                        <option value="RECIENTES">Más Recientes</option>
+                        <option value="VENCIMIENTO">Por Vencer Primero</option>
+                    </select>
+                    <button class="btn-manual" onclick="registroManual()">+ Añadir Cliente Manual</button>
                 </div>
 
                 <div style="overflow-x: auto;">
                     <table>
-                        <thead><tr><th>Correo</th><th>Servicio y Tiempo</th><th>N° Op / Token</th><th>Estado</th><th>Vencimiento</th><th>Acciones</th></tr></thead>
-                        <tbody id="tabla-usuarios"><tr><td colspan="6">Cargando...</td></tr></tbody>
+                        <thead><tr><th>Correo del Cliente</th><th>Servicio y Tiempo</th><th>N° Op / Token</th><th>Estado</th><th>Vencimiento</th><th>Acciones</th></tr></thead>
+                        <tbody id="tabla-usuarios"><tr><td colspan="6" style="text-align:center;">Cargando datos...</td></tr></tbody>
                     </table>
                 </div>
             </div>
 
+            <!-- PESTAÑA CATÁLOGO -->
             <div id="tab-catalogo" class="tab-content">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                    <h2 style="margin: 0; font-size: 20px; color: #374151;">Servicios en Tienda</h2>
-                    <button class="btn-primary" onclick="abrirModalServicio()">+ Crear Servicio</button>
+                <div class="filtros-admin" style="justify-content: space-between; align-items: center; margin-bottom: 25px; background: transparent; border: none; padding: 0;">
+                    <h2 style="margin: 0; font-size: 22px; color: #374151;">Servicios en Tienda</h2>
+                    <button class="btn-primary" onclick="abrirModalServicio()">+ Crear Nuevo Servicio</button>
                 </div>
+                
                 <div style="overflow-x: auto;">
                     <table>
-                        <thead><tr><th>Servicio</th><th>Etiqueta</th><th>Planes Creados</th><th>Acciones</th></tr></thead>
-                        <tbody id="tabla-servicios"><tr><td colspan="4">Cargando...</td></tr></tbody>
+                        <thead><tr><th>Servicio</th><th>Etiqueta</th><th>Planes de Tiempo Creados</th><th>Acciones</th></tr></thead>
+                        <tbody id="tabla-servicios"><tr><td colspan="4" style="text-align:center;">Cargando catálogo...</td></tr></tbody>
                     </table>
                 </div>
             </div>
@@ -108,20 +139,21 @@
     <div id="modal-servicio" class="modal">
         <div class="modal-content">
             <span class="cerrar-modal" onclick="document.getElementById('modal-servicio').style.display='none'">&times;</span>
-            <h2 id="titulo-modal-servicio" style="margin-top:0; color: #8B3DFF;">Servicio</h2>
+            <h2 id="titulo-modal-servicio" style="margin-top:0; margin-bottom:20px; color: var(--primary);">Servicio</h2>
             <input type="hidden" id="serv-id">
             
-            <div class="input-group"><label>Nombre del Servicio</label><input type="text" id="serv-nombre"></div>
-            <div class="input-group"><label>Etiqueta Promocional (Ej: Destacado)</label><input type="text" id="serv-etiqueta"></div>
-            <div class="input-group"><label>Características (Separadas por coma)</label><textarea id="serv-caracteristicas" rows="2"></textarea></div>
+            <div class="input-group"><label>Nombre del Servicio</label><input type="text" id="serv-nombre" placeholder="Ej: Canva Pro Edu"></div>
+            <div class="input-group"><label>Etiqueta Promocional (Opcional)</label><input type="text" id="serv-etiqueta" placeholder="Ej: Plan Estrella, 50% Dcto"></div>
+            <div class="input-group"><label>Características (Separadas por coma)</label><textarea id="serv-caracteristicas" rows="3" placeholder="Ej: Plantillas Premium, Diseños 3D..."></textarea></div>
 
-            <hr style="margin:20px 0; border:0; border-top:1px solid #eee;">
-            <h3 style="font-size:16px; margin-bottom:10px;">⏳ Opciones de Tiempo</h3>
-            <p style="font-size:12px; color:#6B7280; margin-bottom:15px;">Pon <b>0</b> en meses si es de <b>Pago Único (Permanente)</b>.</p>
+            <hr style="margin:25px 0; border:0; border-top:1px solid #E5E7EB;">
+            <h3 style="font-size:16px; margin-bottom:10px; color: #374151;">⏳ Opciones de Tiempo (Planes)</h3>
+            <p style="font-size:13px; color:#6B7280; margin-bottom:15px;">Pon <b>0</b> en meses si es un servicio de <b>Pago Único (Permanente)</b>.</p>
             
             <div id="contenedor-planes"></div>
-            <button style="background: #F3F4F6; border: 1px dashed #9CA3AF; padding: 10px; width: 100%; border-radius: 8px; cursor: pointer; font-weight: bold; color: #374151; margin-bottom: 20px;" onclick="agregarFilaPlan()">+ Añadir otra opción</button>
-            <button class="btn-primary w-100" onclick="guardarServicio()">Guardar Servicio</button>
+            <button style="background: #F9FAFB; border: 2px dashed #D1D5DB; padding: 12px; width: 100%; border-radius: 8px; cursor: pointer; font-weight: bold; color: #6B7280; margin-bottom: 25px; transition: 0.3s;" onmouseover="this.style.borderColor='var(--primary)'; this.style.color='var(--primary)';" onmouseout="this.style.borderColor='#D1D5DB'; this.style.color='#6B7280';" onclick="agregarFilaPlan()">+ Añadir otra opción de tiempo (Ej: 3 Meses)</button>
+
+            <button class="btn-primary w-100" onclick="guardarServicio()">Guardar Servicio en Catálogo</button>
         </div>
     </div>
 
@@ -129,7 +161,9 @@
     <div id="modal-seguridad" class="modal">
         <div class="modal-content">
             <span class="cerrar-modal" onclick="document.getElementById('modal-seguridad').style.display='none'">&times;</span>
-            <h2>🛡️ Accesos Recientes</h2><div id="lista-dispositivos"></div>
+            <h2 style="margin-top:0; color: #F59E0B;">🛡️ Accesos Recientes</h2>
+            <p style="font-size: 13px; color: #6B7280; margin-bottom: 15px;">Registro inborrable de dispositivos que entraron al panel.</p>
+            <div id="lista-dispositivos"><p>Cargando registro...</p></div>
         </div>
     </div>
 
@@ -165,7 +199,7 @@
             document.getElementById('stat-pendientes').innerText = usuariosGlobal.filter(u => u.estado === 'Pendiente').length;
             
             const selectServicios = document.getElementById('filtro-servicio');
-            selectServicios.innerHTML = '<option value="ALL">Todos</option>';
+            selectServicios.innerHTML = '<option value="ALL">Todos los Servicios</option>';
             [...new Set(usuariosGlobal.map(u => u.servicio || 'Canva Pro Edu'))].forEach(s => selectServicios.innerHTML += `<option value="${s}">${s}</option>`);
             filtrarTabla(); 
         }
@@ -193,25 +227,30 @@
             renderizarTabla(filtrados);
         }
 
+        function copiarCorreo(texto, boton) {
+            navigator.clipboard.writeText(texto).then(() => {
+                let original = boton.innerHTML; boton.innerHTML = '✅'; setTimeout(() => { boton.innerHTML = original; }, 1500);
+            });
+        }
+
         function renderizarTabla(usuarios) {
             const tabla = document.getElementById('tabla-usuarios'); tabla.innerHTML = ''; 
-            if(usuarios.length === 0) return tabla.innerHTML = '<tr><td colspan="6">No hay registros.</td></tr>';
+            if(usuarios.length === 0) return tabla.innerHTML = '<tr><td colspan="6" style="text-align:center;">No hay registros encontrados.</td></tr>';
 
             usuarios.forEach(user => {
                 let badge = user.estado === 'Pendiente' ? 'badge-pendiente' : 'badge-activo';
-                let btn = user.estado === 'Pendiente' ? `<button class="btn-aprobar" onclick="aprobarPago(${user.id})">Aprobar</button>` : `<span style="color:#059669; font-weight:bold;">✔️ Activo</span>`;
+                let btn = user.estado === 'Pendiente' ? `<button class="btn-aprobar" onclick="aprobarPago(${user.id})">Aprobar Pago</button>` : `<span style="color:#059669; font-weight:bold;">✔️ Activo</span>`;
                 
-                // Muestra si es Pago Único o Meses
                 let mesesTxt = user.meses == 0 ? "Pago Único" : (user.meses == 1 ? "1 Mes" : `${user.meses || 1} Meses`);
                 let fechaFinShow = user.fecha_fin ? user.fecha_fin : (user.meses == 0 ? '<strong style="color:var(--primary)">Permanente</strong>' : '---');
 
                 tabla.innerHTML += `<tr>
-                    <td><div class="correo-box"><strong>${user.correo}</strong><button class="btn-copiar" onclick="navigator.clipboard.writeText('${user.correo}')">📋</button></div></td>
-                    <td><strong>${user.servicio || 'Canva Pro Edu'}</strong><br><small style="color:#6b7280">${mesesTxt} • ${user.metodo_pago}</small></td>
+                    <td><div class="correo-box"><strong>${user.correo}</strong><button class="btn-copiar" onclick="copiarCorreo('${user.correo}', this)" title="Copiar al portapapeles">📋</button></div></td>
+                    <td><strong>${user.servicio || 'Canva Pro Edu'}</strong><br><span style="font-size:12px; color:#6B7280; font-weight:bold;">${mesesTxt} • ${user.metodo_pago}</span></td>
                     <td>${user.num_operacion || user.token || '---'}</td>
                     <td><span class="${badge}">${user.estado}</span></td>
                     <td>${fechaFinShow}</td>
-                    <td style="display:flex; gap:5px;">${btn} <button class="btn-borrar" onclick="borrarUsuario(${user.id})">🗑️</button></td>
+                    <td style="display:flex; gap:8px;">${btn} <button class="btn-borrar" onclick="borrarUsuario(${user.id})" title="Borrar registro">🗑️</button></td>
                 </tr>`;
             });
         }
@@ -221,9 +260,8 @@
             let mesesAdicionales = parseInt(user.meses) || 0;
             
             let inicioStr = new Date().toISOString().split('T')[0];
-            let finStr = null; // Asumimos Pago Único
+            let finStr = null; 
 
-            // Si compró meses (no es 0)
             if (mesesAdicionales > 0) {
                 let inicio = new Date(); let fin = new Date();
                 if (user.estado === 'Activo' && user.fecha_fin) {
@@ -238,21 +276,17 @@
             cargarUsuarios();
         }
 
-        async function borrarUsuario(id) { if(confirm("¿Borrar?")) { await supabaseClient.from('usuarios_canva').delete().eq('id', id); cargarUsuarios(); } }
+        async function borrarUsuario(id) { if(confirm("¿Borrar cliente permanentemente?")) { await supabaseClient.from('usuarios_canva').delete().eq('id', id); cargarUsuarios(); } }
 
         async function registroManual() {
-            const correo = prompt("Ingresa el correo del cliente:");
+            const correo = prompt("Ingresa el correo del cliente (Pago Efectivo/Directo):");
             if (correo && correo.includes("@")) {
-                let serv = prompt("¿Servicio? (Ej: Canva)") || "Canva Pro Edu";
+                let serv = prompt("¿Qué servicio adquirió? (Ej: Canva, Netflix)") || "Canva Pro Edu";
                 let msInput = prompt("¿Cuántos meses? (Escribe 0 para Pago Único)", "1");
                 if (msInput !== null) {
                     let ms = parseInt(msInput) || 0;
-                    let finStr = null;
-                    let inicioStr = new Date().toISOString().split('T')[0];
-                    if (ms > 0) {
-                        let fin = new Date(); fin.setMonth(fin.getMonth() + ms);
-                        finStr = fin.toISOString().split('T')[0];
-                    }
+                    let finStr = null; let inicioStr = new Date().toISOString().split('T')[0];
+                    if (ms > 0) { let fin = new Date(); fin.setMonth(fin.getMonth() + ms); finStr = fin.toISOString().split('T')[0]; }
                     await supabaseClient.from('usuarios_canva').insert([{ correo: correo, servicio: serv, meses: ms, metodo_pago: 'Manual', estado: 'Activo', fecha_inicio: inicioStr, fecha_fin: finStr }]);
                     cargarUsuarios();
                 }
@@ -263,18 +297,21 @@
         async function cargarServicios() {
             const { data } = await supabaseClient.from('servicios').select('*').order('id', { ascending: true });
             const tabla = document.getElementById('tabla-servicios'); tabla.innerHTML = '';
+            
+            if(!data || data.length===0) return tabla.innerHTML = '<tr><td colspan="4" style="text-align:center;">No tienes servicios creados.</td></tr>';
+
             data.forEach(serv => {
                 let planes = serv.planes && serv.planes.length > 0 ? serv.planes : [{ meses: 1, precio: serv.precio, promo: serv.precio_promocional }];
                 let txtPlanes = planes.map(p => {
                     let t = p.meses == 0 ? 'Único' : `${p.meses}M`;
-                    return `<span style="background:#E5E7EB; padding:3px 6px; border-radius:8px; font-size:11px;">${t} (S/${p.promo || p.precio})</span>`;
+                    return `<span style="background:#E5E7EB; padding:4px 8px; border-radius:6px; font-size:12px; font-weight:bold; color:#374151; display:inline-block; margin-bottom:5px;">${t} (S/ ${p.promo || p.precio})</span>`;
                 }).join(' ');
 
                 tabla.innerHTML += `<tr>
                     <td><strong>${serv.nombre}</strong></td>
-                    <td>${serv.etiqueta || '---'}</td>
+                    <td>${serv.etiqueta ? `<span style="background:var(--primary); color:white; padding:4px 8px; border-radius:20px; font-size:11px; font-weight:bold;">${serv.etiqueta}</span>` : '---'}</td>
                     <td>${txtPlanes}</td>
-                    <td style="display:flex; gap:5px;"><button class="btn-primary" style="padding:6px 10px;" onclick='editarServicio(${JSON.stringify(serv)})'>✏️</button><button class="btn-borrar" onclick="borrarServicio(${serv.id})">🗑️</button></td>
+                    <td style="display:flex; gap:8px;"><button class="btn-primary" style="padding:6px 12px; font-size:13px;" onclick='editarServicio(${JSON.stringify(serv)})'>✏️ Editar</button><button class="btn-borrar" onclick="borrarServicio(${serv.id})" title="Eliminar servicio">🗑️</button></td>
                 </tr>`;
             });
         }
@@ -282,11 +319,11 @@
         function agregarFilaPlan(m = 1, p = '', pr = '') {
             const idFila = 'plan-' + Math.random().toString(36).substr(2, 5);
             document.getElementById('contenedor-planes').insertAdjacentHTML('beforeend', `
-                <div class="plan-row" id="${idFila}" style="display:flex; gap:10px; margin-bottom:10px; background:#F9FAFB; padding:10px; border-radius:8px; border:1px dashed #D1D5DB;">
-                    <div style="flex:0.5;"><label style="font-size:11px;">Meses (0=Único)</label><input type="number" class="plan-meses" value="${m}" min="0"></div>
-                    <div style="flex:1;"><label style="font-size:11px;">Precio Normal</label><input type="number" class="plan-precio" value="${p}" step="0.10"></div>
-                    <div style="flex:1;"><label style="font-size:11px;">Precio Oferta</label><input type="number" class="plan-promo" value="${pr}" step="0.10"></div>
-                    <button class="btn-borrar" onclick="document.getElementById('${idFila}').remove()">X</button>
+                <div class="plan-row" id="${idFila}" style="display:flex; gap:10px; margin-bottom:15px; background:#F9FAFB; padding:15px; border-radius:8px; border:1px solid #E5E7EB;">
+                    <div style="flex:0.8;"><label style="font-size:12px;">Meses (0=Único)</label><input type="number" class="plan-meses" value="${m}" min="0" style="padding:8px; width:100%; border:1px solid #ccc; border-radius:6px;"></div>
+                    <div style="flex:1;"><label style="font-size:12px;">Precio Normal</label><input type="number" class="plan-precio" value="${p}" step="0.10" style="padding:8px; width:100%; border:1px solid #ccc; border-radius:6px;"></div>
+                    <div style="flex:1;"><label style="font-size:12px;">Precio Oferta</label><input type="number" class="plan-promo" value="${pr}" step="0.10" style="padding:8px; width:100%; border:1px solid #ccc; border-radius:6px;"></div>
+                    <button style="background:#FEE2E2; color:#DC2626; border:none; border-radius:6px; cursor:pointer; padding:0 15px; font-weight:bold; margin-top:20px;" onclick="document.getElementById('${idFila}').remove()">X</button>
                 </div>
             `);
         }
@@ -294,6 +331,7 @@
         function abrirModalServicio() {
             document.getElementById('serv-id').value = ''; document.getElementById('serv-nombre').value = ''; document.getElementById('serv-etiqueta').value = ''; document.getElementById('serv-caracteristicas').value = '';
             document.getElementById('contenedor-planes').innerHTML = ''; agregarFilaPlan(1); 
+            document.getElementById('titulo-modal-servicio').innerText = 'Nuevo Servicio';
             document.getElementById('modal-servicio').style.display = 'flex';
         }
 
@@ -302,6 +340,7 @@
             document.getElementById('contenedor-planes').innerHTML = '';
             let planes = serv.planes && serv.planes.length > 0 ? serv.planes : [{ meses: 1, precio: serv.precio, promo: serv.precio_promocional }];
             planes.forEach(p => agregarFilaPlan(p.meses, p.precio, p.promo || ''));
+            document.getElementById('titulo-modal-servicio').innerText = 'Editar Servicio';
             document.getElementById('modal-servicio').style.display = 'flex';
         }
 
@@ -312,12 +351,12 @@
                 let m = parseInt(row.querySelector('.plan-meses').value); let p = parseFloat(row.querySelector('.plan-precio').value); let pr = parseFloat(row.querySelector('.plan-promo').value);
                 if(m >= 0 && !isNaN(p)) planesGuardar.push({ meses: m, precio: p, promo: isNaN(pr) ? null : pr });
             });
-            if(!nombre || planesGuardar.length === 0) return alert("Faltan datos.");
+            if(!nombre || planesGuardar.length === 0) return alert("Faltan datos. El servicio necesita nombre y 1 precio.");
             const datos = { nombre, etiqueta: document.getElementById('serv-etiqueta').value, caracteristicas: document.getElementById('serv-caracteristicas').value, planes: planesGuardar, activo: true };
             if(id) await supabaseClient.from('servicios').update(datos).eq('id', id); else await supabaseClient.from('servicios').insert([datos]);
             document.getElementById('modal-servicio').style.display = 'none'; cargarServicios();
         }
-        async function borrarServicio(id) { if (confirm("¿Borrar servicio?")) { await supabaseClient.from('servicios').delete().eq('id', id); cargarServicios(); } }
+        async function borrarServicio(id) { if (confirm("¿Borrar servicio del catálogo?")) { await supabaseClient.from('servicios').delete().eq('id', id); cargarServicios(); } }
 
         // ===== SEGURIDAD =====
         async function abrirSeguridad() {
@@ -325,7 +364,10 @@
             const cont = document.getElementById('lista-dispositivos'); cont.innerHTML = 'Cargando...';
             const { data } = await supabaseClient.from('admin_accesos').select('*').order('fecha', { ascending: false }).limit(10);
             cont.innerHTML = '';
-            if (data) data.forEach(acc => cont.innerHTML += `<div style="padding:15px; border-bottom:1px solid #eee;"><h4>${acc.dispositivo}</h4><p style="margin:0;font-size:12px;color:#6b7280">${acc.navegador}</p></div>`);
+            if (data) data.forEach(acc => {
+                let f = new Date(acc.fecha).toLocaleString('es-PE', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' });
+                cont.innerHTML += `<div style="padding:15px; border-bottom:1px solid #eee;"><h4 style="margin:0 0 5px 0;">${acc.dispositivo}</h4><p style="margin:0;font-size:13px;color:#6b7280">${acc.navegador} • ${f}</p></div>`;
+            });
         }
     </script>
 </body>
