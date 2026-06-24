@@ -1,4 +1,3 @@
-// 1. INICIALIZAR SUPABASE
 const supabaseUrl = 'https://rhuhuvevynovfekwhlhb.supabase.co';
 const supabaseKey = 'sb_publishable_-8XCScnvNf6QXMsnbyJK9Q_XhrOr9j5';
 const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
@@ -13,14 +12,11 @@ const correoCompraInput = document.getElementById('correo-compra');
 const alertaCorreo = document.getElementById('alerta-correo');
 const otpBoxes = document.querySelectorAll('.otp-box');
 
-// =====================================
-// CARGAR CATÁLOGO (Soporta Pago Único)
-// =====================================
 async function cargarCatalogo() {
     const contenedor = document.getElementById('contenedor-servicios');
     const { data, error } = await supabaseClient.from('servicios').select('*').eq('activo', true).order('id', { ascending: true });
     
-    if(error || !data || data.length === 0) return contenedor.innerHTML = '<p style="color:var(--text-light); width:100%; text-align:center;">No hay servicios disponibles.</p>';
+    if(error || !data || data.length === 0) return contenedor.innerHTML = '<p style="color:var(--text-light); width:100%; text-align:center;">No hay servicios en el catálogo. Añádelos desde el panel.</p>';
 
     serviciosData = data; contenedor.innerHTML = ''; 
     
@@ -31,7 +27,6 @@ async function cargarCatalogo() {
         let etiquetaHTML = serv.etiqueta ? `<div class="card-badge">${serv.etiqueta}</div>` : '';
         let listaCaract = serv.caracteristicas ? serv.caracteristicas.split(',').map(c => `<li>✔️ ${c.trim()}</li>`).join('') : '';
 
-        // Generar Pills (0 = Pago Único)
         let pillsHTML = `<div class="plan-pills" id="pills-container-${index}">`;
         planes.forEach((p, pIdx) => {
             let activeClass = pIdx === 0 ? 'active' : '';
@@ -76,9 +71,6 @@ window.seleccionarPlan = function(servIndex, planIndex, btnElement) {
     serv.seleccion_actual = { nombre: serv.nombre, precio: precioFinal, meses: plan.meses };
 }
 
-// =====================================
-// FUNCIONES UX Y MODALES
-// =====================================
 function mostrarNotificacion(mensaje, tipo = 'error') {
     const contenedor = document.getElementById('toast-container');
     const toast = document.createElement('div'); toast.className = `toast toast-${tipo}`; toast.innerHTML = tipo === 'error' ? `⚠️ ${mensaje}` : `✅ ${mensaje}`;
@@ -120,9 +112,6 @@ function validarCorreoCompra() {
     correoCompraInput.style.borderColor = "#E5E7EB"; alertaCorreo.style.display = "none"; return correo;
 }
 
-// =====================================
-// PROCESAR PAGOS Y CONSULTAS
-// =====================================
 document.getElementById('btn-confirmar-yape').addEventListener('click', async () => {
     const correo = validarCorreoCompra(); if(!correo) return mostrarNotificacion('Ingresa un correo válido.');
     const operacion = Array.from(otpBoxes).map(box => box.value).join('');
@@ -157,7 +146,6 @@ document.getElementById('btn-otro-medio').addEventListener('click', async () => 
     modalCompra.classList.add('oculto'); btn.innerText = "Pagar con Plin / BCP / BBVA"; btn.disabled = false;
 });
 
-// CONSULTA DE TIEMPO (Soporta Permanente)
 document.getElementById('btn-buscar-tiempo').addEventListener('click', async () => {
     const correo = document.getElementById('correo-tiempo').value.trim();
     const msj = document.getElementById('mensaje-tiempo');
@@ -171,7 +159,6 @@ document.getElementById('btn-buscar-tiempo').addEventListener('click', async () 
         let usuario = data[0]; 
         if (usuario.estado === 'Activo') {
             if (usuario.meses == 0 || !usuario.fecha_fin) {
-                // Es de pago único
                 msj.innerHTML = `✅ Tu cuenta de <b>${usuario.servicio || 'Servicio'}</b> está activa.<br><br><strong style="color:var(--primary); font-size:22px;">Acceso Permanente (Pago Único)</strong>`;
             } else {
                 let hoy = new Date(); let fin = new Date(usuario.fecha_fin);
