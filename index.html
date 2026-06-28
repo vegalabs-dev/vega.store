@@ -43,6 +43,7 @@
             </div>
         </section>
 
+        <!-- CATÁLOGO DINÁMICO -->
         <section id="catalogo" class="catalog" style="flex-wrap: wrap; gap: 30px;">
             <div id="contenedor-servicios" style="display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; width: 100%;">
                 <p style="color: var(--text-light); text-align: center; width: 100%;">Cargando el catálogo de servicios...</p>
@@ -56,10 +57,8 @@
             <span class="cerrar" id="cerrar-compra">&times;</span>
             <h3 id="titulo-producto-modal">Finaliza tu Pago</h3>
             
-            <p id="alerta-dato" style="color: #DC2626; font-size: 13px; font-weight: bold; margin-bottom: 5px; display: none;">⚠️ Ingresa tu dato primero.</p>
-            
-            <!-- INPUT DINÁMICO (Cambiará según el servicio) -->
-            <input type="text" id="dato-compra" placeholder="1. Escribe tu dato" style="margin-top: 0;">
+            <p id="alerta-correo" style="color: #DC2626; font-size: 13px; font-weight: bold; margin-bottom: 5px; display: none;">⚠️ Ingresa tu correo primero.</p>
+            <input type="email" id="correo-compra" placeholder="1. Escribe el correo a vincular" style="margin-top: 0;">
             
             <hr>
             
@@ -97,11 +96,8 @@
         <div class="modal-content">
             <span class="cerrar" id="cerrar-tiempo">&times;</span>
             <h3>Consultar Suscripción</h3>
-            <p style="font-size: 14px; color: var(--text-light);">Ingresa el dato con el que compraste para ver tu tiempo.</p>
-            
-            <!-- INPUT GENÉRICO -->
-            <input type="text" id="dato-tiempo" placeholder="Correo o Número de WhatsApp">
-            
+            <p style="font-size: 14px; color: var(--text-light);">Ingresa tu correo o número para ver cuántos días te quedan.</p>
+            <input type="text" id="correo-tiempo" placeholder="Tu correo o número de WhatsApp">
             <button id="btn-buscar-tiempo" class="btn-primary w-100">Buscar mi tiempo</button>
             <p id="mensaje-tiempo" style="margin-top: 20px; font-size: 16px; line-height: 1.5;"></p>
         </div>
