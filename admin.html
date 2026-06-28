@@ -80,7 +80,8 @@
                 </div>
                 <div style="display: flex; gap: 10px; flex-wrap: wrap;">
                     <button class="btn-primary" style="background:#F59E0B; display:flex; align-items:center; gap:5px;" onclick="document.getElementById('modal-seguridad').style.display='flex'">🛡️ Accesos</button>
-                    <button class="btn-primary" style="background:#374151;" onclick="supabaseClient.auth.signOut(); window.location.reload();">Salir</button>
+                    <!-- AQUÍ ESTÁ EL BOTÓN SALIR CORREGIDO -->
+                    <button class="btn-primary" style="background:#374151;" onclick="cerrarSesion()">Salir</button>
                 </div>
             </div>
 
@@ -98,7 +99,7 @@
                     <div class="stat-box"><h3 id="stat-pendientes">0</h3><p>PAGOS POR REVISAR</p></div>
                 </div>
 
-                <!-- FILTROS (Con diseño arreglado) -->
+                <!-- FILTROS -->
                 <div class="filtros-admin">
                     <input type="text" id="buscador" class="search-box" placeholder="Buscar correo o token..." oninput="filtrarTabla()">
                     <select id="filtro-servicio" class="filtro-select" onchange="filtrarTabla()"><option value="ALL">Todos los Servicios</option></select>
@@ -173,11 +174,38 @@
 
         supabaseClient.auth.getSession().then(({ data: { session } }) => { if (session) mostrarPanel(); });
 
-        async function iniciarSesion() {
-            const { error } = await supabaseClient.auth.signInWithPassword({ email: document.getElementById('login-email').value, password: document.getElementById('login-password').value });
-            if (error) document.getElementById('login-error').style.display = 'block'; else mostrarPanel();
+        // Detección de dispositivo
+        function obtenerInfoDispositivo() {
+            const ua = navigator.userAgent;
+            let dispositivo = /Mobile|Android|iP(hone|od|ad)/.test(ua) ? "📱 Celular / Tablet" : "💻 Computadora";
+            let navegador = "Navegador Web";
+            if(ua.includes("Chrome")) navegador = "Google Chrome";
+            if(ua.includes("Firefox")) navegador = "Mozilla Firefox";
+            if(ua.includes("Safari") && !ua.includes("Chrome")) navegador = "Apple Safari";
+            if(ua.includes("Edge")) navegador = "Microsoft Edge";
+            return { dispositivo, navegador };
         }
 
+        async function iniciarSesion() {
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+            const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+            
+            if (error) {
+                document.getElementById('login-error').style.display = 'block';
+            } else {
+                const info = obtenerInfoDispositivo();
+                await supabaseClient.from('admin_accesos').insert([{ dispositivo: info.dispositivo, navegador: info.navegador }]);
+                mostrarPanel();
+            }
+        }
+
+        // AQUÍ ESTÁ LA FUNCIÓN CORREGIDA
+        async function cerrarSesion() { 
+            await supabaseClient.auth.signOut(); 
+            window.location.reload(); 
+        }
+        
         function mostrarPanel() {
             document.getElementById('login-section').style.display = 'none';
             document.getElementById('admin-section').style.display = 'block';
