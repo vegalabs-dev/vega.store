@@ -14,7 +14,7 @@ const alertaDato = document.getElementById('alerta-correo');
 const otpBoxes = document.querySelectorAll('.otp-box');
 
 // =====================================
-// CARGAR CATÁLOGO (CORREGIDO Y SEGURO)
+// CARGAR CATÁLOGO
 // =====================================
 async function cargarCatalogo() {
     const contenedor = document.getElementById('contenedor-servicios');
@@ -32,7 +32,7 @@ async function cargarCatalogo() {
         let planes = serv.planes && serv.planes.length > 0 ? serv.planes : [{ meses: 1, precio: serv.precio, promo: serv.precio_promocional }];
         serv.planes_procesados = planes;
 
-        // GUARDAMOS EL PRECIO INICIAL DIRECTAMENTE (Sin esperar al DOM)
+        // GUARDAMOS EL PRECIO INICIAL DIRECTAMENTE
         let planInicial = planes[0];
         let precioFinalInicial = planInicial.promo ? parseFloat(planInicial.promo) : parseFloat(planInicial.precio);
         serv.seleccion_actual = { 
@@ -53,7 +53,6 @@ async function cargarCatalogo() {
         });
         pillsHTML += `</div>`;
 
-        // DIBUJAMOS EL PRECIO INICIAL
         let sufijoInicial = planInicial.meses == 0 ? '' : '<span>/ mes</span>';
         let precioHTMLInicial = planInicial.promo 
             ? `<span style="text-decoration:line-through; color:#9CA3AF; font-size:16px;">S/ ${parseFloat(planInicial.precio).toFixed(2)}</span> S/ ${precioFinalInicial.toFixed(2)} ${sufijoInicial}`
@@ -67,8 +66,9 @@ async function cargarCatalogo() {
                 <p class="price" id="precio-display-${index}">${precioHTMLInicial}</p>
                 <ul class="features">${listaCaract}</ul>
                 <div class="buttons">
-                    <button class="btn-primary" onclick="abrirCompra(${index})">Obtenerlo ahora</button>
-                    <button class="btn-secondary" onclick="abrirVerTiempo()">Consultar mi servicio</button>
+                    <!-- BOTONES CON CLASES PARA DELEGACIÓN DE EVENTOS -->
+                    <button class="btn-primary btn-obtener-dinamico" data-index="${index}">Obtenerlo ahora</button>
+                    <button class="btn-secondary btn-consultar-dinamico">Consultar mi servicio</button>
                 </div>
             </div>
         `;
@@ -112,37 +112,50 @@ function mostrarNotificacion(mensaje, tipo = 'error') {
 
 document.getElementById('btn-descargar-qr').addEventListener('click', () => mostrarNotificacion('Descargando QR...', 'success'));
 
-window.abrirCompra = function(servIndex) {
-    productoSeleccionado = serviciosData[servIndex].seleccion_actual;
-    let txtMeses = productoSeleccionado.meses == 0 ? "Pago Único" : (productoSeleccionado.meses == 1 ? "1 Mes" : `${productoSeleccionado.meses} Meses`);
+// =====================================
+// DELEGACIÓN DE EVENTOS (CLICS INFALIBLES)
+// =====================================
+document.addEventListener('click', function(e) {
     
-    document.getElementById('titulo-producto-modal').innerText = `Comprando: ${productoSeleccionado.nombre} (${txtMeses})`;
-    document.getElementById('texto-precio-yape').innerText = `S/ ${productoSeleccionado.precio.toFixed(2)}`;
-    document.getElementById('btn-confirmar-yape').innerText = `Confirmar Pago de S/ ${productoSeleccionado.precio.toFixed(2)}`;
+    // CLIC EN "OBTENERLO AHORA"
+    if (e.target && e.target.classList.contains('btn-obtener-dinamico')) {
+        const servIndex = e.target.getAttribute('data-index');
+        productoSeleccionado = serviciosData[servIndex].seleccion_actual;
+        
+        let txtMeses = productoSeleccionado.meses == 0 ? "Pago Único" : (productoSeleccionado.meses == 1 ? "1 Mes" : `${productoSeleccionado.meses} Meses`);
+        
+        document.getElementById('titulo-producto-modal').innerText = `Comprando: ${productoSeleccionado.nombre} (${txtMeses})`;
+        document.getElementById('texto-precio-yape').innerText = `S/ ${productoSeleccionado.precio.toFixed(2)}`;
+        document.getElementById('btn-confirmar-yape').innerText = `Confirmar Pago de S/ ${productoSeleccionado.precio.toFixed(2)}`;
 
-    if (productoSeleccionado.tipo_ingreso === 'numero') {
-        inputDatoCompra.placeholder = "1. Escribe tu número de WhatsApp";
-        inputDatoCompra.type = "tel";
-        alertaDato.innerText = "⚠️ Ingresa tu número de WhatsApp primero.";
-    } else {
-        inputDatoCompra.placeholder = "1. Escribe el correo a vincular";
-        inputDatoCompra.type = "email";
-        alertaDato.innerText = "⚠️ Ingresa tu correo primero.";
+        if (productoSeleccionado.tipo_ingreso === 'numero') {
+            inputDatoCompra.placeholder = "1. Escribe tu número de WhatsApp";
+            inputDatoCompra.type = "tel";
+            alertaDato.innerText = "⚠️ Ingresa tu número de WhatsApp primero.";
+        } else {
+            inputDatoCompra.placeholder = "1. Escribe el correo a vincular";
+            inputDatoCompra.type = "email";
+            alertaDato.innerText = "⚠️ Ingresa tu correo primero.";
+        }
+
+        modalCompra.classList.remove('oculto');
+        inputDatoCompra.value = ""; 
+        inputDatoCompra.style.borderColor = "#E5E7EB"; 
+        alertaDato.style.display = "none";
+        otpBoxes.forEach(box => box.value = ''); 
     }
 
-    modalCompra.classList.remove('oculto');
-    inputDatoCompra.value = ""; 
-    inputDatoCompra.style.borderColor = "#E5E7EB"; 
-    alertaDato.style.display = "none";
-    otpBoxes.forEach(box => box.value = ''); 
-}
+    // CLIC EN "CONSULTAR MI SERVICIO"
+    if (e.target && e.target.classList.contains('btn-consultar-dinamico')) {
+        modalTiempo.classList.remove('oculto');
+        document.getElementById('correo-tiempo').value = ""; 
+        document.getElementById('mensaje-tiempo').innerHTML = "";
+    }
+});
 
-window.abrirVerTiempo = function() {
-    modalTiempo.classList.remove('oculto');
-    document.getElementById('correo-tiempo').value = ""; 
-    document.getElementById('mensaje-tiempo').innerHTML = "";
-}
-
+// =====================================
+// CERRAR MODALES Y LÓGICA DE CUADRITOS
+// =====================================
 document.getElementById('cerrar-compra').addEventListener('click', () => modalCompra.classList.add('oculto'));
 document.getElementById('cerrar-tiempo').addEventListener('click', () => modalTiempo.classList.add('oculto'));
 
@@ -178,6 +191,9 @@ function validarDatoCompra() {
     return dato;
 }
 
+// =====================================
+// PROCESAR PAGOS
+// =====================================
 document.getElementById('btn-confirmar-yape').addEventListener('click', async () => {
     const datoCliente = validarDatoCompra(); 
     if(!datoCliente) return mostrarNotificacion('Ingresa el dato solicitado correctamente.');
@@ -205,7 +221,7 @@ document.getElementById('btn-confirmar-yape').addEventListener('click', async ()
     window.open(`https://wa.me/${numeroWhatsApp}?text=${encodeURIComponent(mensaje)}`, '_blank');
     
     modalCompra.classList.add('oculto'); 
-    btn.innerText = `Confirmar Pago`; 
+    btn.innerText = `Confirmar Pago de S/ ${productoSeleccionado.precio.toFixed(2)}`; 
     btn.disabled = false;
 });
 
@@ -238,6 +254,9 @@ document.getElementById('btn-otro-medio').addEventListener('click', async () => 
     btn.disabled = false;
 });
 
+// =====================================
+// CONSULTA DE TIEMPO
+// =====================================
 document.getElementById('btn-buscar-tiempo').addEventListener('click', async () => {
     const datoBuscado = document.getElementById('correo-tiempo').value.trim();
     const msj = document.getElementById('mensaje-tiempo');
