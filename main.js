@@ -14,7 +14,7 @@ const alertaDato = document.getElementById('alerta-correo');
 const otpBoxes = document.querySelectorAll('.otp-box');
 
 // =====================================
-// CARGAR CATÁLOGO
+// CARGAR CATÁLOGO (CORREGIDO Y SEGURO)
 // =====================================
 async function cargarCatalogo() {
     const contenedor = document.getElementById('contenedor-servicios');
@@ -32,6 +32,16 @@ async function cargarCatalogo() {
         let planes = serv.planes && serv.planes.length > 0 ? serv.planes : [{ meses: 1, precio: serv.precio, promo: serv.precio_promocional }];
         serv.planes_procesados = planes;
 
+        // GUARDAMOS EL PRECIO INICIAL DIRECTAMENTE (Sin esperar al DOM)
+        let planInicial = planes[0];
+        let precioFinalInicial = planInicial.promo ? parseFloat(planInicial.promo) : parseFloat(planInicial.precio);
+        serv.seleccion_actual = { 
+            nombre: serv.nombre, 
+            precio: precioFinalInicial, 
+            meses: planInicial.meses,
+            tipo_ingreso: serv.tipo_ingreso || 'correo'
+        };
+
         let etiquetaHTML = serv.etiqueta ? `<div class="card-badge">${serv.etiqueta}</div>` : '';
         let listaCaract = serv.caracteristicas ? serv.caracteristicas.split(',').map(c => `<li>✔️ ${c.trim()}</li>`).join('') : '';
 
@@ -43,12 +53,18 @@ async function cargarCatalogo() {
         });
         pillsHTML += `</div>`;
 
+        // DIBUJAMOS EL PRECIO INICIAL
+        let sufijoInicial = planInicial.meses == 0 ? '' : '<span>/ mes</span>';
+        let precioHTMLInicial = planInicial.promo 
+            ? `<span style="text-decoration:line-through; color:#9CA3AF; font-size:16px;">S/ ${parseFloat(planInicial.precio).toFixed(2)}</span> S/ ${precioFinalInicial.toFixed(2)} ${sufijoInicial}`
+            : `S/ ${precioFinalInicial.toFixed(2)} ${sufijoInicial}`;
+
         contenedor.innerHTML += `
             <div class="card">
                 ${etiquetaHTML}
                 <h2>${serv.nombre}</h2>
                 ${pillsHTML}
-                <p class="price" id="precio-display-${index}">Cargando...</p>
+                <p class="price" id="precio-display-${index}">${precioHTMLInicial}</p>
                 <ul class="features">${listaCaract}</ul>
                 <div class="buttons">
                     <button class="btn-primary" onclick="abrirCompra(${index})">Obtenerlo ahora</button>
@@ -56,7 +72,6 @@ async function cargarCatalogo() {
                 </div>
             </div>
         `;
-        setTimeout(() => seleccionarPlan(index, 0, document.querySelector(`#pills-container-${index} .pill`)), 50);
     });
 }
 
