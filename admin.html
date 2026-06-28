@@ -19,13 +19,11 @@
         .tab-content { display: none; }
         .tab-content.active { display: block; }
 
-        /* ESTADÍSTICAS */
         .stats-container { display: flex; gap: 20px; margin-bottom: 30px; flex-wrap: wrap;}
         .stat-box { background: #F9FAFB; border: 1px solid #E5E7EB; padding: 20px; border-radius: 12px; flex: 1; text-align: center; min-width: 150px;}
         .stat-box h3 { margin: 0 0 5px 0; font-size: 28px; color: var(--primary); }
         .stat-box p { margin: 0; font-size: 13px; color: #6B7280; font-weight: bold; letter-spacing: 0.5px;}
 
-        /* FILTROS (Con más espacio y mejor diseño) */
         .filtros-admin { display: flex; gap: 15px; margin-bottom: 30px; flex-wrap: wrap; align-items: center; background: #F9FAFB; padding: 15px; border-radius: 12px; border: 1px solid #E5E7EB;}
         .search-box { flex: 1; min-width: 250px; padding: 12px 15px; border: 2px solid #E5E7EB; border-radius: 8px; outline: none; transition: 0.3s;}
         .search-box:focus { border-color: var(--primary); }
@@ -38,7 +36,6 @@
         .badge-pendiente { background: #FEF3C7; color: #D97706; padding: 6px 12px; border-radius: 20px; font-weight: bold; font-size: 12px; }
         .badge-activo { background: #D1FAE5; color: #059669; padding: 6px 12px; border-radius: 20px; font-weight: bold; font-size: 12px; }
         
-        /* BOTONES GLOBALES */
         .btn-primary { background: var(--primary); color: white; border: none; padding: 12px 18px; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.3s;}
         .btn-aprobar { background: #10B981; color: white; border: none; padding: 8px 12px; border-radius: 8px; cursor: pointer; font-weight: bold; }
         .btn-borrar { background: #FEE2E2; color: #DC2626; border: none; padding: 8px 12px; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.2s;}
@@ -48,7 +45,6 @@
         .btn-copiar { background: #F3F4F6; border: 1px solid #E5E7EB; border-radius: 6px; cursor: pointer; font-size: 14px; padding: 5px 8px; transition: 0.2s;}
         .btn-copiar:hover { background: #E5E7EB; }
 
-        /* MODALES */
         .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); display: none; justify-content: center; align-items: center; z-index: 1000; overflow-y:auto; padding:20px;}
         .modal-content { background: white; padding: 30px; border-radius: 15px; width: 100%; max-width: 550px; position: relative; margin: auto;}
         .cerrar-modal { position: absolute; top: 15px; right: 20px; font-size: 28px; cursor: pointer; color: #6B7280; transition: 0.2s;}
@@ -79,8 +75,8 @@
                     <p style="margin-top: 5px; color: #6b7280; font-size: 14px;">Administración General</p>
                 </div>
                 <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                    <button class="btn-primary" style="background:#F59E0B; display:flex; align-items:center; gap:5px;" onclick="document.getElementById('modal-seguridad').style.display='flex'">🛡️ Accesos</button>
-                    <!-- AQUÍ ESTÁ EL BOTÓN SALIR CORREGIDO -->
+                    <!-- AQUÍ SE CORRIGIÓ LA ACCIÓN DEL BOTÓN -->
+                    <button class="btn-primary" style="background:#F59E0B; display:flex; align-items:center; gap:5px;" onclick="abrirSeguridad()">🛡️ Accesos</button>
                     <button class="btn-primary" style="background:#374151;" onclick="cerrarSesion()">Salir</button>
                 </div>
             </div>
@@ -93,13 +89,11 @@
             <!-- PESTAÑA VENTAS -->
             <div id="tab-ventas" class="tab-content active">
                 
-                <!-- ESTADÍSTICAS -->
                 <div class="stats-container">
                     <div class="stat-box"><h3 id="stat-activos">0</h3><p>CLIENTES ACTIVOS</p></div>
                     <div class="stat-box"><h3 id="stat-pendientes">0</h3><p>PAGOS POR REVISAR</p></div>
                 </div>
 
-                <!-- FILTROS -->
                 <div class="filtros-admin">
                     <input type="text" id="buscador" class="search-box" placeholder="Buscar correo o token..." oninput="filtrarTabla()">
                     <select id="filtro-servicio" class="filtro-select" onchange="filtrarTabla()"><option value="ALL">Todos los Servicios</option></select>
@@ -139,7 +133,7 @@
     <!-- MODAL GESTIONAR SERVICIO -->
     <div id="modal-servicio" class="modal">
         <div class="modal-content">
-            <span class="cerrar-modal" onclick="document.getElementById('modal-servicio').style.display='none'">&times;</span>
+            <span class="cerrar-modal" onclick="cerrarModalServicio()">&times;</span>
             <h2 id="titulo-modal-servicio" style="margin-top:0; margin-bottom:20px; color: var(--primary);">Servicio</h2>
             <input type="hidden" id="serv-id">
             
@@ -152,16 +146,16 @@
             <p style="font-size:13px; color:#6B7280; margin-bottom:15px;">Pon <b>0</b> en meses si es un servicio de <b>Pago Único (Permanente)</b>.</p>
             
             <div id="contenedor-planes"></div>
-            <button style="background: #F9FAFB; border: 2px dashed #D1D5DB; padding: 12px; width: 100%; border-radius: 8px; cursor: pointer; font-weight: bold; color: #6B7280; margin-bottom: 25px; transition: 0.3s;" onmouseover="this.style.borderColor='var(--primary)'; this.style.color='var(--primary)';" onmouseout="this.style.borderColor='#D1D5DB'; this.style.color='#6B7280';" onclick="agregarFilaPlan()">+ Añadir otra opción de tiempo (Ej: 3 Meses)</button>
+            <button style="background: #F9FAFB; border: 2px dashed #D1D5DB; padding: 12px; width: 100%; border-radius: 8px; cursor: pointer; font-weight: bold; color: #6B7280; margin-bottom: 25px; transition: 0.3s;" onmouseover="this.style.borderColor='var(--primary)'; this.style.color='var(--primary)';" onmouseout="this.style.borderColor='#D1D5DB'; this.style.color='#6B7280';" onclick="agregarFilaPlan()">+ Añadir otra opción de tiempo</button>
 
-            <button class="btn-primary w-100" onclick="guardarServicio()">Guardar Servicio en Catálogo</button>
+            <button class="btn-primary w-100" onclick="guardarServicio()">Guardar Servicio</button>
         </div>
     </div>
 
     <!-- MODAL SEGURIDAD -->
     <div id="modal-seguridad" class="modal">
         <div class="modal-content">
-            <span class="cerrar-modal" onclick="document.getElementById('modal-seguridad').style.display='none'">&times;</span>
+            <span class="cerrar-modal" onclick="cerrarSeguridad()">&times;</span>
             <h2 style="margin-top:0; color: #F59E0B;">🛡️ Accesos Recientes</h2>
             <p style="font-size: 13px; color: #6B7280; margin-bottom: 15px;">Registro inborrable de dispositivos que entraron al panel.</p>
             <div id="lista-dispositivos"><p>Cargando registro...</p></div>
@@ -174,7 +168,6 @@
 
         supabaseClient.auth.getSession().then(({ data: { session } }) => { if (session) mostrarPanel(); });
 
-        // Detección de dispositivo
         function obtenerInfoDispositivo() {
             const ua = navigator.userAgent;
             let dispositivo = /Mobile|Android|iP(hone|od|ad)/.test(ua) ? "📱 Celular / Tablet" : "💻 Computadora";
@@ -200,7 +193,6 @@
             }
         }
 
-        // AQUÍ ESTÁ LA FUNCIÓN CORREGIDA
         async function cerrarSesion() { 
             await supabaseClient.auth.signOut(); 
             window.location.reload(); 
@@ -263,7 +255,7 @@
 
         function renderizarTabla(usuarios) {
             const tabla = document.getElementById('tabla-usuarios'); tabla.innerHTML = ''; 
-            if(usuarios.length === 0) return tabla.innerHTML = '<tr><td colspan="6" style="text-align:center;">No hay registros encontrados.</td></tr>';
+            if(usuarios.length === 0) return tabla.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 20px;">No hay registros encontrados.</td></tr>';
 
             usuarios.forEach(user => {
                 let badge = user.estado === 'Pendiente' ? 'badge-pendiente' : 'badge-activo';
@@ -326,7 +318,7 @@
             const { data } = await supabaseClient.from('servicios').select('*').order('id', { ascending: true });
             const tabla = document.getElementById('tabla-servicios'); tabla.innerHTML = '';
             
-            if(!data || data.length===0) return tabla.innerHTML = '<tr><td colspan="4" style="text-align:center;">No tienes servicios creados.</td></tr>';
+            if(!data || data.length===0) return tabla.innerHTML = '<tr><td colspan="4" style="text-align:center; padding: 20px;">No tienes servicios creados.</td></tr>';
 
             data.forEach(serv => {
                 let planes = serv.planes && serv.planes.length > 0 ? serv.planes : [{ meses: 1, precio: serv.precio, promo: serv.precio_promocional }];
@@ -372,6 +364,10 @@
             document.getElementById('modal-servicio').style.display = 'flex';
         }
 
+        function cerrarModalServicio() {
+            document.getElementById('modal-servicio').style.display = 'none';
+        }
+
         async function guardarServicio() {
             let id = document.getElementById('serv-id').value, nombre = document.getElementById('serv-nombre').value;
             let planesGuardar = [];
@@ -381,21 +377,43 @@
             });
             if(!nombre || planesGuardar.length === 0) return alert("Faltan datos. El servicio necesita nombre y 1 precio.");
             const datos = { nombre, etiqueta: document.getElementById('serv-etiqueta').value, caracteristicas: document.getElementById('serv-caracteristicas').value, planes: planesGuardar, activo: true };
-            if(id) await supabaseClient.from('servicios').update(datos).eq('id', id); else await supabaseClient.from('servicios').insert([datos]);
-            document.getElementById('modal-servicio').style.display = 'none'; cargarServicios();
+            
+            if(id) await supabaseClient.from('servicios').update(datos).eq('id', id); 
+            else await supabaseClient.from('servicios').insert([datos]);
+            
+            cerrarModalServicio(); 
+            cargarServicios();
         }
+
         async function borrarServicio(id) { if (confirm("¿Borrar servicio del catálogo?")) { await supabaseClient.from('servicios').delete().eq('id', id); cargarServicios(); } }
 
-        // ===== SEGURIDAD =====
+        // ===== SEGURIDAD (CORREGIDO) =====
         async function abrirSeguridad() {
             document.getElementById('modal-seguridad').style.display = 'flex';
-            const cont = document.getElementById('lista-dispositivos'); cont.innerHTML = 'Cargando...';
-            const { data } = await supabaseClient.from('admin_accesos').select('*').order('fecha', { ascending: false }).limit(10);
+            const cont = document.getElementById('lista-dispositivos'); 
+            cont.innerHTML = 'Cargando accesos...';
+            
+            const { data, error } = await supabaseClient.from('admin_accesos').select('*').order('fecha', { ascending: false }).limit(10);
+            
+            if (error) {
+                cont.innerHTML = '<p style="color:red; text-align:center;">Error al cargar el historial.</p>';
+                return;
+            }
+            if (!data || data.length === 0) {
+                cont.innerHTML = '<p style="text-align:center; color:#6b7280;">No hay registros de acceso aún.</p>';
+                return;
+            }
+            
             cont.innerHTML = '';
-            if (data) data.forEach(acc => {
+            data.forEach((acc, index) => {
                 let f = new Date(acc.fecha).toLocaleString('es-PE', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' });
-                cont.innerHTML += `<div style="padding:15px; border-bottom:1px solid #eee;"><h4 style="margin:0 0 5px 0;">${acc.dispositivo}</h4><p style="margin:0;font-size:13px;color:#6b7280">${acc.navegador} • ${f}</p></div>`;
+                let etiqueta = index === 0 ? '<span style="background:#10B981; color:white; padding:2px 8px; border-radius:12px; font-size:11px; margin-left:8px; font-weight:bold;">Sesión Actual</span>' : '';
+                cont.innerHTML += `<div style="padding:15px; border-bottom:1px solid #E5E7EB;"><h4 style="margin:0 0 5px 0; color:#1F2937;">${acc.dispositivo} ${etiqueta}</h4><p style="margin:0;font-size:13px;color:#6b7280">${acc.navegador} • ${f}</p></div>`;
             });
+        }
+
+        function cerrarSeguridad() {
+            document.getElementById('modal-seguridad').style.display = 'none';
         }
     </script>
 </body>
