@@ -1,22 +1,30 @@
+// ==========================================
+// ARCHIVO: main.js - PARTE 1
+// ==========================================
+
+// 1. INICIALIZAR SUPABASE
 const supabaseUrl = 'https://rhuhuvevynovfekwhlhb.supabase.co';
 const supabaseKey = 'sb_publishable_-8XCScnvNf6QXMsnbyJK9Q_XhrOr9j5';
 const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
 
 let serviciosData = []; 
-let productoSeleccionado = { nombre: '', precio: 0, meses: 1 };
+let productoSeleccionado = { nombre: '', precio: 0, meses: 1, tipo_ingreso: 'correo' };
 const numeroWhatsApp = "51928293163"; 
 
 const modalCompra = document.getElementById('modal-compra');
 const modalTiempo = document.getElementById('modal-tiempo');
-const correoCompraInput = document.getElementById('correo-compra');
-const alertaCorreo = document.getElementById('alerta-correo');
+const inputDatoCompra = document.getElementById('correo-compra'); // Ahora sirve para correo o número
+const alertaDato = document.getElementById('alerta-correo');
 const otpBoxes = document.querySelectorAll('.otp-box');
 
+// =====================================
+// CARGAR CATÁLOGO
+// =====================================
 async function cargarCatalogo() {
     const contenedor = document.getElementById('contenedor-servicios');
     const { data, error } = await supabaseClient.from('servicios').select('*').eq('activo', true).order('id', { ascending: true });
     
-    if(error || !data || data.length === 0) return contenedor.innerHTML = '<p style="color:var(--text-light); width:100%; text-align:center;">No hay servicios en el catálogo. Añádelos desde el panel.</p>';
+    if(error || !data || data.length === 0) return contenedor.innerHTML = '<p style="color:var(--text-light); width:100%; text-align:center;">No hay servicios disponibles.</p>';
 
     serviciosData = data; contenedor.innerHTML = ''; 
     
@@ -68,7 +76,14 @@ window.seleccionarPlan = function(servIndex, planIndex, btnElement) {
         : `S/ ${precioFinal.toFixed(2)} ${sufijo}`;
     
     document.getElementById(`precio-display-${servIndex}`).innerHTML = precioHTML;
-    serv.seleccion_actual = { nombre: serv.nombre, precio: precioFinal, meses: plan.meses };
+    
+    // Guardamos el tipo de ingreso (correo o numero)
+    serv.seleccion_actual = { 
+        nombre: serv.nombre, 
+        precio: precioFinal, 
+        meses: plan.meses,
+        tipo_ingreso: serv.tipo_ingreso || 'correo'
+    };
 }
 
 function mostrarNotificacion(mensaje, tipo = 'error') {
@@ -80,79 +95,117 @@ function mostrarNotificacion(mensaje, tipo = 'error') {
 
 document.getElementById('btn-descargar-qr').addEventListener('click', () => mostrarNotificacion('Descargando QR...', 'success'));
 
-window.abrirCompra = function(servIndex) {
-    productoSeleccionado = serviciosData[servIndex].seleccion_actual;
-    let txtMeses = productoSeleccionado.meses == 0 ? "Pago Único" : (productoSeleccionado.meses == 1 ? "1 Mes" : `${productoSeleccionado.meses} Meses`);
-    
-    document.getElementById('titulo-producto-modal').innerText = `Comprando: ${productoSeleccionado.nombre} (${txtMeses})`;
-    document.getElementById('texto-precio-yape').innerText = `S/ ${productoSeleccionado.precio.toFixed(2)}`;
-    document.getElementById('btn-confirmar-yape').innerText = `Confirmar Pago de S/ ${productoSeleccionado.precio.toFixed(2)}`;
+// --- FIN DE LA PARTE 1 ---
+document.getElementById('titulo-producto-modal').innerText = `Comprando: ${productoSeleccionado.nombre} (${txtMeses})`;
+document.getElementById('texto-precio-yape').innerText = `S/ ${productoSeleccionado.precio.toFixed(2)}`;
+document.getElementById('btn-confirmar-yape').innerText = `Confirmar Pago de S/ ${productoSeleccionado.precio.toFixed(2)}`;
 
-    modalCompra.classList.remove('oculto');
-    correoCompraInput.value = ""; correoCompraInput.style.borderColor = "#E5E7EB"; alertaCorreo.style.display = "none";
-    otpBoxes.forEach(box => box.value = ''); 
+// ADAPTAR EL FORMULARIO SEGÚN EL SERVICIO (Correo o Número)
+if (productoSeleccionado.tipo_ingreso === 'numero') {
+    inputDatoCompra.placeholder = "1. Escribe tu número de WhatsApp";
+    inputDatoCompra.type = "tel";
+    alertaDato.innerText = "⚠️ Ingresa tu número de WhatsApp primero.";
+} else {
+    inputDatoCompra.placeholder = "1. Escribe el correo a vincular";
+    inputDatoCompra.type = "email";
+    alertaDato.innerText = "⚠️ Ingresa tu correo primero.";
 }
 
+modalCompra.classList.remove('oculto');
+inputDatoCompra.value = ""; inputDatoCompra.style.borderColor = "#E5E7EB"; alertaDato.style.display = "none";
+otpBoxes.forEach(box => box.value = '');
+}
 window.abrirVerTiempo = function() {
-    modalTiempo.classList.remove('oculto');
-    document.getElementById('correo-tiempo').value = ""; document.getElementById('mensaje-tiempo').innerHTML = "";
+modalTiempo.classList.remove('oculto');
+document.getElementById('correo-tiempo').value = ""; document.getElementById('mensaje-tiempo').innerHTML = "";
 }
-
 document.getElementById('cerrar-compra').addEventListener('click', () => modalCompra.classList.add('oculto'));
 document.getElementById('cerrar-tiempo').addEventListener('click', () => modalTiempo.classList.add('oculto'));
-
 otpBoxes.forEach((box, index) => {
-    box.addEventListener('input', (e) => { e.target.value = e.target.value.replace(/[^0-9]/g, ''); if(e.target.value && index < otpBoxes.length - 1) otpBoxes[index + 1].focus(); });
+box.addEventListener('input', (e) => { e.target.value = e.target.value.replace(/[^0-9]/g, ''); if(e.target.value && index < otpBoxes.length - 1) otpBoxes[index + 1].focus(); });
     box.addEventListener('keydown', (e) => { if(e.key === 'Backspace' && !e.target.value && index > 0) otpBoxes[index - 1].focus(); });
 });
 
-function validarCorreoCompra() {
-    const correo = correoCompraInput.value.trim();
-    if(correo === "" || !correo.includes("@")) { correoCompraInput.style.borderColor = "#DC2626"; alertaCorreo.style.display = "block"; return false; }
-    correoCompraInput.style.borderColor = "#E5E7EB"; alertaCorreo.style.display = "none"; return correo;
+// VALIDACIÓN INTELIGENTE (Detecta si debe validar un correo o un número)
+function validarDatoCompra() {
+    const dato = inputDatoCompra.value.trim();
+    let esValido = false;
+
+    if (productoSeleccionado.tipo_ingreso === 'numero') {
+        // Valida que tenga al menos 9 números
+        const numLimpio = dato.replace(/\D/g,'');
+        esValido = numLimpio.length >= 9;
+    } else {
+        // Valida que sea un correo
+        esValido = dato !== "" && dato.includes("@");
+    }
+
+    if(!esValido) { 
+        inputDatoCompra.style.borderColor = "#DC2626"; 
+        alertaDato.style.display = "block"; 
+        return false; 
+    }
+    
+    inputDatoCompra.style.borderColor = "#E5E7EB"; 
+    alertaDato.style.display = "none"; 
+    return dato;
 }
 
+// =====================================
+// PROCESAR PAGOS
+// =====================================
 document.getElementById('btn-confirmar-yape').addEventListener('click', async () => {
-    const correo = validarCorreoCompra(); if(!correo) return mostrarNotificacion('Ingresa un correo válido.');
+    const datoCliente = validarDatoCompra(); 
+    if(!datoCliente) return mostrarNotificacion('Ingresa el dato solicitado correctamente.');
+    
     const operacion = Array.from(otpBoxes).map(box => box.value).join('');
     if(operacion.length < 7) return mostrarNotificacion("Ingresa los 7 números de operación.");
 
     const btn = document.getElementById('btn-confirmar-yape'); btn.innerText = "Procesando..."; btn.disabled = true;
 
     await supabaseClient.from('usuarios_canva').insert([{ 
-        correo: correo, servicio: productoSeleccionado.nombre, meses: productoSeleccionado.meses, metodo_pago: 'Yape', num_operacion: operacion, estado: 'Pendiente' 
+        correo: datoCliente, servicio: productoSeleccionado.nombre, meses: productoSeleccionado.meses, metodo_pago: 'Yape', num_operacion: operacion, estado: 'Pendiente' 
     }]);
 
     let txtMesesMsg = productoSeleccionado.meses == 0 ? "Pago Único" : `${productoSeleccionado.meses} Meses`;
-    const mensaje = `Hola, acabo de pagar *S/ ${productoSeleccionado.precio.toFixed(2)}* por *${productoSeleccionado.nombre} (${txtMesesMsg})* vía Yape.\n\n📧 *Mi correo:* ${correo}\n🧾 *N° de Operación:* ${operacion}`;
+    let tipoDatoMsg = productoSeleccionado.tipo_ingreso === 'numero' ? '📱 *Mi número:*' : '📧 *Mi correo:*';
+
+    const mensaje = `Hola, acabo de pagar *S/ ${productoSeleccionado.precio.toFixed(2)}* por *${productoSeleccionado.nombre} (${txtMesesMsg})* vía Yape.\n\n${tipoDatoMsg} ${datoCliente}\n🧾 *N° de Operación:* ${operacion}`;
     window.open(`https://wa.me/${numeroWhatsApp}?text=${encodeURIComponent(mensaje)}`, '_blank');
     
     modalCompra.classList.add('oculto'); btn.innerText = `Confirmar Pago`; btn.disabled = false;
 });
 
 document.getElementById('btn-otro-medio').addEventListener('click', async () => {
-    const correo = validarCorreoCompra(); if(!correo) return mostrarNotificacion('Ingresa un correo válido.');
+    const datoCliente = validarDatoCompra(); 
+    if(!datoCliente) return mostrarNotificacion('Ingresa el dato solicitado antes de continuar.');
+    
     const token = "TK-" + Math.random().toString(36).substr(2, 4).toUpperCase();
     const btn = document.getElementById('btn-otro-medio'); btn.innerText = "Generando..."; btn.disabled = true;
 
     await supabaseClient.from('usuarios_canva').insert([{ 
-        correo: correo, servicio: productoSeleccionado.nombre, meses: productoSeleccionado.meses, metodo_pago: 'Otro (Plin/BCP)', token: token, estado: 'Pendiente' 
+        correo: datoCliente, servicio: productoSeleccionado.nombre, meses: productoSeleccionado.meses, metodo_pago: 'Otro (Plin/BCP)', token: token, estado: 'Pendiente' 
     }]);
 
     let txtMesesMsg = productoSeleccionado.meses == 0 ? "Pago Único" : `${productoSeleccionado.meses} Meses`;
-    const mensaje = `Hola, quiero adquirir *${productoSeleccionado.nombre} (${txtMesesMsg})* por S/${productoSeleccionado.precio.toFixed(2)}. Mi correo es: *${correo}*. Mi token es: *${token}*`;
+    let tipoDatoMsg = productoSeleccionado.tipo_ingreso === 'numero' ? 'Mi número es:' : 'Mi correo es:';
+
+    const mensaje = `Hola, quiero adquirir *${productoSeleccionado.nombre} (${txtMesesMsg})* por S/${productoSeleccionado.precio.toFixed(2)}. ${tipoDatoMsg} *${datoCliente}*. Mi token es: *${token}*`;
     window.open(`https://wa.me/${numeroWhatsApp}?text=${encodeURIComponent(mensaje)}`, '_blank');
     
     modalCompra.classList.add('oculto'); btn.innerText = "Pagar con Plin / BCP / BBVA"; btn.disabled = false;
 });
 
+// =====================================
+// CONSULTA DE TIEMPO (Soporta Correo o Número)
+// =====================================
 document.getElementById('btn-buscar-tiempo').addEventListener('click', async () => {
-    const correo = document.getElementById('correo-tiempo').value.trim();
+    const datoBuscado = document.getElementById('correo-tiempo').value.trim();
     const msj = document.getElementById('mensaje-tiempo');
-    if(correo === "" || !correo.includes("@")) return mostrarNotificacion("Ingresa un correo válido.");
+    if(datoBuscado === "") return mostrarNotificacion("Ingresa tu correo o número.");
     
     const btn = document.getElementById('btn-buscar-tiempo'); btn.innerText = "Buscando..."; btn.disabled = true;
-    const { data } = await supabaseClient.from('usuarios_canva').select('*').eq('correo', correo).order('creado_en', { ascending: false });
+    const { data } = await supabaseClient.from('usuarios_canva').select('*').eq('correo', datoBuscado).order('creado_en', { ascending: false });
     btn.innerText = "Buscar mi tiempo"; btn.disabled = false;
 
     if (data && data.length > 0) {
@@ -170,8 +223,9 @@ document.getElementById('btn-buscar-tiempo').addEventListener('click', async () 
             msj.innerHTML = `⏳ Tu pago por <b>${usuario.servicio || 'Servicio'}</b> está <strong>Pendiente</strong>.`;
         }
     } else {
-        msj.innerHTML = `❌ No encontramos compras con este correo.`;
+        msj.innerHTML = `❌ No encontramos compras registradas con este dato.`;
     }
 });
 
+// INICIAR: Cargar catálogo
 cargarCatalogo();
