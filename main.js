@@ -5,7 +5,6 @@ const supabaseUrl = 'https://rhuhuvevynovfekwhlhb.supabase.co';
 const supabaseKey = 'sb_publishable_-8XCScnvNf6QXMsnbyJK9Q_XhrOr9j5';
 const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
 
-let serviciosData = []; 
 let productoSeleccionado = { nombre: '', precio: 0, meses: 1, tipo_ingreso: 'correo' };
 const numeroWhatsApp = "51928293163"; 
 
@@ -21,7 +20,6 @@ const otpBoxes = document.querySelectorAll('.otp-box');
 // 1. Función para descargar los datos de Supabase
 async function cargarCatalogo() {
     try {
-        // Seleccionamos todo, incluyendo las nuevas columnas 'categoria' e 'imagen_url'
         const { data: servicios, error } = await supabaseClient
             .from('servicios')
             .select('*')
@@ -29,10 +27,7 @@ async function cargarCatalogo() {
 
         if (error) throw error;
 
-        // Guardamos los datos en nuestra variable global
         catalogoGlobal = servicios;
-        
-        // Renderizamos todos los productos por defecto
         renderizarCatalogo(catalogoGlobal);
 
     } catch (error) {
@@ -53,12 +48,12 @@ function renderizarCatalogo(serviciosParaMostrar) {
     }
 
     serviciosParaMostrar.forEach(servicio => {
-        // Si no hay imagen en la BD, ponemos un fondo gris o una imagen por defecto
+        // Si no hay imagen en la BD, ponemos un fondo gris
         const imagenHtml = servicio.imagen_url 
             ? `<img src="${servicio.imagen_url}" class="card-img-top" alt="${servicio.nombre}">`
-            : `<div class="card-img-top" style="display:flex; align-items:center; justify-content:center; background:#e2e8f0; color:#64748b;">Sin imagen</div>`;
+            : `<div class="card-img-top" style="display:flex; align-items:center; justify-content:center; background:#e2e8f0; color:#64748b; font-size:12px;">Sin imagen</div>`;
 
-        // Construimos la tarjeta (respetando tus botones y modales originales)
+        // Construimos la tarjeta 
         const card = document.createElement('div');
         card.className = 'card';
         card.innerHTML = `
@@ -70,17 +65,53 @@ function renderizarCatalogo(serviciosParaMostrar) {
                 ${servicio.caracteristicas ? servicio.caracteristicas.split('\n').map(c => `<li>✔️ ${c}</li>`).join('') : '<li>✔️ Acceso garantizado</li>'}
             </ul>
             <div class="buttons">
-                <!-- Mantengo tu lógica exacta para abrir el modal de compra -->
-                <button class="btn-primary" onclick="abrirModalCompra('${servicio.nombre}', ${servicio.precio})">Comprar ahora</button>
+                <!-- Llamamos a la función prepararCompra enviando los datos del servicio -->
+                <button class="btn-primary" onclick='prepararCompra(${JSON.stringify(servicio).replace(/'/g, "&apos;")})'>Comprar ahora</button>
             </div>
         `;
         contenedor.appendChild(card);
     });
 }
 
+// NUEVA FUNCIÓN: Prepara el modal de compra con los datos de Supabase
+window.prepararCompra = function(servicio) {
+    // Asignamos los datos del servicio a la variable global
+    productoSeleccionado = {
+        nombre: servicio.nombre,
+        precio: parseFloat(servicio.precio),
+        meses: servicio.duracion === 'Pago Único' ? 0 : (parseInt(servicio.duracion) || 1),
+        // Si en tu BD tienes un campo "tipo_ingreso", puedes usarlo aquí. Si no, por defecto será 'correo'
+        tipo_ingreso: servicio.tipo_ingreso || 'correo' 
+    };
+    
+    let txtMeses = productoSeleccionado.meses == 0 ? "Pago Único" : (productoSeleccionado.meses == 1 ? "1 Mes" : `${productoSeleccionado.meses} Meses`);
+    
+    // Actualizamos el modal de Yape
+    document.getElementById('titulo-producto-modal').innerText = `Comprando: ${productoSeleccionado.nombre} (${txtMeses})`;
+    document.getElementById('texto-precio-yape').innerText = `S/ ${productoSeleccionado.precio.toFixed(2)}`;
+    document.getElementById('btn-confirmar-yape').innerText = `Confirmar Pago de S/ ${productoSeleccionado.precio.toFixed(2)}`;
+
+    // Ajustamos el input dependiendo de si pide número o correo
+    if (productoSeleccionado.tipo_ingreso === 'numero') {
+        inputDatoCompra.placeholder = "1. Escribe tu número de WhatsApp";
+        inputDatoCompra.type = "tel";
+        alertaDato.innerText = "⚠️ Ingresa tu número de WhatsApp primero.";
+    } else {
+        inputDatoCompra.placeholder = "1. Escribe el correo a vincular";
+        inputDatoCompra.type = "email";
+        alertaDato.innerText = "⚠️ Ingresa tu correo primero.";
+    }
+
+    // Mostramos el modal y limpiamos campos
+    modalCompra.classList.remove('oculto');
+    inputDatoCompra.value = ""; 
+    inputDatoCompra.style.borderColor = "#E5E7EB"; 
+    alertaDato.style.display = "none";
+    otpBoxes.forEach(box => box.value = ''); 
+};
+
 // 3. Función que se activa al hacer clic en las píldoras (Filtros)
 window.filtrarCategoria = function(categoriaSeleccionada) {
-    // Actualizar el estilo visual de los botones (píldoras)
     const botones = document.querySelectorAll('.category-filters .pill');
     botones.forEach(btn => {
         if(btn.innerText.trim() === categoriaSeleccionada) {
@@ -90,7 +121,6 @@ window.filtrarCategoria = function(categoriaSeleccionada) {
         }
     });
 
-    // Filtrar el catálogo global
     if (categoriaSeleccionada === 'Todos') {
         renderizarCatalogo(catalogoGlobal);
     } else {
@@ -101,7 +131,7 @@ window.filtrarCategoria = function(categoriaSeleccionada) {
     }
 };
 
-// 4. Lógica para la barra de búsqueda superior (Opcional, pero muy recomendado)
+// 4. Lógica para la barra de búsqueda superior
 document.addEventListener('DOMContentLoaded', () => {
     const buscador = document.querySelector('input[placeholder="Buscar servicios..."]');
     if(buscador) {
@@ -112,7 +142,6 @@ document.addEventListener('DOMContentLoaded', () => {
             );
             renderizarCatalogo(filtrados);
             
-            // Quitar la clase active de todas las píldoras al buscar por texto
             document.querySelectorAll('.category-filters .pill').forEach(btn => btn.classList.remove('active'));
         });
     }
@@ -122,35 +151,6 @@ document.addEventListener('DOMContentLoaded', () => {
 // DELEGACIÓN DE EVENTOS (CLICS INFALIBLES)
 // =====================================
 document.addEventListener('click', function(e) {
-    
-    // CLIC EN "OBTENERLO AHORA"
-    if (e.target && e.target.classList.contains('btn-obtener-dinamico')) {
-        const servIndex = e.target.getAttribute('data-index');
-        productoSeleccionado = serviciosData[servIndex].seleccion_actual;
-        
-        let txtMeses = productoSeleccionado.meses == 0 ? "Pago Único" : (productoSeleccionado.meses == 1 ? "1 Mes" : `${productoSeleccionado.meses} Meses`);
-        
-        document.getElementById('titulo-producto-modal').innerText = `Comprando: ${productoSeleccionado.nombre} (${txtMeses})`;
-        document.getElementById('texto-precio-yape').innerText = `S/ ${productoSeleccionado.precio.toFixed(2)}`;
-        document.getElementById('btn-confirmar-yape').innerText = `Confirmar Pago de S/ ${productoSeleccionado.precio.toFixed(2)}`;
-
-        if (productoSeleccionado.tipo_ingreso === 'numero') {
-            inputDatoCompra.placeholder = "1. Escribe tu número de WhatsApp";
-            inputDatoCompra.type = "tel";
-            alertaDato.innerText = "⚠️ Ingresa tu número de WhatsApp primero.";
-        } else {
-            inputDatoCompra.placeholder = "1. Escribe el correo a vincular";
-            inputDatoCompra.type = "email";
-            alertaDato.innerText = "⚠️ Ingresa tu correo primero.";
-        }
-
-        modalCompra.classList.remove('oculto');
-        inputDatoCompra.value = ""; 
-        inputDatoCompra.style.borderColor = "#E5E7EB"; 
-        alertaDato.style.display = "none";
-        otpBoxes.forEach(box => box.value = ''); 
-    }
-
     // CLIC EN "CONSULTAR MI SERVICIO"
     if (e.target && e.target.classList.contains('btn-consultar-dinamico')) {
         modalTiempo.classList.remove('oculto');
@@ -160,7 +160,7 @@ document.addEventListener('click', function(e) {
 });
 
 // =====================================
-// CERRAR MODALES Y LÓGICA DE CUADRITOS
+// CERRAR MODALES Y LÓGICA DE CUADRITOS YAPE
 // =====================================
 document.getElementById('cerrar-compra').addEventListener('click', () => modalCompra.classList.add('oculto'));
 document.getElementById('cerrar-tiempo').addEventListener('click', () => modalTiempo.classList.add('oculto'));
@@ -295,6 +295,11 @@ document.getElementById('btn-buscar-tiempo').addEventListener('click', async () 
         msj.innerHTML = `❌ No encontramos compras registradas con este dato.`;
     }
 });
+
+// FUNCIÓN MOSTRAR NOTIFICACIÓN (Añadida por si acaso no la tienes global)
+function mostrarNotificacion(mensaje) {
+    alert(mensaje); // Puedes cambiar esto por tu toast personalizado si tienes uno
+}
 
 // INICIAR: Cargar catálogo
 cargarCatalogo();
