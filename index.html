@@ -43,13 +43,21 @@
             </div>
         </section>
 
-        <!-- CATÁLOGO DINÁMICO -->
-        <section id="catalogo" class="catalog" style="flex-wrap: wrap; gap: 30px;">
-            <div id="contenedor-servicios" style="display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; width: 100%;">
-                <p style="color: var(--text-light); text-align: center; width: 100%;">Cargando el catálogo de servicios...</p>
-            </div>
-        </section>
-    </main>
+        <!-- FILTROS DE CATEGORÍAS -->
+<div class="category-filters" id="filtros-categorias">
+    <button class="pill active" onclick="filtrarCategoria('Todos')">Todos</button>
+    <button class="pill" onclick="filtrarCategoria('Streaming')">Streaming</button>
+    <button class="pill" onclick="filtrarCategoria('Seguros')">Seguros</button>
+    <button class="pill" onclick="filtrarCategoria('Software')">Software</button>
+</div>
+
+<!-- CATÁLOGO DINÁMICO -->
+<section id="catalogo" class="catalog">
+    <!-- El contenedor ahora usará CSS Grid -->
+    <div id="contenedor-servicios" class="grid-servicios">
+        <p style="color: var(--text-light); text-align: center; width: 100%; grid-column: 1 / -1;">Cargando el catálogo de servicios...</p>
+    </div>
+</section>
 
     <!-- VENTANA DE COMPRA -->
     <div id="modal-compra" class="modal oculto">
