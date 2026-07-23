@@ -183,3 +183,96 @@ button { padding: 14px 20px; border: none; border-radius: 12px; cursor: pointer;
     .modal-content { padding: 30px 20px; } 
     .float-whatsapp { width: 55px; height: 55px; bottom: 20px; right: 20px; font-size: 28px; }
 }
+/* =========================================
+   NUEVO DISEÑO DE CATÁLOGO (GRID Y MÓVIL)
+   ========================================= */
+
+/* Contenedor de Filtros */
+.category-filters {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    padding: 10px 5%;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+/* Nueva Cuadrícula (Grid) para el catálogo */
+.grid-servicios {
+    display: grid;
+    /* En PC: tarjetas de mínimo 280px, máximo lo que sobre */
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 25px;
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+/* Espacio para la futura imagen del producto */
+.card-img-top {
+    width: 100%;
+    height: 160px;
+    object-fit: cover;
+    border-radius: 16px;
+    margin-bottom: 15px;
+    background-color: #F3F4F6; /* Color de fondo mientras carga */
+}
+
+/* Ajustes para que la tarjeta se vea bien en Grid */
+.card {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 25px !important; /* Redujimos el padding para hacerla compacta */
+    display: flex;
+    flex-direction: column;
+}
+
+/* Empuja los botones hacia abajo si la tarjeta es muy alta */
+.card .buttons {
+    margin-top: auto; 
+}
+
+/* =========================================
+   ADAPTACIÓN EXCLUSIVA PARA CELULARES
+   ========================================= */
+@media (max-width: 600px) {
+    .grid-servicios {
+        /* ¡Magia! 2 columnas exactas en celulares */
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px; 
+    }
+    
+    .card {
+        padding: 15px !important;
+        border-radius: 16px;
+    }
+
+    .card-img-top {
+        height: 100px; /* Imagen más bajita en móvil */
+        border-radius: 10px;
+    }
+
+    .card h2 {
+        font-size: 16px !important; /* Letra más pequeña */
+        margin-bottom: 5px;
+    }
+
+    .card .price {
+        font-size: 22px !important; /* Precio más compacto */
+        margin-bottom: 15px !important;
+    }
+
+    .card .price span {
+        font-size: 12px !important;
+    }
+
+    /* Ocultamos temporalmente las características largas en móvil para no alargar la tarjeta */
+    .card .features {
+        display: none; 
+    }
+
+    .btn-primary, .btn-secondary {
+        padding: 10px !important;
+        font-size: 13px !important;
+    }
+}
