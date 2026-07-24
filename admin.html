@@ -25,12 +25,11 @@
         .stat-box h3 { margin: 0 0 5px 0; font-size: 28px; color: var(--primary); }
         .stat-box p { margin: 0; font-size: 13px; color: #6B7280; font-weight: bold; letter-spacing: 0.5px;}
 
-        /* FILTROS (Con diseño Premium para los Selects) */
+        /* FILTROS */
         .filtros-admin { display: flex; gap: 15px; margin-bottom: 30px; flex-wrap: wrap; align-items: center; background: #F9FAFB; padding: 15px; border-radius: 12px; border: 1px solid #E5E7EB;}
         .search-box { flex: 1; min-width: 250px; padding: 12px 15px; border: 2px solid #E5E7EB; border-radius: 8px; outline: none; transition: 0.3s;}
         .search-box:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(139, 61, 255, 0.15); }
         
-        /* MAGIA CSS PARA LOS MENÚS DESPLEGABLES */
         .filtro-select { 
             padding: 12px 35px 12px 15px; 
             border: 2px solid #E5E7EB; 
@@ -51,6 +50,8 @@
         .filtro-select:hover { border-color: #D1D5DB; }
         .filtro-select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(139, 61, 255, 0.15); }
         .filtro-select option { font-weight: 500; color: #1F2937; background: white; padding: 10px; }
+        /* Ajuste cuando el input es de texto (para la nueva categoría) */
+        input.filtro-select { background-image: none; padding-right: 15px; }
 
         table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px; }
         th, td { padding: 15px 12px; text-align: left; border-bottom: 1px solid #eee; }
@@ -165,7 +166,6 @@
             <h2 id="titulo-modal-servicio" style="margin-top:0; margin-bottom:20px; color: var(--primary);">Servicio</h2>
             <input type="hidden" id="serv-id">
             
-            <!-- NUEVO: Subida de Imagen -->
             <div class="input-group">
                 <label>Imagen del Producto (Opcional)</label>
                 <div class="upload-box">
@@ -181,16 +181,15 @@
 
             <div class="input-group"><label>Nombre del Servicio</label><input type="text" id="serv-nombre" placeholder="Ej: Canva Pro Edu"></div>
             
-            <!-- NUEVO: Categoría -->
             <div class="input-group" style="display: flex; gap: 15px;">
                 <div style="flex: 1;">
-                    <label>Categoría</label>
-                    <select id="serv-categoria" class="filtro-select" style="width: 100%;">
-                        <option value="Streaming">Streaming</option>
-                        <option value="Seguros">Seguros</option>
-                        <option value="Software">Software</option>
-                        <option value="Otros">Otros</option>
-                    </select>
+                    <label>Categoría (Crea una o elige)</label>
+                    <input type="text" id="serv-categoria" class="filtro-select" style="width: 100%; box-sizing: border-box;" placeholder="Ej: Streaming, Juegos..." list="opciones-categoria">
+                    <datalist id="opciones-categoria">
+                        <option value="Streaming"></option>
+                        <option value="Seguros"></option>
+                        <option value="Software"></option>
+                    </datalist>
                 </div>
                 <div style="flex: 1;">
                     <label>Dato a pedir al cliente</label>
@@ -406,7 +405,6 @@
                     return `<span style="background:#E5E7EB; padding:4px 8px; border-radius:6px; font-size:12px; font-weight:bold; color:#374151; display:inline-block; margin-bottom:5px;">${t} (S/ ${p.promo || p.precio})</span>`;
                 }).join(' ');
                 
-                // Mostrar un mini icono si tiene imagen
                 let imgIcon = serv.imagen_url ? '🖼️ ' : '';
                 let categoriaBadge = serv.categoria ? `<span style="background:#DBEAFE; color:#1E3A8A; padding:4px 8px; border-radius:6px; font-size:12px; font-weight:bold;">${serv.categoria}</span>` : '---';
 
@@ -443,14 +441,12 @@
             statusText.style.display = 'block';
             statusText.innerText = "Subiendo imagen...";
             statusText.style.color = "#F59E0B";
-            btnGuardar.disabled = true; // Desactivar botón mientras sube
+            btnGuardar.disabled = true; 
 
-            // Crear un nombre único para la imagen
             const fileExt = file.name.split('.').pop();
             const fileName = `${Math.random()}.${fileExt}`;
             const filePath = `${fileName}`;
 
-            // Subir a Supabase Storage (al bucket 'imagenes_servicios')
             const { error: uploadError } = await supabaseClient.storage
                 .from('imagenes_servicios')
                 .upload(filePath, file);
@@ -462,12 +458,10 @@
                 return;
             }
 
-            // Obtener la URL pública de la imagen
             const { data } = supabaseClient.storage
                 .from('imagenes_servicios')
                 .getPublicUrl(filePath);
 
-            // Guardar la URL en el input oculto y mostrarla
             document.getElementById('serv-imagen-url').value = data.publicUrl;
             preview.src = data.publicUrl;
             preview.style.display = 'inline-block';
@@ -480,12 +474,11 @@
         function abrirModalServicio() {
             document.getElementById('serv-id').value = ''; 
             document.getElementById('serv-nombre').value = ''; 
-            document.getElementById('serv-categoria').value = 'Streaming'; 
+            document.getElementById('serv-categoria').value = ''; 
             document.getElementById('serv-tipo-ingreso').value = 'correo'; 
             document.getElementById('serv-etiqueta').value = ''; 
             document.getElementById('serv-caracteristicas').value = '';
             
-            // Limpiar imagen
             document.getElementById('serv-imagen-url').value = '';
             document.getElementById('serv-imagen-file').value = '';
             document.getElementById('serv-imagen-preview').style.display = 'none';
@@ -500,12 +493,11 @@
         function editarServicio(serv) {
             document.getElementById('serv-id').value = serv.id; 
             document.getElementById('serv-nombre').value = serv.nombre; 
-            document.getElementById('serv-categoria').value = serv.categoria || 'Streaming'; 
+            document.getElementById('serv-categoria').value = serv.categoria || ''; 
             document.getElementById('serv-tipo-ingreso').value = serv.tipo_ingreso || 'correo'; 
             document.getElementById('serv-etiqueta').value = serv.etiqueta || ''; 
             document.getElementById('serv-caracteristicas').value = serv.caracteristicas || '';
             
-            // Cargar imagen si tiene
             if (serv.imagen_url) {
                 document.getElementById('serv-imagen-url').value = serv.imagen_url;
                 document.getElementById('serv-imagen-preview').src = serv.imagen_url;
@@ -532,7 +524,9 @@
         async function guardarServicio() {
             let id = document.getElementById('serv-id').value;
             let nombre = document.getElementById('serv-nombre').value.trim();
-            let categoria = document.getElementById('serv-categoria').value;
+            // Capitalizamos la primera letra de la categoría para que siempre se vea bien
+            let categoriaInput = document.getElementById('serv-categoria').value.trim();
+            let categoria = categoriaInput ? categoriaInput.charAt(0).toUpperCase() + categoriaInput.slice(1).toLowerCase() : null;
             let tipoIngreso = document.getElementById('serv-tipo-ingreso').value;
             let imagenUrl = document.getElementById('serv-imagen-url').value;
             
@@ -544,7 +538,7 @@
                 if(m >= 0 && !isNaN(p)) planesGuardar.push({ meses: m, precio: p, promo: isNaN(pr) ? null : pr });
             });
 
-            if(!nombre || planesGuardar.length === 0) return alert("Faltan datos. El servicio necesita nombre y al menos 1 precio normal.");
+            if(!nombre || !categoria || planesGuardar.length === 0) return alert("Faltan datos. El servicio necesita nombre, categoría y al menos 1 precio normal.");
 
             const datos = { 
                 nombre: nombre, 
