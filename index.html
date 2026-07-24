@@ -59,7 +59,34 @@
     </div>
 </section>
 
-    <!-- VENTANA DE COMPRA -->
+    <!-- MODAL DETALLES DEL PRODUCTO -->
+    <div id="modal-detalles" class="modal oculto">
+        <div class="modal-content" style="max-width: 450px; text-align: center; padding: 30px;">
+            <span class="cerrar-modal" id="cerrar-detalles">&times;</span>
+            
+            <img id="detalles-imagen" src="" alt="Producto" style="width: 150px; height: 150px; object-fit: cover; border-radius: 16px; margin: 0 auto 20px auto; display: block; box-shadow: 0 10px 20px rgba(0,0,0,0.1);">
+            
+            <div id="detalles-badge" class="badge" style="display: inline-block; margin-bottom: 15px;"></div>
+            
+            <h2 id="detalles-titulo" style="margin: 0 0 10px 0; color: var(--text);">Nombre Producto</h2>
+            
+            <div id="detalles-precio-box" style="margin-bottom: 20px;">
+                <!-- Aquí se insertará el precio con descuento dinámicamente -->
+            </div>
+            
+            <div style="background: #F9FAFB; padding: 15px; border-radius: 12px; text-align: left; margin-bottom: 25px;">
+                <h3 style="font-size: 14px; color: #6B7280; margin-top: 0; margin-bottom: 10px;">¿Qué incluye?</h3>
+                <ul id="detalles-caracteristicas" class="features" style="margin: 0; padding-left: 0; list-style: none;">
+                    <!-- Aquí van las características -->
+                </ul>
+            </div>
+            
+            <div id="detalles-btn-comprar">
+                <!-- Aquí se insertará el botón de compra -->
+            </div>
+        </div>
+    </div>
+        <!-- VENTANA DE COMPRA -->
     <div id="modal-compra" class="modal oculto">
         <div class="modal-content">
             <span class="cerrar" id="cerrar-compra">&times;</span>
