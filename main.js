@@ -28,6 +28,10 @@ async function cargarCatalogo() {
         if (error) throw error;
 
         catalogoGlobal = servicios;
+        
+        // Generar los botones de categorías dinámicamente
+        generarBotonesCategorias(catalogoGlobal);
+        
         renderizarCatalogo(catalogoGlobal);
 
     } catch (error) {
@@ -35,6 +39,25 @@ async function cargarCatalogo() {
         document.getElementById('contenedor-servicios').innerHTML = 
             '<p style="color: red; text-align: center; grid-column: 1/-1;">Error al cargar los servicios.</p>';
     }
+}
+
+// NUEVA FUNCIÓN: Crea los botones de filtro automáticamente
+function generarBotonesCategorias(servicios) {
+    const contenedorFiltros = document.getElementById('filtros-categorias');
+    if (!contenedorFiltros) return;
+
+    // Extraer las categorías de la BD sin repetirlas y quitar las que estén vacías
+    const categoriasUnicas = [...new Set(servicios.map(s => s.categoria).filter(Boolean))];
+
+    // Crear el botón de "Todos" por defecto
+    let html = `<button class="pill active" onclick="filtrarCategoria('Todos')">Todos</button>`;
+    
+    // Crear un botón por cada categoría que exista
+    categoriasUnicas.forEach(cat => {
+        html += `<button class="pill" onclick="filtrarCategoria('${cat}')">${cat}</button>`;
+    });
+
+    contenedorFiltros.innerHTML = html;
 }
 
 // 2. Función para dibujar las tarjetas en el HTML
@@ -51,14 +74,14 @@ function renderizarCatalogo(serviciosParaMostrar) {
         // Si no hay imagen en la BD, ponemos un fondo gris
         const imagenHtml = servicio.imagen_url 
             ? `<img src="${servicio.imagen_url}" class="card-img-top" alt="${servicio.nombre}">`
-            : `<div class="card-img-top" style="display:flex; align-items:center; justify-content:center; background:#e2e8f0; color:#64748b; font-size:12px;">Sin imagen</div>`;
+            : `<div class="card-img-top" style="display:flex; align-items:center; justify-content:center; background:#e2e8f0; color:#64748b; font-size:12px; height: 160px; border-radius: 16px; margin-bottom: 15px;">Sin imagen</div>`;
 
         // Construimos la tarjeta 
         const card = document.createElement('div');
         card.className = 'card';
         card.innerHTML = `
             ${imagenHtml}
-            <div class="badge">${servicio.etiqueta || 'Estándar'}</div>
+            ${servicio.etiqueta ? `<div class="badge">${servicio.etiqueta}</div>` : ''}
             <h2>${servicio.nombre}</h2>
             <div class="price">S/ ${servicio.precio} <span>/ ${servicio.duracion || 'Mes'}</span></div>
             <ul class="features">
@@ -80,7 +103,6 @@ window.prepararCompra = function(servicio) {
         nombre: servicio.nombre,
         precio: parseFloat(servicio.precio),
         meses: servicio.duracion === 'Pago Único' ? 0 : (parseInt(servicio.duracion) || 1),
-        // Si en tu BD tienes un campo "tipo_ingreso", puedes usarlo aquí. Si no, por defecto será 'correo'
         tipo_ingreso: servicio.tipo_ingreso || 'correo' 
     };
     
@@ -296,9 +318,9 @@ document.getElementById('btn-buscar-tiempo').addEventListener('click', async () 
     }
 });
 
-// FUNCIÓN MOSTRAR NOTIFICACIÓN (Añadida por si acaso no la tienes global)
+// FUNCIÓN MOSTRAR NOTIFICACIÓN
 function mostrarNotificacion(mensaje) {
-    alert(mensaje); // Puedes cambiar esto por tu toast personalizado si tienes uno
+    alert(mensaje); 
 }
 
 // INICIAR: Cargar catálogo
