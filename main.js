@@ -50,7 +50,7 @@ function generarBotonesCategorias(servicios) {
     contenedorFiltros.innerHTML = html;
 }
 
-// 2. FUNCIÓN DE TARJETAS MINIMALISTAS (Oculta la lista y muestra ofertas)
+// 2. FUNCIÓN DE TARJETAS MINIMALISTAS (Precios compactos en 1 línea)
 function renderizarCatalogo(serviciosParaMostrar) {
     const contenedor = document.getElementById('contenedor-servicios');
     contenedor.innerHTML = ''; 
@@ -61,15 +61,15 @@ function renderizarCatalogo(serviciosParaMostrar) {
     }
 
     serviciosParaMostrar.forEach(servicio => {
-        // Lógica de Precios (Normal vs Oferta)
+        // Lógica de Precios (Normal vs Oferta) en una sola línea
         let precioNormal = parseFloat(servicio.precio);
         let precioOferta = servicio.precio_promocional ? parseFloat(servicio.precio_promocional) : null;
         
         let htmlPrecio = '';
         if (precioOferta && precioOferta < precioNormal) {
-            htmlPrecio = `<span class="precio-tachado">S/ ${precioNormal.toFixed(2)}</span><br><span class="precio-oferta">S/ ${precioOferta.toFixed(2)}</span> <span style="font-size:12px; color:#6B7280;">/ ${servicio.duracion || 'Mes'}</span>`;
+            htmlPrecio = `<span class="precio-tachado">S/ ${precioNormal.toFixed(2)}</span> <span class="precio-oferta" style="font-size: 22px;">S/ ${precioOferta.toFixed(2)}</span> <span style="font-size:12px; color:#6B7280;">/ ${servicio.duracion || 'Mes'}</span>`;
         } else {
-            htmlPrecio = `S/ ${precioNormal.toFixed(2)} <span style="font-size:12px; color:#6B7280;">/ ${servicio.duracion || 'Mes'}</span>`;
+            htmlPrecio = `<span style="font-size: 22px; font-weight: 800; color: var(--text-dark);">S/ ${precioNormal.toFixed(2)}</span> <span style="font-size:12px; color:#6B7280;">/ ${servicio.duracion || 'Mes'}</span>`;
         }
 
         const servicioJSON = JSON.stringify(servicio).replace(/'/g, "&apos;");
@@ -147,7 +147,7 @@ document.getElementById('cerrar-detalles').addEventListener('click', () => {
 });
 
 // =====================================
-// RESTO DEL CÓDIGO (No modificado)
+// RESTO DEL CÓDIGO (Lógica de compras)
 // =====================================
 window.prepararCompra = function(servicio) {
     productoSeleccionado = {
