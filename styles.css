@@ -276,3 +276,67 @@ button { padding: 14px 20px; border: none; border-radius: 12px; cursor: pointer;
         font-size: 13px !important;
     }
 }
+/* =========================================
+   MEJORAS VISUALES (IMÁGENES Y PRECIOS)
+   ========================================= */
+
+/* Imágenes cuadradas perfectas (1:1) */
+.card-img-top {
+    width: 100%;
+    aspect-ratio: 1 / 1; /* Fuerza a que sea un cuadrado perfecto */
+    height: auto;
+    object-fit: cover;
+    border-radius: 12px;
+    margin-bottom: 15px;
+    background-color: #F3F4F6;
+    cursor: pointer; /* Indica que se puede hacer clic */
+    transition: transform 0.3s;
+}
+
+.card-img-top:hover {
+    transform: scale(1.03); /* Pequeño zoom al pasar el mouse */
+}
+
+/* Estilos para el precio con descuento */
+.precio-tachado {
+    font-size: 14px;
+    color: #9CA3AF;
+    text-decoration: line-through;
+    margin-right: 8px;
+    font-weight: normal;
+}
+
+.precio-oferta {
+    color: #10B981; /* Verde esmeralda para resaltar la oferta */
+    font-size: 24px;
+    font-weight: bold;
+}
+
+/* Contenedor de botones minimalista en la tarjeta */
+.card-botones-mini {
+    display: flex;
+    gap: 10px;
+    margin-top: 15px;
+}
+
+.btn-detalles {
+    flex: 1;
+    background: #F3F4F6;
+    color: #4B5563;
+    border: none;
+    padding: 10px;
+    border-radius: 8px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.btn-detalles:hover {
+    background: #E5E7EB;
+}
+
+.card-botones-mini .btn-primary {
+    flex: 1;
+    padding: 10px;
+    font-size: 14px;
+}
