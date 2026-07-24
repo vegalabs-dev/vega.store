@@ -60,10 +60,10 @@ function generarBotonesCategorias(servicios) {
     contenedorFiltros.innerHTML = html;
 }
 
-// 2. Función para dibujar las tarjetas en el HTML
+// 2. Función para dibujar las tarjetas en el HTML (VERSIÓN MINIMALISTA)
 function renderizarCatalogo(serviciosParaMostrar) {
     const contenedor = document.getElementById('contenedor-servicios');
-    contenedor.innerHTML = ''; // Limpiamos el contenedor
+    contenedor.innerHTML = ''; 
 
     if (serviciosParaMostrar.length === 0) {
         contenedor.innerHTML = '<p style="text-align: center; grid-column: 1/-1; color: var(--text-light);">No se encontraron servicios en esta categoría.</p>';
@@ -71,67 +71,88 @@ function renderizarCatalogo(serviciosParaMostrar) {
     }
 
     serviciosParaMostrar.forEach(servicio => {
-        // Si no hay imagen en la BD, ponemos un fondo gris
-        const imagenHtml = servicio.imagen_url 
-            ? `<img src="${servicio.imagen_url}" class="card-img-top" alt="${servicio.nombre}">`
-            : `<div class="card-img-top" style="display:flex; align-items:center; justify-content:center; background:#e2e8f0; color:#64748b; font-size:12px; height: 160px; border-radius: 16px; margin-bottom: 15px;">Sin imagen</div>`;
+        // Lógica de Precios (Normal vs Oferta)
+        let precioNormal = parseFloat(servicio.precio);
+        let precioOferta = servicio.precio_promocional ? parseFloat(servicio.precio_promocional) : null;
+        
+        let htmlPrecio = '';
+        if (precioOferta && precioOferta < precioNormal) {
+            htmlPrecio = `<span class="precio-tachado">S/ ${precioNormal.toFixed(2)}</span><br><span class="precio-oferta">S/ ${precioOferta.toFixed(2)}</span> <span style="font-size:12px; color:#6B7280;">/ ${servicio.duracion || 'Mes'}</span>`;
+        } else {
+            htmlPrecio = `S/ ${precioNormal.toFixed(2)} <span style="font-size:12px; color:#6B7280;">/ ${servicio.duracion || 'Mes'}</span>`;
+        }
 
-        // Construimos la tarjeta 
+        // Lógica de Imagen (Clickeable)
+        const servicioJSON = JSON.stringify(servicio).replace(/'/g, "&apos;");
+        const imagenHtml = servicio.imagen_url 
+            ? `<img src="${servicio.imagen_url}" class="card-img-top" alt="${servicio.nombre}" onclick='abrirModalDetalles(${servicioJSON})'>`
+            : `<div class="card-img-top" style="display:flex; align-items:center; justify-content:center; color:#64748b; font-size:12px;" onclick='abrirModalDetalles(${servicioJSON})'>Sin imagen</div>`;
+
+        // Construimos la tarjeta minimalista
         const card = document.createElement('div');
         card.className = 'card';
         card.innerHTML = `
             ${imagenHtml}
             ${servicio.etiqueta ? `<div class="badge">${servicio.etiqueta}</div>` : ''}
-            <h2>${servicio.nombre}</h2>
-            <div class="price">S/ ${servicio.precio} <span>/ ${servicio.duracion || 'Mes'}</span></div>
-            <ul class="features">
-                ${servicio.caracteristicas ? servicio.caracteristicas.split('\n').map(c => `<li>✔️ ${c}</li>`).join('') : '<li>✔️ Acceso garantizado</li>'}
-            </ul>
-            <div class="buttons">
-                <!-- Llamamos a la función prepararCompra enviando los datos del servicio -->
-                <button class="btn-primary" onclick='prepararCompra(${JSON.stringify(servicio).replace(/'/g, "&apos;")})'>Comprar ahora</button>
+            <h2 style="font-size: 18px; margin-bottom: 5px;">${servicio.nombre}</h2>
+            <div class="price" style="margin-bottom: 0;">${htmlPrecio}</div>
+            
+            <div class="card-botones-mini">
+                <button class="btn-detalles" onclick='abrirModalDetalles(${servicioJSON})'>Detalles</button>
+                <button class="btn-primary" onclick='prepararCompra(${servicioJSON})'>Comprar</button>
             </div>
         `;
         contenedor.appendChild(card);
     });
 }
 
-// NUEVA FUNCIÓN: Prepara el modal de compra con los datos de Supabase
-window.prepararCompra = function(servicio) {
-    // Asignamos los datos del servicio a la variable global
-    productoSeleccionado = {
-        nombre: servicio.nombre,
-        precio: parseFloat(servicio.precio),
-        meses: servicio.duracion === 'Pago Único' ? 0 : (parseInt(servicio.duracion) || 1),
-        tipo_ingreso: servicio.tipo_ingreso || 'correo' 
-    };
+// NUEVA FUNCIÓN: Abrir el modal de Detalles
+window.abrirModalDetalles = function(servicio) {
+    const modal = document.getElementById('modal-detalles');
     
-    let txtMeses = productoSeleccionado.meses == 0 ? "Pago Único" : (productoSeleccionado.meses == 1 ? "1 Mes" : `${productoSeleccionado.meses} Meses`);
+    // Llenar datos
+    const img = document.getElementById('detalles-imagen');
+    if(servicio.imagen_url) { img.src = servicio.imagen_url; img.style.display = 'block'; } 
+    else { img.style.display = 'none'; }
     
-    // Actualizamos el modal de Yape
-    document.getElementById('titulo-producto-modal').innerText = `Comprando: ${productoSeleccionado.nombre} (${txtMeses})`;
-    document.getElementById('texto-precio-yape').innerText = `S/ ${productoSeleccionado.precio.toFixed(2)}`;
-    document.getElementById('btn-confirmar-yape').innerText = `Confirmar Pago de S/ ${productoSeleccionado.precio.toFixed(2)}`;
-
-    // Ajustamos el input dependiendo de si pide número o correo
-    if (productoSeleccionado.tipo_ingreso === 'numero') {
-        inputDatoCompra.placeholder = "1. Escribe tu número de WhatsApp";
-        inputDatoCompra.type = "tel";
-        alertaDato.innerText = "⚠️ Ingresa tu número de WhatsApp primero.";
+    const badge = document.getElementById('detalles-badge');
+    if(servicio.etiqueta) { badge.innerText = servicio.etiqueta; badge.style.display = 'inline-block'; } 
+    else { badge.style.display = 'none'; }
+    
+    document.getElementById('detalles-titulo').innerText = servicio.nombre;
+    
+    // Calcular precios para el modal
+    let precioNormal = parseFloat(servicio.precio);
+    let precioOferta = servicio.precio_promocional ? parseFloat(servicio.precio_promocional) : null;
+    let htmlPrecio = '';
+    
+    if (precioOferta && precioOferta < precioNormal) {
+        htmlPrecio = `<span class="precio-tachado">S/ ${precioNormal.toFixed(2)}</span> <span class="precio-oferta">S/ ${precioOferta.toFixed(2)}</span> <span style="font-size:14px; color:#6B7280;">/ ${servicio.duracion || 'Mes'}</span>`;
     } else {
-        inputDatoCompra.placeholder = "1. Escribe el correo a vincular";
-        inputDatoCompra.type = "email";
-        alertaDato.innerText = "⚠️ Ingresa tu correo primero.";
+        htmlPrecio = `<span style="font-size: 24px; font-weight: bold; color: var(--primary);">S/ ${precioNormal.toFixed(2)}</span> <span style="font-size:14px; color:#6B7280;">/ ${servicio.duracion || 'Mes'}</span>`;
     }
-
-    // Mostramos el modal y limpiamos campos
-    modalCompra.classList.remove('oculto');
-    inputDatoCompra.value = ""; 
-    inputDatoCompra.style.borderColor = "#E5E7EB"; 
-    alertaDato.style.display = "none";
-    otpBoxes.forEach(box => box.value = ''); 
+    document.getElementById('detalles-precio-box').innerHTML = htmlPrecio;
+    
+    // Llenar características
+    const listaCaract = document.getElementById('detalles-caracteristicas');
+    if(servicio.caracteristicas) {
+        listaCaract.innerHTML = servicio.caracteristicas.split('\n').map(c => `<li style="margin-bottom: 8px;">✔️ ${c}</li>`).join('');
+    } else {
+        listaCaract.innerHTML = '<li>✔️ Acceso garantizado y soporte.</li>';
+    }
+    
+    // Botón comprar
+    const servicioJSON = JSON.stringify(servicio).replace(/'/g, "&apos;");
+    document.getElementById('detalles-btn-comprar').innerHTML = `<button class="btn-primary" style="width: 100%; padding: 15px; font-size: 16px;" onclick='document.getElementById("modal-detalles").classList.add("oculto"); prepararCompra(${servicioJSON});'>Comprar ahora</button>`;
+    
+    // Mostrar modal
+    modal.classList.remove('oculto');
 };
 
+// Cerrar el modal de detalles
+document.getElementById('cerrar-detalles').addEventListener('click', () => {
+    document.getElementById('modal-detalles').classList.add('oculto');
+});
 // 3. Función que se activa al hacer clic en las píldoras (Filtros)
 window.filtrarCategoria = function(categoriaSeleccionada) {
     const botones = document.querySelectorAll('.category-filters .pill');
