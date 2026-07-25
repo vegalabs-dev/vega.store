@@ -50,64 +50,58 @@ function formatTiempo(cantidad, unidad) {
     return `${cantidad} ${u}`;
 }
 
-// 2. RENDERIZAR TARJETAS EN EL HTML (Diseño Ordenado y con Etiquetas de Planes)
+// =====================================
+// RENDERIZAR TARJETAS (Interactividad de Planes en la Tarjeta Principal)
+// =====================================
 function renderizarCatalogo(serviciosParaMostrar) {
     const contenedor = document.getElementById('contenedor-servicios');
     contenedor.innerHTML = ''; 
     if (serviciosParaMostrar.length === 0) { contenedor.innerHTML = '<p style="text-align: center; grid-column: 1/-1; color: var(--text-light);">No hay servicios aquí.</p>'; return; }
 
-    serviciosParaMostrar.forEach(servicio => {
+    serviciosParaMostrar.forEach((servicio, indexServicio) => {
         let planes = servicio.planes || [];
         if (planes.length === 0) planes = [{ cantidad: servicio.meses || 1, unidad: 'meses', precio: servicio.precio, promo: servicio.precio_promocional }];
 
-        // Ordenamos los planes para mostrar el más barato como "Desde"
+        // Ordenamos los planes por precio de menor a mayor
         let planesOrdenados = [...planes].sort((a, b) => {
             let pA = a.promo ? parseFloat(a.promo) : parseFloat(a.precio);
             let pB = b.promo ? parseFloat(b.promo) : parseFloat(b.precio);
             return pA - pB;
         });
         
-        let planBase = planesOrdenados[0];
-        if(planBase.cantidad === undefined) planBase.cantidad = planBase.meses !== undefined ? planBase.meses : 1;
-        if(!planBase.unidad) planBase.unidad = 'meses';
+        // Función interna para generar el HTML del precio sin textos extra ("Desde", "por 1 mes")
+        const generarHtmlPrecioLimpio = (plan) => {
+            let precioNormal = parseFloat(plan.precio);
+            let precioOferta = plan.promo ? parseFloat(plan.promo) : null;
+            
+            if (precioOferta && precioOferta < precioNormal) {
+                return `
+                    <div style="display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;">
+                        <span style="font-size: 26px; color: #10B981; font-weight: 800; line-height: 1;">S/ ${precioOferta.toFixed(2)}</span>
+                        <span style="font-size: 14px; color: #9CA3AF; text-decoration: line-through;">S/ ${precioNormal.toFixed(2)}</span>
+                    </div>
+                `;
+            } else {
+                return `
+                    <div style="display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;">
+                        <span style="font-size: 26px; font-weight: 800; color: var(--text-dark); line-height: 1;">S/ ${precioNormal.toFixed(2)}</span>
+                    </div>
+                `;
+            }
+        };
 
-        let precioNormal = parseFloat(planBase.precio);
-        let precioOferta = planBase.promo ? parseFloat(planBase.promo) : null;
-        let txtTiempo = planBase.cantidad == 0 ? "Permanente" : formatTiempo(planBase.cantidad, planBase.unidad);
-        
-        // 1. Crear las "Píldoras" de los planes disponibles para mostrar en la tarjeta
-        let htmlPlanesDisponibles = '';
-        if (planes.length > 1) {
-            let pills = planes.map(p => {
+        // 1. Crear los botones de los planes interactivos
+        let htmlPlanesInteractivos = '';
+        if (planesOrdenados.length > 1) {
+            let pills = planesOrdenados.map((p, indexPlan) => {
                 let c = p.cantidad !== undefined ? p.cantidad : (p.meses !== undefined ? p.meses : 1);
                 let u = p.unidad || 'meses';
                 let t = c == 0 ? 'Único' : formatTiempo(c, u);
-                return `<span style="background: #F3F4F6; color: #4B5563; padding: 3px 8px; border-radius: 6px; font-size: 11px; font-weight: bold; border: 1px solid #E5E7EB;">${t}</span>`;
+                // El primer plan aparece seleccionado por defecto (fondo oscuro)
+                let activeStyle = indexPlan === 0 ? 'background: #111827; color: white; border: 1px solid #111827;' : 'background: #F9FAFB; color: #6B7280; border: 1px solid #E5E7EB;';
+                return `<button class="btn-plan-tarjeta" data-servicio="${indexServicio}" data-plan="${indexPlan}" style="padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: bold; cursor: pointer; transition: 0.2s; ${activeStyle}">${t}</button>`;
             }).join('');
-            htmlPlanesDisponibles = `<div style="display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 10px;">${pills}</div>`;
-        }
-
-        // 2. Crear el HTML del precio apilado de forma elegante
-        let prefix = planes.length > 1 ? `<div style="font-size: 11px; color: var(--text-light); text-transform: uppercase; font-weight: bold; margin-bottom: 2px;">Desde</div>` : '';
-        let htmlPrecio = '';
-        
-        if (precioOferta && precioOferta < precioNormal) {
-            htmlPrecio = `
-                ${prefix}
-                <div style="display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;">
-                    <span style="font-size: 24px; color: #10B981; font-weight: 800; line-height: 1;">S/ ${precioOferta.toFixed(2)}</span>
-                    <span style="font-size: 13px; color: #9CA3AF; text-decoration: line-through;">S/ ${precioNormal.toFixed(2)}</span>
-                </div>
-                <div style="font-size: 12px; color: #6B7280; margin-top: 4px;">por ${txtTiempo}</div>
-            `;
-        } else {
-            htmlPrecio = `
-                ${prefix}
-                <div style="display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;">
-                    <span style="font-size: 24px; font-weight: 800; color: var(--text-dark); line-height: 1;">S/ ${precioNormal.toFixed(2)}</span>
-                </div>
-                <div style="font-size: 12px; color: #6B7280; margin-top: 4px;">por ${txtTiempo}</div>
-            `;
+            htmlPlanesInteractivos = `<div style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 15px;" id="contenedor-planes-${indexServicio}">${pills}</div>`;
         }
 
         const servicioJSON = JSON.stringify(servicio).replace(/'/g, "&apos;");
@@ -121,18 +115,51 @@ function renderizarCatalogo(serviciosParaMostrar) {
             ${imagenHtml}
             ${servicio.etiqueta ? `<div class="badge" style="position: absolute; top: -15px; right: 20px; background: var(--primary-gradient); color: white; padding: 6px 16px; border-radius: 20px; font-size: 13px; font-weight: 700;">${servicio.etiqueta}</div>` : ''}
             <div style="font-size: 12px; color: #6B7280; margin-bottom: 5px; font-weight: bold; text-transform: uppercase;">${servicio.categoria || 'Servicio'}</div>
-            <h2 style="font-size: 18px; margin-bottom: 10px; line-height: 1.2;">${servicio.nombre}</h2>
+            <h2 style="font-size: 18px; margin-bottom: 12px; line-height: 1.2;">${servicio.nombre}</h2>
             
-            ${htmlPlanesDisponibles}
+            ${htmlPlanesInteractivos}
             
-            <div class="price" style="margin-bottom: 15px;">${htmlPrecio}</div>
+            <div class="price" id="precio-tarjeta-${indexServicio}" style="margin-bottom: 15px;">${generarHtmlPrecioLimpio(planesOrdenados[0])}</div>
             
             <div class="card-botones-mini" style="display: flex; gap: 8px; margin-top: auto;">
                 <button class="btn-detalles" style="flex: 1; background: #F3F4F6; color: #4B5563; border: none; padding: 10px 5px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 13px;" onclick='abrirModalDetalles(${servicioJSON})'>Detalles</button>
-                <button class="btn-primary" style="flex: 1; padding: 10px 5px; font-size: 13px;" onclick='abrirModalDetalles(${servicioJSON})'>Comprar</button>
+                <button class="btn-primary" id="btn-comprar-tarjeta-${indexServicio}" style="flex: 1; padding: 10px 5px; font-size: 13px;">Comprar</button>
             </div>
         `;
         contenedor.appendChild(card);
+
+        // AGREGAR INTERACTIVIDAD A LA TARJETA
+        // 1. Botón comprar por defecto (apunta al plan 0)
+        let btnComprar = card.querySelector(`#btn-comprar-tarjeta-${indexServicio}`);
+        btnComprar.onclick = () => {
+            let planBaseToBuy = { ...servicio, ...planesOrdenados[0], nombre: servicio.nombre, tipo_ingreso: servicio.tipo_ingreso };
+            prepararCompra(planBaseToBuy);
+        };
+
+        // 2. Lógica de los botones de planes
+        if (planesOrdenados.length > 1) {
+            const botonesPlanes = card.querySelectorAll(`.btn-plan-tarjeta`);
+            botonesPlanes.forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    // Resetear estilos de los botones de esta tarjeta
+                    botonesPlanes.forEach(b => { b.style.background = '#F9FAFB'; b.style.color = '#6B7280'; b.style.border = '1px solid #E5E7EB'; });
+                    // Poner oscuro el seleccionado
+                    e.target.style.background = '#111827'; e.target.style.color = 'white'; e.target.style.border = '1px solid #111827';
+                    
+                    let idxPlan = e.target.getAttribute('data-plan');
+                    let planElegido = planesOrdenados[idxPlan];
+                    
+                    // Actualizar el precio visualmente
+                    document.getElementById(`precio-tarjeta-${indexServicio}`).innerHTML = generarHtmlPrecioLimpio(planElegido);
+                    
+                    // Actualizar la acción del botón comprar
+                    btnComprar.onclick = () => {
+                        let planToBuy = { ...servicio, ...planElegido, nombre: servicio.nombre, tipo_ingreso: servicio.tipo_ingreso };
+                        prepararCompra(planToBuy);
+                    };
+                });
+            });
+        }
     });
 }
 
@@ -142,11 +169,17 @@ window.abrirModalDetalles = function(servicio) {
     
     let planes = servicio.planes || [];
     if (planes.length === 0) planes = [{ cantidad: 1, unidad: 'meses', precio: servicio.precio, promo: servicio.precio_promocional }];
+    
+    // Ordenamos igual que en la tarjeta
     planes = planes.map(p => ({
         cantidad: p.cantidad !== undefined ? p.cantidad : (p.meses !== undefined ? p.meses : 1),
         unidad: p.unidad || 'meses',
         precio: p.precio, promo: p.promo
-    }));
+    })).sort((a, b) => {
+        let pA = a.promo ? parseFloat(a.promo) : parseFloat(a.precio);
+        let pB = b.promo ? parseFloat(b.promo) : parseFloat(b.precio);
+        return pA - pB;
+    });
 
     const img = document.getElementById('detalles-imagen');
     if(servicio.imagen_url) { img.src = servicio.imagen_url; img.style.display = 'block'; } else { img.style.display = 'none'; }
@@ -159,6 +192,7 @@ window.abrirModalDetalles = function(servicio) {
     
     document.getElementById('detalles-titulo').innerText = servicio.nombre;
     
+    // En el modal sí mostramos el "por 1 Mes" porque hay más espacio
     const renderPrecioModal = (plan) => {
         let pNorm = parseFloat(plan.precio);
         let pOfe = plan.promo ? parseFloat(plan.promo) : null;
