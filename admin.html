@@ -160,10 +160,10 @@
                     </datalist>
                 </div>
                 <div style="flex: 1;">
-                    <label>Dato a pedir al cliente</label>
+                    <label>¿Qué pedir al cliente?</label>
                     <select id="serv-tipo-ingreso" class="filtro-select" style="width: 100%;">
-                        <option value="correo">Correo Electrónico</option>
-                        <option value="numero">Número de WhatsApp</option>
+                        <option value="numero">Solo Número (Más rápido)</option>
+                        <option value="correo">Pedir Correo Electrónico</option>
                     </select>
                 </div>
             </div>
@@ -277,15 +277,21 @@
                 let badge = user.estado === 'Pendiente' ? 'badge-pendiente' : 'badge-activo';
                 let btn = user.estado === 'Pendiente' ? `<button class="btn-aprobar" onclick="aprobarPago(${user.id})">Aprobar</button>` : `<span style="color:#059669; font-weight:bold;">✔️ Activo</span>`;
                 
-                // Formateo del tiempo para la tabla de admin
                 let tiempoTxt = user.meses == 0 ? "Pago Único" : `${user.meses || 1} ${user.unidad || 'Meses'}`;
                 let fechaFinShow = user.fecha_fin ? user.fecha_fin : (user.meses == 0 ? '<strong style="color:var(--primary)">Permanente</strong>' : '---');
 
-                let esCorreo = user.correo.includes('@');
                 let msjContacto = encodeURIComponent(`Hola! Te escribo de VegaStore. Tu servicio de ${user.servicio || 'Canva'} está ${user.estado}.`);
-                let btnContacto = esCorreo 
-                    ? `<a href="mailto:${user.correo}?subject=Tu Suscripción en VegaStore&body=${msjContacto}" class="btn-copiar" target="_blank">✉️</a>`
-                    : `<a href="https://wa.me/${user.correo.replace(/\D/g,'')}?text=${msjContacto}" class="btn-copiar" target="_blank">💬</a>`;
+                let btnContacto = '';
+                
+                // Si el dato es "Extraer de WhatsApp", mostramos un aviso rojo
+                if (user.correo === 'Extraer de WhatsApp') {
+                    btnContacto = `<span style="font-size:11px; color:#DC2626; font-weight:bold;">Falta Número</span>`;
+                } else {
+                    let esCorreo = user.correo.includes('@');
+                    btnContacto = esCorreo 
+                        ? `<a href="mailto:${user.correo}?subject=Tu Suscripción en VegaStore&body=${msjContacto}" class="btn-copiar" target="_blank">✉️</a>`
+                        : `<a href="https://wa.me/${user.correo.replace(/\D/g,'')}?text=${msjContacto}" class="btn-copiar" target="_blank">💬</a>`;
+                }
 
                 tabla.innerHTML += `<tr>
                     <td><div class="correo-box"><strong>${user.correo}</strong>${btnContacto}</div></td>
@@ -293,9 +299,24 @@
                     <td>${user.num_operacion || user.token || '---'}</td>
                     <td><span class="${badge}">${user.estado}</span></td>
                     <td>${fechaFinShow}</td>
-                    <td style="display:flex; gap:8px;">${btn} <button class="btn-borrar" onclick="borrarUsuario(${user.id})">🗑️</button></td>
+                    <td style="display:flex; gap:8px;">
+                        ${btn} 
+                        <button class="btn-primary" style="padding:6px 10px; font-size:13px; background:#3B82F6;" onclick="editarDatoUsuario(${user.id}, '${user.correo}')" title="Añadir/Editar Contacto">✏️</button>
+                        <button class="btn-borrar" onclick="borrarUsuario(${user.id})">🗑️</button>
+                    </td>
                 </tr>`;
             });
+        }
+
+        // NUEVA FUNCIÓN: Editar el correo/número del cliente
+        async function editarDatoUsuario(id, datoActual) {
+            let valorDefecto = datoActual === 'Extraer de WhatsApp' ? '' : datoActual;
+            let nuevoDato = prompt("Ingresa el número de WhatsApp o Correo del cliente:", valorDefecto);
+            
+            if (nuevoDato !== null && nuevoDato.trim() !== "") {
+                await supabaseClient.from('usuarios_canva').update({ correo: nuevoDato.trim() }).eq('id', id);
+                cargarUsuarios();
+            }
         }
 
         async function aprobarPago(id) {
@@ -315,7 +336,7 @@
                 
                 if(unidad === 'dias') fin.setDate(fin.getDate() + cantidad);
                 else if(unidad === 'años') fin.setFullYear(fin.getFullYear() + cantidad);
-                else fin.setMonth(fin.getMonth() + cantidad); // meses por defecto
+                else fin.setMonth(fin.getMonth() + cantidad); 
                 
                 finStr = fin.toISOString().split('T')[0];
             }
@@ -327,7 +348,7 @@
         async function borrarUsuario(id) { if(confirm("¿Borrar cliente permanentemente?")) { await supabaseClient.from('usuarios_canva').delete().eq('id', id); cargarUsuarios(); } }
 
         async function registroManual() {
-            const correo = prompt("Ingresa el Correo o Número del cliente:");
+            const correo = prompt("Ingresa el Correo o Número de WhatsApp del cliente:");
             if (correo) {
                 let serv = prompt("¿Qué servicio adquirió?") || "Canva Pro Edu";
                 let msInput = prompt("¿Cuántos meses? (Escribe 0 para Pago Único)", "1");
@@ -372,7 +393,6 @@
             });
         }
 
-        // NUEVA LÓGICA DE FILA DE PLAN CON SELECTOR DE UNIDAD
         function agregarFilaPlan(c = 1, u = 'meses', p = '', pr = '') {
             const idFila = 'plan-' + Math.random().toString(36).substr(2, 5);
             document.getElementById('contenedor-planes').insertAdjacentHTML('beforeend', `
@@ -413,7 +433,7 @@
 
         function abrirModalServicio() {
             document.getElementById('serv-id').value = ''; document.getElementById('serv-nombre').value = ''; document.getElementById('serv-categoria').value = ''; 
-            document.getElementById('serv-tipo-ingreso').value = 'correo'; document.getElementById('serv-etiqueta').value = ''; document.getElementById('serv-caracteristicas').value = '';
+            document.getElementById('serv-tipo-ingreso').value = 'numero'; document.getElementById('serv-etiqueta').value = ''; document.getElementById('serv-caracteristicas').value = '';
             document.getElementById('serv-imagen-url').value = ''; document.getElementById('serv-imagen-file').value = ''; document.getElementById('serv-imagen-preview').style.display = 'none'; document.getElementById('upload-status').style.display = 'none';
             document.getElementById('contenedor-planes').innerHTML = ''; agregarFilaPlan(1, 'meses'); 
             document.getElementById('titulo-modal-servicio').innerText = 'Nuevo Servicio'; document.getElementById('modal-servicio').style.display = 'flex';
@@ -421,7 +441,7 @@
 
         function editarServicio(serv) {
             document.getElementById('serv-id').value = serv.id; document.getElementById('serv-nombre').value = serv.nombre; document.getElementById('serv-categoria').value = serv.categoria || ''; 
-            document.getElementById('serv-tipo-ingreso').value = serv.tipo_ingreso || 'correo'; document.getElementById('serv-etiqueta').value = serv.etiqueta || ''; document.getElementById('serv-caracteristicas').value = serv.caracteristicas || '';
+            document.getElementById('serv-tipo-ingreso').value = serv.tipo_ingreso || 'numero'; document.getElementById('serv-etiqueta').value = serv.etiqueta || ''; document.getElementById('serv-caracteristicas').value = serv.caracteristicas || '';
             if (serv.imagen_url) { document.getElementById('serv-imagen-url').value = serv.imagen_url; document.getElementById('serv-imagen-preview').src = serv.imagen_url; document.getElementById('serv-imagen-preview').style.display = 'inline-block'; } 
             else { document.getElementById('serv-imagen-url').value = ''; document.getElementById('serv-imagen-preview').style.display = 'none'; }
             
@@ -470,7 +490,6 @@
 
         async function borrarServicio(id) { if (confirm("¿Borrar servicio del catálogo?")) { await supabaseClient.from('servicios').delete().eq('id', id); cargarServicios(); } }
 
-        // ===== SEGURIDAD =====
         async function abrirSeguridad() {
             document.getElementById('modal-seguridad').style.display = 'flex';
             const cont = document.getElementById('lista-dispositivos'); cont.innerHTML = 'Cargando accesos...';
