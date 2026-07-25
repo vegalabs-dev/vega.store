@@ -50,18 +50,24 @@ function formatTiempo(cantidad, unidad) {
     return `${cantidad} ${u}`;
 }
 
-// 2. RENDERIZAR TARJETAS EN EL HTML
+// 2. RENDERIZAR TARJETAS EN EL HTML (Diseño Ordenado y con Etiquetas de Planes)
 function renderizarCatalogo(serviciosParaMostrar) {
     const contenedor = document.getElementById('contenedor-servicios');
     contenedor.innerHTML = ''; 
     if (serviciosParaMostrar.length === 0) { contenedor.innerHTML = '<p style="text-align: center; grid-column: 1/-1; color: var(--text-light);">No hay servicios aquí.</p>'; return; }
 
     serviciosParaMostrar.forEach(servicio => {
-        // Obtenemos el plan base (el primero) para mostrar en la tarjeta
         let planes = servicio.planes || [];
-        let planBase = planes.length > 0 ? planes[0] : { precio: servicio.precio, promo: servicio.precio_promocional, cantidad: 1, unidad: 'meses' };
+        if (planes.length === 0) planes = [{ cantidad: servicio.meses || 1, unidad: 'meses', precio: servicio.precio, promo: servicio.precio_promocional }];
+
+        // Ordenamos los planes para mostrar el más barato como "Desde"
+        let planesOrdenados = [...planes].sort((a, b) => {
+            let pA = a.promo ? parseFloat(a.promo) : parseFloat(a.precio);
+            let pB = b.promo ? parseFloat(b.promo) : parseFloat(b.precio);
+            return pA - pB;
+        });
         
-        // Compatibilidad con datos viejos
+        let planBase = planesOrdenados[0];
         if(planBase.cantidad === undefined) planBase.cantidad = planBase.meses !== undefined ? planBase.meses : 1;
         if(!planBase.unidad) planBase.unidad = 'meses';
 
@@ -69,14 +75,39 @@ function renderizarCatalogo(serviciosParaMostrar) {
         let precioOferta = planBase.promo ? parseFloat(planBase.promo) : null;
         let txtTiempo = planBase.cantidad == 0 ? "Permanente" : formatTiempo(planBase.cantidad, planBase.unidad);
         
-        // Si hay varios planes, ponemos "Desde"
-        let prefix = planes.length > 1 ? '<span style="font-size: 12px; color: var(--text-light); margin-right: 5px;">Desde</span>' : '';
+        // 1. Crear las "Píldoras" de los planes disponibles para mostrar en la tarjeta
+        let htmlPlanesDisponibles = '';
+        if (planes.length > 1) {
+            let pills = planes.map(p => {
+                let c = p.cantidad !== undefined ? p.cantidad : (p.meses !== undefined ? p.meses : 1);
+                let u = p.unidad || 'meses';
+                let t = c == 0 ? 'Único' : formatTiempo(c, u);
+                return `<span style="background: #F3F4F6; color: #4B5563; padding: 3px 8px; border-radius: 6px; font-size: 11px; font-weight: bold; border: 1px solid #E5E7EB;">${t}</span>`;
+            }).join('');
+            htmlPlanesDisponibles = `<div style="display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 10px;">${pills}</div>`;
+        }
 
+        // 2. Crear el HTML del precio apilado de forma elegante
+        let prefix = planes.length > 1 ? `<div style="font-size: 11px; color: var(--text-light); text-transform: uppercase; font-weight: bold; margin-bottom: 2px;">Desde</div>` : '';
         let htmlPrecio = '';
+        
         if (precioOferta && precioOferta < precioNormal) {
-            htmlPrecio = `${prefix}<span class="precio-tachado">S/ ${precioNormal.toFixed(2)}</span> <span class="precio-oferta" style="font-size: 22px;">S/ ${precioOferta.toFixed(2)}</span> <span style="font-size:12px; color:#6B7280;">/ ${txtTiempo}</span>`;
+            htmlPrecio = `
+                ${prefix}
+                <div style="display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;">
+                    <span style="font-size: 24px; color: #10B981; font-weight: 800; line-height: 1;">S/ ${precioOferta.toFixed(2)}</span>
+                    <span style="font-size: 13px; color: #9CA3AF; text-decoration: line-through;">S/ ${precioNormal.toFixed(2)}</span>
+                </div>
+                <div style="font-size: 12px; color: #6B7280; margin-top: 4px;">por ${txtTiempo}</div>
+            `;
         } else {
-            htmlPrecio = `${prefix}<span style="font-size: 22px; font-weight: 800; color: var(--text-dark);">S/ ${precioNormal.toFixed(2)}</span> <span style="font-size:12px; color:#6B7280;">/ ${txtTiempo}</span>`;
+            htmlPrecio = `
+                ${prefix}
+                <div style="display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;">
+                    <span style="font-size: 24px; font-weight: 800; color: var(--text-dark); line-height: 1;">S/ ${precioNormal.toFixed(2)}</span>
+                </div>
+                <div style="font-size: 12px; color: #6B7280; margin-top: 4px;">por ${txtTiempo}</div>
+            `;
         }
 
         const servicioJSON = JSON.stringify(servicio).replace(/'/g, "&apos;");
@@ -89,13 +120,16 @@ function renderizarCatalogo(serviciosParaMostrar) {
         card.innerHTML = `
             ${imagenHtml}
             ${servicio.etiqueta ? `<div class="badge" style="position: absolute; top: -15px; right: 20px; background: var(--primary-gradient); color: white; padding: 6px 16px; border-radius: 20px; font-size: 13px; font-weight: 700;">${servicio.etiqueta}</div>` : ''}
-            <div style="font-size: 13px; color: #6B7280; margin-bottom: 5px;">${servicio.categoria || 'Servicio'}</div>
-            <h2 style="font-size: 20px; margin-bottom: 15px;">${servicio.nombre}</h2>
-            <div class="price" style="margin-bottom: 20px;">${htmlPrecio}</div>
+            <div style="font-size: 12px; color: #6B7280; margin-bottom: 5px; font-weight: bold; text-transform: uppercase;">${servicio.categoria || 'Servicio'}</div>
+            <h2 style="font-size: 18px; margin-bottom: 10px; line-height: 1.2;">${servicio.nombre}</h2>
             
-            <div class="card-botones-mini" style="display: flex; gap: 10px; margin-top: auto;">
-                <button class="btn-detalles" style="flex: 1; background: #F3F4F6; color: #4B5563; border: none; padding: 10px; border-radius: 8px; font-weight: bold; cursor: pointer;" onclick='abrirModalDetalles(${servicioJSON})'>Detalles</button>
-                <button class="btn-primary" style="flex: 1; padding: 10px; font-size: 14px;" onclick='abrirModalDetalles(${servicioJSON})'>Comprar</button>
+            ${htmlPlanesDisponibles}
+            
+            <div class="price" style="margin-bottom: 15px;">${htmlPrecio}</div>
+            
+            <div class="card-botones-mini" style="display: flex; gap: 8px; margin-top: auto;">
+                <button class="btn-detalles" style="flex: 1; background: #F3F4F6; color: #4B5563; border: none; padding: 10px 5px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 13px;" onclick='abrirModalDetalles(${servicioJSON})'>Detalles</button>
+                <button class="btn-primary" style="flex: 1; padding: 10px 5px; font-size: 13px;" onclick='abrirModalDetalles(${servicioJSON})'>Comprar</button>
             </div>
         `;
         contenedor.appendChild(card);
@@ -106,7 +140,6 @@ function renderizarCatalogo(serviciosParaMostrar) {
 window.abrirModalDetalles = function(servicio) {
     const modal = document.getElementById('modal-detalles');
     
-    // Normalizar planes para el modal
     let planes = servicio.planes || [];
     if (planes.length === 0) planes = [{ cantidad: 1, unidad: 'meses', precio: servicio.precio, promo: servicio.precio_promocional }];
     planes = planes.map(p => ({
@@ -115,7 +148,6 @@ window.abrirModalDetalles = function(servicio) {
         precio: p.precio, promo: p.promo
     }));
 
-    // Llenar datos visuales
     const img = document.getElementById('detalles-imagen');
     if(servicio.imagen_url) { img.src = servicio.imagen_url; img.style.display = 'block'; } else { img.style.display = 'none'; }
     
@@ -127,20 +159,29 @@ window.abrirModalDetalles = function(servicio) {
     
     document.getElementById('detalles-titulo').innerText = servicio.nombre;
     
-    // Función para renderizar el precio grande según el plan elegido
     const renderPrecioModal = (plan) => {
         let pNorm = parseFloat(plan.precio);
         let pOfe = plan.promo ? parseFloat(plan.promo) : null;
         let txtTiempo = plan.cantidad == 0 ? "Permanente" : formatTiempo(plan.cantidad, plan.unidad);
         
         if (pOfe && pOfe < pNorm) {
-            return `<span class="precio-tachado" style="text-decoration: line-through; color: #9CA3AF; margin-right: 10px;">S/ ${pNorm.toFixed(2)}</span> <span class="precio-oferta" style="color: #10B981; font-size: 28px; font-weight: bold;">S/ ${pOfe.toFixed(2)}</span> <span style="font-size:14px; color:#6B7280;">/ ${txtTiempo}</span>`;
+            return `
+                <div style="display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap;">
+                    <span class="precio-tachado" style="text-decoration: line-through; color: #9CA3AF; font-size: 16px;">S/ ${pNorm.toFixed(2)}</span> 
+                    <span class="precio-oferta" style="color: #10B981; font-size: 32px; font-weight: 800;">S/ ${pOfe.toFixed(2)}</span>
+                </div>
+                <div style="font-size:14px; color:#6B7280; margin-top: 5px;">por ${txtTiempo}</div>
+            `;
         } else {
-            return `<span style="font-size: 28px; font-weight: bold; color: var(--text-dark);">S/ ${pNorm.toFixed(2)}</span> <span style="font-size:14px; color:#6B7280;">/ ${txtTiempo}</span>`;
+            return `
+                <div style="display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap;">
+                    <span style="font-size: 32px; font-weight: 800; color: var(--text-dark);">S/ ${pNorm.toFixed(2)}</span>
+                </div>
+                <div style="font-size:14px; color:#6B7280; margin-top: 5px;">por ${txtTiempo}</div>
+            `;
         }
     };
 
-    // Crear botones de planes si hay más de 1
     const box = document.getElementById('detalles-precio-box');
     let htmlPlanes = '';
     if (planes.length > 1) {
@@ -155,15 +196,13 @@ window.abrirModalDetalles = function(servicio) {
     
     box.innerHTML = htmlPlanes + `<div id="precio-dinamico-modal">${renderPrecioModal(planes[0])}</div>`;
 
-    // Llenar características
     const listaCaract = document.getElementById('detalles-caracteristicas');
     if(servicio.caracteristicas) {
-        listaCaract.innerHTML = servicio.caracteristicas.split('\n').map(c => `<li style="margin-bottom: 10px; display: flex; gap: 8px; color: var(--text-light);"><span style="color: #10B981;">✔️</span> ${c}</li>`).join('');
+        listaCaract.innerHTML = servicio.caracteristicas.split('\n').map(c => `<li style="margin-bottom: 10px; display: flex; gap: 8px; color: var(--text-light);"><span style="color: #10B981;">✔️</span> <span style="text-align: left;">${c}</span></li>`).join('');
     } else {
         listaCaract.innerHTML = '<li style="margin-bottom: 10px; display: flex; gap: 8px; color: var(--text-light);"><span style="color: #10B981;">✔️</span> Acceso garantizado y soporte.</li>';
     }
     
-    // Función para actualizar el botón de comprar
     const updateComprarBtn = (plan) => {
         let planParaComprar = {
             nombre: servicio.nombre,
@@ -178,14 +217,11 @@ window.abrirModalDetalles = function(servicio) {
     
     updateComprarBtn(planes[0]);
 
-    // Lógica para cuando el usuario hace clic en los botones de planes
     if (planes.length > 1) {
         const botonesPlanes = box.querySelectorAll('.btn-plan-selector');
         botonesPlanes.forEach(btn => {
             btn.addEventListener('click', (e) => {
-                // Resetear estilos
                 botonesPlanes.forEach(b => { b.style.background = '#F9FAFB'; b.style.color = '#6B7280'; b.style.border = '1px solid #E5E7EB'; });
-                // Estilo activo
                 e.target.style.background = '#111827'; e.target.style.color = 'white'; e.target.style.border = 'none';
                 
                 let idx = e.target.getAttribute('data-index');
@@ -287,10 +323,9 @@ document.getElementById('btn-confirmar-yape').addEventListener('click', async ()
 
     const btn = document.getElementById('btn-confirmar-yape'); btn.innerText = "Procesando..."; btn.disabled = true;
 
-    // GUARDAR EN LA BD (Incluye la nueva cantidad y unidad)
     await supabaseClient.from('usuarios_canva').insert([{ 
         correo: datoCliente, servicio: productoSeleccionado.nombre, 
-        meses: productoSeleccionado.cantidad, unidad: productoSeleccionado.unidad, // NUEVOS CAMPOS
+        meses: productoSeleccionado.cantidad, unidad: productoSeleccionado.unidad, 
         metodo_pago: 'Yape', num_operacion: operacion, estado: 'Pendiente' 
     }]);
 
@@ -350,4 +385,4 @@ document.getElementById('btn-buscar-tiempo').addEventListener('click', async () 
 
 function mostrarNotificacion(mensaje) { alert(mensaje); }
 
-cargarCatalogo(); 
+cargarCatalogo();
