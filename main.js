@@ -350,4 +350,4 @@ document.getElementById('btn-buscar-tiempo').addEventListener('click', async () 
 
 function mostrarNotificacion(mensaje) { alert(mensaje); }
 
-cargarCatalogo();
+cargarCatalogo(); 
