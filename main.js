@@ -4,7 +4,7 @@ const supabaseUrl = 'https://rhuhuvevynovfekwhlhb.supabase.co';
 const supabaseKey = 'sb_publishable_-8XCScnvNf6QXMsnbyJK9Q_XhrOr9j5';
 const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
 
-let productoSeleccionado = { nombre: '', precio: 0, cantidad: 1, unidad: 'meses', tipo_ingreso: 'correo' };
+let productoSeleccionado = { nombre: '', precio: 0, cantidad: 1, unidad: 'meses', tipo_ingreso: 'numero' };
 const numeroWhatsApp = "51928293163"; 
 
 const modalCompra = document.getElementById('modal-compra');
@@ -38,7 +38,6 @@ function generarBotonesCategorias(servicios) {
     contenedorFiltros.innerHTML = html;
 }
 
-// FUNCIÓN AUXILIAR: Formatear el texto del tiempo (Ej: "1 Mes", "15 Días")
 function formatTiempo(cantidad, unidad) {
     if (cantidad == 0) return "Pago Único";
     let u = unidad || 'meses';
@@ -51,7 +50,7 @@ function formatTiempo(cantidad, unidad) {
 }
 
 // =====================================
-// RENDERIZAR TARJETAS (Interactividad de Planes en la Tarjeta Principal)
+// RENDERIZAR TARJETAS
 // =====================================
 function renderizarCatalogo(serviciosParaMostrar) {
     const contenedor = document.getElementById('contenedor-servicios');
@@ -62,14 +61,12 @@ function renderizarCatalogo(serviciosParaMostrar) {
         let planes = servicio.planes || [];
         if (planes.length === 0) planes = [{ cantidad: servicio.meses || 1, unidad: 'meses', precio: servicio.precio, promo: servicio.precio_promocional }];
 
-        // Ordenamos los planes por precio de menor a mayor
         let planesOrdenados = [...planes].sort((a, b) => {
             let pA = a.promo ? parseFloat(a.promo) : parseFloat(a.precio);
             let pB = b.promo ? parseFloat(b.promo) : parseFloat(b.precio);
             return pA - pB;
         });
         
-        // Función interna para generar el HTML del precio sin textos extra ("Desde", "por 1 mes")
         const generarHtmlPrecioLimpio = (plan) => {
             let precioNormal = parseFloat(plan.precio);
             let precioOferta = plan.promo ? parseFloat(plan.promo) : null;
@@ -90,14 +87,12 @@ function renderizarCatalogo(serviciosParaMostrar) {
             }
         };
 
-        // 1. Crear los botones de los planes interactivos
         let htmlPlanesInteractivos = '';
         if (planesOrdenados.length > 1) {
             let pills = planesOrdenados.map((p, indexPlan) => {
                 let c = p.cantidad !== undefined ? p.cantidad : (p.meses !== undefined ? p.meses : 1);
                 let u = p.unidad || 'meses';
                 let t = c == 0 ? 'Único' : formatTiempo(c, u);
-                // El primer plan aparece seleccionado por defecto (fondo oscuro)
                 let activeStyle = indexPlan === 0 ? 'background: #111827; color: white; border: 1px solid #111827;' : 'background: #F9FAFB; color: #6B7280; border: 1px solid #E5E7EB;';
                 return `<button class="btn-plan-tarjeta" data-servicio="${indexServicio}" data-plan="${indexPlan}" style="padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: bold; cursor: pointer; transition: 0.2s; ${activeStyle}">${t}</button>`;
             }).join('');
@@ -128,31 +123,24 @@ function renderizarCatalogo(serviciosParaMostrar) {
         `;
         contenedor.appendChild(card);
 
-        // AGREGAR INTERACTIVIDAD A LA TARJETA
-        // 1. Botón comprar por defecto (apunta al plan 0)
         let btnComprar = card.querySelector(`#btn-comprar-tarjeta-${indexServicio}`);
         btnComprar.onclick = () => {
             let planBaseToBuy = { ...servicio, ...planesOrdenados[0], nombre: servicio.nombre, tipo_ingreso: servicio.tipo_ingreso };
             prepararCompra(planBaseToBuy);
         };
 
-        // 2. Lógica de los botones de planes
         if (planesOrdenados.length > 1) {
             const botonesPlanes = card.querySelectorAll(`.btn-plan-tarjeta`);
             botonesPlanes.forEach(btn => {
                 btn.addEventListener('click', (e) => {
-                    // Resetear estilos de los botones de esta tarjeta
                     botonesPlanes.forEach(b => { b.style.background = '#F9FAFB'; b.style.color = '#6B7280'; b.style.border = '1px solid #E5E7EB'; });
-                    // Poner oscuro el seleccionado
                     e.target.style.background = '#111827'; e.target.style.color = 'white'; e.target.style.border = '1px solid #111827';
                     
                     let idxPlan = e.target.getAttribute('data-plan');
                     let planElegido = planesOrdenados[idxPlan];
                     
-                    // Actualizar el precio visualmente
                     document.getElementById(`precio-tarjeta-${indexServicio}`).innerHTML = generarHtmlPrecioLimpio(planElegido);
                     
-                    // Actualizar la acción del botón comprar
                     btnComprar.onclick = () => {
                         let planToBuy = { ...servicio, ...planElegido, nombre: servicio.nombre, tipo_ingreso: servicio.tipo_ingreso };
                         prepararCompra(planToBuy);
@@ -163,14 +151,13 @@ function renderizarCatalogo(serviciosParaMostrar) {
     });
 }
 
-// 3. ABRIR MODAL DE DETALLES Y SELECCIÓN DE PLANES
+// 3. ABRIR MODAL DE DETALLES
 window.abrirModalDetalles = function(servicio) {
     const modal = document.getElementById('modal-detalles');
     
     let planes = servicio.planes || [];
     if (planes.length === 0) planes = [{ cantidad: 1, unidad: 'meses', precio: servicio.precio, promo: servicio.precio_promocional }];
     
-    // Ordenamos igual que en la tarjeta
     planes = planes.map(p => ({
         cantidad: p.cantidad !== undefined ? p.cantidad : (p.meses !== undefined ? p.meses : 1),
         unidad: p.unidad || 'meses',
@@ -192,7 +179,6 @@ window.abrirModalDetalles = function(servicio) {
     
     document.getElementById('detalles-titulo').innerText = servicio.nombre;
     
-    // En el modal sí mostramos el "por 1 Mes" porque hay más espacio
     const renderPrecioModal = (plan) => {
         let pNorm = parseFloat(plan.precio);
         let pOfe = plan.promo ? parseFloat(plan.promo) : null;
@@ -243,7 +229,7 @@ window.abrirModalDetalles = function(servicio) {
             precio: plan.promo ? parseFloat(plan.promo) : parseFloat(plan.precio),
             cantidad: plan.cantidad,
             unidad: plan.unidad,
-            tipo_ingreso: servicio.tipo_ingreso || 'correo'
+            tipo_ingreso: servicio.tipo_ingreso || 'numero' // Por defecto ahora es número
         };
         const planJSON = JSON.stringify(planParaComprar).replace(/'/g, "&apos;");
         document.getElementById('detalles-btn-comprar').innerHTML = `<button class="btn-primary" style="width: 100%; padding: 15px; font-size: 16px; margin-top: 10px;" onclick='document.getElementById("modal-detalles").classList.add("oculto"); prepararCompra(${planJSON});'>Comprar ahora</button>`;
@@ -271,7 +257,7 @@ window.abrirModalDetalles = function(servicio) {
 document.getElementById('cerrar-detalles').addEventListener('click', () => { document.getElementById('modal-detalles').classList.add('oculto'); });
 
 // =====================================
-// PREPARAR COMPRA (Lógica de Yape/WhatsApp)
+// PREPARAR COMPRA (Lógica de Ocultar/Mostrar input)
 // =====================================
 window.prepararCompra = function(plan) {
     productoSeleccionado = {
@@ -279,7 +265,7 @@ window.prepararCompra = function(plan) {
         precio: parseFloat(plan.precio),
         cantidad: plan.cantidad,
         unidad: plan.unidad,
-        tipo_ingreso: plan.tipo_ingreso
+        tipo_ingreso: plan.tipo_ingreso || 'numero' // Por defecto
     };
     
     let txtTiempo = formatTiempo(productoSeleccionado.cantidad, productoSeleccionado.unidad);
@@ -288,18 +274,25 @@ window.prepararCompra = function(plan) {
     document.getElementById('texto-precio-yape').innerText = `S/ ${productoSeleccionado.precio.toFixed(2)}`;
     document.getElementById('btn-confirmar-yape').innerText = `Confirmar Pago de S/ ${productoSeleccionado.precio.toFixed(2)}`;
 
+    // MAGIA: Mostramos u ocultamos la caja de correo según el servicio
+    const textoYape = document.getElementById('texto-precio-yape').parentElement;
+    
     if (productoSeleccionado.tipo_ingreso === 'numero') {
-        inputDatoCompra.placeholder = "1. Escribe tu número de WhatsApp";
-        inputDatoCompra.type = "tel";
-        alertaDato.innerText = "⚠️ Ingresa tu número de WhatsApp primero.";
+        // Modo Rápido (Solo Número): Ocultamos el campo de texto
+        inputDatoCompra.style.display = "none";
+        alertaDato.style.display = "none";
+        textoYape.firstChild.textContent = "Escanea y Yapea exactamente "; // Quitamos el "2."
     } else {
-        inputDatoCompra.placeholder = "1. Escribe el correo a vincular";
+        // Modo Correo: Mostramos el campo para que escriba
+        inputDatoCompra.style.display = "block";
+        inputDatoCompra.placeholder = "Escribe el correo a vincular";
         inputDatoCompra.type = "email";
-        alertaDato.innerText = "⚠️ Ingresa tu correo primero.";
+        alertaDato.style.display = "none";
+        textoYape.firstChild.textContent = "2. Escanea y Yapea exactamente "; // Ponemos el "2."
     }
 
     modalCompra.classList.remove('oculto');
-    inputDatoCompra.value = ""; inputDatoCompra.style.borderColor = "#E5E7EB"; alertaDato.style.display = "none";
+    inputDatoCompra.value = ""; inputDatoCompra.style.borderColor = "#E5E7EB"; 
     otpBoxes.forEach(box => box.value = ''); 
 };
 
@@ -339,19 +332,25 @@ otpBoxes.forEach((box, index) => {
 });
 
 function validarDatoCompra() {
+    // Si es solo número, no validamos nada de la caja y devolvemos texto por defecto
+    if (productoSeleccionado.tipo_ingreso === 'numero') {
+        return "Extraer de WhatsApp";
+    }
+
+    // Si es correo, validamos que haya escrito algo con @
     const dato = inputDatoCompra.value.trim();
-    let esValido = false;
-    if (productoSeleccionado.tipo_ingreso === 'numero') { esValido = dato.replace(/\D/g,'').length >= 9; } 
-    else { esValido = dato !== "" && dato.includes("@"); }
+    let esValido = dato !== "" && dato.includes("@");
+    
     if(!esValido) { inputDatoCompra.style.borderColor = "#DC2626"; alertaDato.style.display = "block"; return false; }
+    
     inputDatoCompra.style.borderColor = "#E5E7EB"; alertaDato.style.display = "none"; return dato;
 }
 
 // =====================================
-// PROCESAR PAGOS (Yape y WhatsApp)
+// PROCESAR PAGOS
 // =====================================
 document.getElementById('btn-confirmar-yape').addEventListener('click', async () => {
-    const datoCliente = validarDatoCompra(); if(!datoCliente) return mostrarNotificacion('Ingresa el dato solicitado correctamente.');
+    const datoCliente = validarDatoCompra(); if(!datoCliente) return mostrarNotificacion('Ingresa el correo solicitado.');
     const operacion = Array.from(otpBoxes).map(box => box.value).join('');
     if(operacion.length < 7) return mostrarNotificacion("Ingresa los 7 números de operación.");
 
@@ -364,15 +363,16 @@ document.getElementById('btn-confirmar-yape').addEventListener('click', async ()
     }]);
 
     let txtTiempo = formatTiempo(productoSeleccionado.cantidad, productoSeleccionado.unidad);
-    let tipoDatoMsg = productoSeleccionado.tipo_ingreso === 'numero' ? '📱 *Mi número:*' : '📧 *Mi correo:*';
-    const mensaje = `Hola, acabo de pagar *S/ ${productoSeleccionado.precio.toFixed(2)}* por *${productoSeleccionado.nombre} (${txtTiempo})* vía Yape.\n\n${tipoDatoMsg} ${datoCliente}\n🧾 *N° de Operación:* ${operacion}`;
+    let tipoDatoMsg = productoSeleccionado.tipo_ingreso === 'numero' ? '' : `\n📧 *Mi correo:* ${datoCliente}`;
+    
+    const mensaje = `Hola, acabo de pagar *S/ ${productoSeleccionado.precio.toFixed(2)}* por *${productoSeleccionado.nombre} (${txtTiempo})* vía Yape.${tipoDatoMsg}\n🧾 *N° de Operación:* ${operacion}`;
     
     window.open(`https://wa.me/${numeroWhatsApp}?text=${encodeURIComponent(mensaje)}`, '_blank');
     modalCompra.classList.add('oculto'); btn.innerText = `Confirmar Pago de S/ ${productoSeleccionado.precio.toFixed(2)}`; btn.disabled = false;
 });
 
 document.getElementById('btn-otro-medio').addEventListener('click', async () => {
-    const datoCliente = validarDatoCompra(); if(!datoCliente) return mostrarNotificacion('Ingresa el dato solicitado antes de continuar.');
+    const datoCliente = validarDatoCompra(); if(!datoCliente) return mostrarNotificacion('Ingresa el correo solicitado antes de continuar.');
     const token = "TK-" + Math.random().toString(36).substr(2, 4).toUpperCase();
     const btn = document.getElementById('btn-otro-medio'); btn.innerText = "Generando..."; btn.disabled = true;
 
@@ -383,8 +383,9 @@ document.getElementById('btn-otro-medio').addEventListener('click', async () => 
     }]);
 
     let txtTiempo = formatTiempo(productoSeleccionado.cantidad, productoSeleccionado.unidad);
-    let tipoDatoMsg = productoSeleccionado.tipo_ingreso === 'numero' ? 'Mi número es:' : 'Mi correo es:';
-    const mensaje = `Hola, quiero adquirir *${productoSeleccionado.nombre} (${txtTiempo})* por S/${productoSeleccionado.precio.toFixed(2)}. ${tipoDatoMsg} *${datoCliente}*. Mi token es: *${token}*`;
+    let tipoDatoMsg = productoSeleccionado.tipo_ingreso === 'numero' ? '' : ` Mi correo es: *${datoCliente}*.`;
+    
+    const mensaje = `Hola, quiero adquirir *${productoSeleccionado.nombre} (${txtTiempo})* por S/${productoSeleccionado.precio.toFixed(2)}.${tipoDatoMsg} Mi token es: *${token}*`;
     
     window.open(`https://wa.me/${numeroWhatsApp}?text=${encodeURIComponent(mensaje)}`, '_blank');
     modalCompra.classList.add('oculto'); btn.innerText = "Pagar con Plin / BCP / BBVA"; btn.disabled = false;
