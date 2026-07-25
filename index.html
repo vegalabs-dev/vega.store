@@ -3,149 +3,506 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Servicios Digitales | VegaStore</title>
-    <link rel="stylesheet" href="styles.css">
+    <title>Panel Admin | VegaStore</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        :root { --primary: #8B3DFF; --bg: #F3F4F6; --text: #1F2937; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); padding: 30px; margin: 0; display: flex; justify-content: center; min-height: 100vh;}
+        
+        .panel-container { background: white; padding: 35px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); width: 100%; max-width: 1100px;}
+        .header-panel { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; flex-wrap: wrap; gap: 15px;}
+        h1 { color: var(--primary); margin: 0; display: flex; align-items: center; gap: 10px;}
+        
+        .tabs { display: flex; gap: 10px; margin-bottom: 30px; border-bottom: 2px solid #E5E7EB; padding-bottom: 15px; flex-wrap: wrap;}
+        .tab-btn { padding: 10px 20px; border: none; background: #F3F4F6; color: #6B7280; font-weight: bold; border-radius: 8px; cursor: pointer; transition: 0.3s; font-size: 15px;}
+        .tab-btn.active { background: var(--primary); color: white; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        .stats-container { display: flex; gap: 20px; margin-bottom: 30px; flex-wrap: wrap;}
+        .stat-box { background: #F9FAFB; border: 1px solid #E5E7EB; padding: 20px; border-radius: 12px; flex: 1; text-align: center; min-width: 150px;}
+        .stat-box h3 { margin: 0 0 5px 0; font-size: 28px; color: var(--primary); }
+        .stat-box p { margin: 0; font-size: 13px; color: #6B7280; font-weight: bold; letter-spacing: 0.5px;}
+
+        .filtros-admin { display: flex; gap: 15px; margin-bottom: 30px; flex-wrap: wrap; align-items: center; background: #F9FAFB; padding: 15px; border-radius: 12px; border: 1px solid #E5E7EB;}
+        .search-box { flex: 1; min-width: 250px; padding: 12px 15px; border: 2px solid #E5E7EB; border-radius: 8px; outline: none; transition: 0.3s;}
+        .search-box:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(139, 61, 255, 0.15); }
+        
+        .filtro-select { 
+            padding: 12px 35px 12px 15px; border: 2px solid #E5E7EB; border-radius: 8px; outline: none; font-weight: 600; color: #374151; background-color: white; cursor: pointer; transition: 0.3s; appearance: none; -webkit-appearance: none;
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236B7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+            background-repeat: no-repeat; background-position: right 12px center; background-size: 16px;
+        }
+        .filtro-select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(139, 61, 255, 0.15); }
+        input.filtro-select { background-image: none; padding-right: 15px; }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px; }
+        th, td { padding: 15px 12px; text-align: left; border-bottom: 1px solid #eee; }
+        th { background-color: #f8f9fa; color: #6b7280; font-weight: 600;}
+        
+        .badge-pendiente { background: #FEF3C7; color: #D97706; padding: 6px 12px; border-radius: 20px; font-weight: bold; font-size: 12px; }
+        .badge-activo { background: #D1FAE5; color: #059669; padding: 6px 12px; border-radius: 20px; font-weight: bold; font-size: 12px; }
+        
+        .btn-primary { background: var(--primary); color: white; border: none; padding: 12px 18px; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.3s;}
+        .btn-aprobar { background: #10B981; color: white; border: none; padding: 8px 12px; border-radius: 8px; cursor: pointer; font-weight: bold; }
+        .btn-borrar { background: #FEE2E2; color: #DC2626; border: none; padding: 8px 12px; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.2s;}
+        .btn-manual { background: var(--primary); color: white; border: none; padding: 12px 18px; border-radius: 8px; cursor: pointer; font-weight: bold; }
+        .correo-box { display: flex; align-items: center; gap: 8px; }
+        .btn-copiar { background: #F3F4F6; border: 1px solid #E5E7EB; border-radius: 6px; cursor: pointer; font-size: 14px; padding: 5px 8px; text-decoration: none; display: inline-block;}
+
+        .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); display: none; justify-content: center; align-items: center; z-index: 1000; overflow-y:auto; padding:20px;}
+        .modal-content { background: white; padding: 30px; border-radius: 15px; width: 100%; max-width: 600px; position: relative; margin: auto;}
+        .cerrar-modal { position: absolute; top: 15px; right: 20px; font-size: 28px; cursor: pointer; color: #6B7280; transition: 0.2s;}
+        .input-group { margin-bottom: 15px; text-align: left;}
+        .input-group label { display: block; font-size: 13px; font-weight: bold; color: #374151; margin-bottom: 5px;}
+        .input-group input, .input-group textarea, .input-group select { width: 100%; padding: 12px; border: 1px solid #D1D5DB; border-radius: 8px; box-sizing: border-box; outline: none; font-family: inherit;}
+        
+        .upload-box { border: 2px dashed #D1D5DB; border-radius: 8px; padding: 15px; text-align: center; background: #F9FAFB; position: relative; }
+        .upload-box input[type="file"] { position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+        .upload-preview { width: 100px; height: 100px; object-fit: cover; border-radius: 8px; margin-top: 10px; display: none; border: 2px solid #E5E7EB; }
+    </style>
 </head>
 <body>
 
-    <div id="toast-container"></div>
-
-    <div class="bg-blobs">
-        <div class="blob blob-purple"></div>
-        <div class="blob blob-cyan"></div>
+    <!-- LOGIN -->
+    <div id="login-section" style="background: white; padding: 40px; border-radius: 15px; width: 100%; max-width: 400px; margin: auto; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.1);">
+        <h2>🔒 Acceso Restringido</h2>
+        <input type="email" id="login-email" placeholder="Correo de Admin" style="width: 100%; padding: 14px; margin: 10px 0; border: 2px solid #E5E7EB; border-radius: 8px; outline: none;">
+        <input type="password" id="login-password" placeholder="Contraseña" style="width: 100%; padding: 14px; margin: 10px 0; border: 2px solid #E5E7EB; border-radius: 8px; outline: none;">
+        <button class="btn-primary" style="width: 100%; margin-top: 10px;" onclick="iniciarSesion()">Ingresar al Panel</button>
+        <p id="login-error" style="color: red; font-size: 13px; display: none;">Credenciales incorrectas.</p>
     </div>
 
-    <header>
-        <div class="logo">Vega<span>Store</span></div>
-        <div class="search-bar">
-            <input type="text" placeholder="Buscar servicios...">
-        </div>
-        <a href="https://wa.me/51928293163" target="_blank" class="btn-support">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path d="M13.601 2.326A7.85 7.85 0 0 0 7.994 0C3.627 0 .068 3.558.064 7.926c0 1.399.366 2.76 1.057 3.965L0 16l4.204-1.102a7.9 7.9 0 0 0 3.79.965h.004c4.368 0 7.926-3.558 7.93-7.93A7.9 7.9 0 0 0 13.6 2.326zM7.994 14.521a6.6 6.6 0 0 1-3.356-.92l-.24-.144-2.494.654.666-2.433-.156-.251a6.56 6.56 0 0 1-1.007-3.505c0-3.626 2.957-6.584 6.591-6.584a6.56 6.56 0 0 1 4.66 1.931 6.56 6.56 0 0 1 1.928 4.66c-.004 3.639-2.961 6.592-6.592 6.592m3.615-4.934c-.197-.099-1.17-.578-1.353-.646-.182-.065-.315-.099-.445.099-.133.197-.513.646-.627.775-.114.133-.232.148-.43.05-.197-.1-.836-.308-1.592-.985-.59-.525-.985-1.175-1.103-1.372-.114-.198-.011-.304.088-.403.087-.088.197-.232.296-.346.1-.114.133-.198.198-.33.065-.134.034-.248-.015-.347-.05-.099-.445-1.076-.612-1.47-.16-.389-.323-.335-.445-.34-.114-.007-.247-.007-.38-.007a.73.73 0 0 0-.529.247c-.182.198-.691.677-.691 1.654s.71 1.916.81 2.049c.098.133 1.394 2.132 3.383 2.992.47.205.84.326 1.129.418.475.152.904.129 1.246.08.38-.058 1.171-.48 1.338-.943.164-.464.164-.86.114-.943-.049-.084-.182-.133-.38-.232"/></svg>
-            Soporte
-        </a>
-    </header>
-
-    <main>
-        <section class="hero">
-            <div class="hero-text">
-                <h1>Servicios digitales <br><span>Premium y Seguros</span></h1>
-                <p>Las mejores herramientas a tu alcance. Garantía total y soporte personalizado para que nunca dejes de disfrutar.</p>
-                <button class="btn-primary" onclick="document.getElementById('catalogo').scrollIntoView({behavior: 'smooth'})">Ver Catálogo Completo</button>
-            </div>
-            <div class="hero-visual">
-                <div class="floating-card">
-                    <div class="card-icon">👑</div>
-                    <h3>Cuentas Premium</h3>
-                    <p>Suscripciones Activas</p>
-                    <div class="status-dot"></div>
+    <!-- PANEL ADMIN -->
+    <div id="admin-section" style="display:none; width:100%; max-width:1100px;">
+        <div class="panel-container">
+            <div class="header-panel">
+                <div><h1>👑 Panel de VegaStore</h1><p style="margin-top: 5px; color: #6b7280; font-size: 14px;">Administración General</p></div>
+                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    <button class="btn-primary" style="background:#F59E0B;" onclick="abrirSeguridad()">🛡️ Accesos</button>
+                    <button class="btn-primary" style="background:#374151;" onclick="cerrarSesion()">Salir</button>
                 </div>
             </div>
-        </section>
 
-        <!-- FILTROS DE CATEGORÍAS -->
-<div class="category-filters" id="filtros-categorias">
-    <button class="pill active" onclick="filtrarCategoria('Todos')">Todos</button>
-    <button class="pill" onclick="filtrarCategoria('Streaming')">Streaming</button>
-    <button class="pill" onclick="filtrarCategoria('Seguros')">Seguros</button>
-    <button class="pill" onclick="filtrarCategoria('Software')">Software</button>
-</div>
-
-<!-- CATÁLOGO DINÁMICO -->
-<section id="catalogo" class="catalog">
-    <!-- El contenedor ahora usará CSS Grid -->
-    <div id="contenedor-servicios" class="grid-servicios">
-        <p style="color: var(--text-light); text-align: center; width: 100%; grid-column: 1 / -1;">Cargando el catálogo de servicios...</p>
-    </div>
-</section>
-
-    <!-- MODAL DETALLES DEL PRODUCTO -->
-    <div id="modal-detalles" class="modal oculto">
-        <div class="modal-content" style="max-width: 450px; text-align: center; padding: 30px;">
-            <span class="cerrar-modal" id="cerrar-detalles">&times;</span>
-            
-            <img id="detalles-imagen" src="" alt="Producto" style="width: 150px; height: 150px; object-fit: cover; border-radius: 16px; margin: 0 auto 20px auto; display: block; box-shadow: 0 10px 20px rgba(0,0,0,0.1);">
-            
-            <div id="detalles-badge" class="badge" style="display: inline-block; margin-bottom: 15px;"></div>
-            
-            <h2 id="detalles-titulo" style="margin: 0 0 10px 0; color: var(--text);">Nombre Producto</h2>
-            
-            <div id="detalles-precio-box" style="margin-bottom: 20px;">
-                <!-- Aquí se insertará el precio con descuento dinámicamente -->
+            <div class="tabs">
+                <button id="btn-tab-ventas" class="tab-btn active" onclick="switchTab('ventas')">💰 Ventas y Clientes</button>
+                <button id="btn-tab-catalogo" class="tab-btn" onclick="switchTab('catalogo')">📦 Catálogo de Servicios</button>
             </div>
-            
-            <div style="background: #F9FAFB; padding: 15px; border-radius: 12px; text-align: left; margin-bottom: 25px;">
-                <h3 style="font-size: 14px; color: #6B7280; margin-top: 0; margin-bottom: 10px;">¿Qué incluye?</h3>
-                <ul id="detalles-caracteristicas" class="features" style="margin: 0; padding-left: 0; list-style: none;">
-                    <!-- Aquí van las características -->
-                </ul>
+
+            <!-- PESTAÑA VENTAS -->
+            <div id="tab-ventas" class="tab-content active">
+                <div class="stats-container">
+                    <div class="stat-box"><h3 id="stat-activos">0</h3><p>CLIENTES ACTIVOS</p></div>
+                    <div class="stat-box"><h3 id="stat-pendientes">0</h3><p>PAGOS POR REVISAR</p></div>
+                </div>
+
+                <div class="filtros-admin">
+                    <input type="text" id="buscador" class="search-box" placeholder="Buscar dato o token..." oninput="filtrarTabla()">
+                    <select id="filtro-servicio" class="filtro-select" onchange="filtrarTabla()"><option value="ALL">Todos los Servicios</option></select>
+                    <select id="filtro-orden" class="filtro-select" onchange="filtrarTabla()">
+                        <option value="RECIENTES">Más Recientes</option>
+                        <option value="VENCIMIENTO">Por Vencer Primero</option>
+                    </select>
+                    <button class="btn-manual" onclick="registroManual()">+ Añadir Cliente Manual</button>
+                </div>
+
+                <div style="overflow-x: auto;">
+                    <table>
+                        <thead><tr><th>Dato del Cliente</th><th>Servicio y Tiempo</th><th>N° Op / Token</th><th>Estado</th><th>Vencimiento</th><th>Acciones</th></tr></thead>
+                        <tbody id="tabla-usuarios"><tr><td colspan="6" style="text-align:center;">Cargando datos...</td></tr></tbody>
+                    </table>
+                </div>
             </div>
-            
-            <div id="detalles-btn-comprar">
-                <!-- Aquí se insertará el botón de compra -->
+
+            <!-- PESTAÑA CATÁLOGO -->
+            <div id="tab-catalogo" class="tab-content">
+                <div class="filtros-admin" style="justify-content: space-between; align-items: center; margin-bottom: 25px; background: transparent; border: none; padding: 0;">
+                    <h2 style="margin: 0; font-size: 22px; color: #374151;">Servicios en Tienda</h2>
+                    <button class="btn-primary" onclick="abrirModalServicio()">+ Crear Nuevo Servicio</button>
+                </div>
+                
+                <div style="overflow-x: auto;">
+                    <table>
+                        <thead><tr><th>Servicio</th><th>Categoría</th><th>Planes Creados</th><th>Acciones</th></tr></thead>
+                        <tbody id="tabla-servicios"><tr><td colspan="4" style="text-align:center;">Cargando catálogo...</td></tr></tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
-        <!-- VENTANA DE COMPRA -->
-    <div id="modal-compra" class="modal oculto">
+
+    <!-- MODAL GESTIONAR SERVICIO -->
+    <div id="modal-servicio" class="modal">
         <div class="modal-content">
-            <span class="cerrar" id="cerrar-compra">&times;</span>
-            <h3 id="titulo-producto-modal">Finaliza tu Pago</h3>
+            <span class="cerrar-modal" onclick="cerrarModalServicio()">&times;</span>
+            <h2 id="titulo-modal-servicio" style="margin-top:0; margin-bottom:20px; color: var(--primary);">Servicio</h2>
+            <input type="hidden" id="serv-id">
             
-            <p id="alerta-correo" style="color: #DC2626; font-size: 13px; font-weight: bold; margin-bottom: 5px; display: none;">⚠️ Ingresa tu dato primero.</p>
-            <input type="email" id="correo-compra" placeholder="1. Escribe el correo a vincular" style="margin-top: 0;">
-            
-            <hr>
-            
-            <p style="font-size: 14px; color: var(--text-light);">2. Escanea y Yapea exactamente <b id="texto-precio-yape" style="color: var(--primary); font-size: 16px;">S/ 0.00</b></p>
-            
-            <div class="qr-box">
-                <img src="img/qr-yape.png" alt="QR Yape">
-                <a href="img/qr-yape.png" download="QR_Yape_Tienda.png" id="btn-descargar-qr" class="btn-download-qr">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16"><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/><path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/></svg> Descargar QR
-                </a>
+            <div class="input-group">
+                <label>Imagen del Producto (Opcional)</label>
+                <div class="upload-box">
+                    <span id="upload-text">📁 Haz clic o arrastra una imagen aquí</span>
+                    <input type="file" id="serv-imagen-file" accept="image/*" onchange="subirImagen(this)">
+                    <p id="upload-status" style="font-size: 12px; color: #10B981; margin-top: 5px; display: none;">Subiendo imagen...</p>
+                </div>
+                <input type="hidden" id="serv-imagen-url">
+                <div style="text-align: center;"><img id="serv-imagen-preview" class="upload-preview" src=""></div>
             </div>
 
-            <div class="yape-name-box">
-                <span>👤 Titular de la cuenta:</span><br>
-                <strong>Edwuar Jesus Vega Campos</strong>
+            <div class="input-group"><label>Nombre del Servicio</label><input type="text" id="serv-nombre" placeholder="Ej: Canva Pro Edu"></div>
+            
+            <div class="input-group" style="display: flex; gap: 15px;">
+                <div style="flex: 1;">
+                    <label>Categoría</label>
+                    <input type="text" id="serv-categoria" class="filtro-select" style="width: 100%; box-sizing: border-box;" placeholder="Ej: Streaming, Juegos..." list="opciones-categoria">
+                    <datalist id="opciones-categoria">
+                        <option value="Streaming"></option><option value="Seguros"></option><option value="Software"></option>
+                    </datalist>
+                </div>
+                <div style="flex: 1;">
+                    <label>¿Qué pedir al cliente?</label>
+                    <select id="serv-tipo-ingreso" class="filtro-select" style="width: 100%;">
+                        <option value="numero">Solo Número (Más rápido)</option>
+                        <option value="correo">Pedir Correo Electrónico</option>
+                    </select>
+                </div>
             </div>
 
-            <div style="display: flex; align-items: center; justify-content: center; margin-bottom: 10px;">
-                <p style="font-size: 14px; color: var(--text-light); margin: 0;">3. N° de Operación de Yape:</p>
-                <div class="tooltip-container"><span class="icon-help">❓</span><span class="tooltip-text">Los 7 números del comprobante.</span></div>
-            </div>
+            <div class="input-group"><label>Etiqueta Promocional (Opcional)</label><input type="text" id="serv-etiqueta" placeholder="Ej: Plan Estrella, 50% Dcto"></div>
+            <div class="input-group"><label>Características (Separadas por coma)</label><textarea id="serv-caracteristicas" rows="3" placeholder="Ej: Plantillas Premium, Diseños 3D..."></textarea></div>
+
+            <hr style="margin:25px 0; border:0; border-top:1px solid #E5E7EB;">
+            <h3 style="font-size:16px; margin-bottom:10px; color: #374151;">⏳ Opciones de Tiempo (Planes)</h3>
+            <p style="font-size:13px; color:#6B7280; margin-bottom:15px;">Pon <b>0</b> en Tiempo si es un servicio de <b>Pago Único (Permanente)</b>.</p>
             
-            <div class="otp-container" id="otp-inputs">
-                <input type="text" maxlength="1" class="otp-box"><input type="text" maxlength="1" class="otp-box"><input type="text" maxlength="1" class="otp-box"><input type="text" maxlength="1" class="otp-box"><input type="text" maxlength="1" class="otp-box"><input type="text" maxlength="1" class="otp-box"><input type="text" maxlength="1" class="otp-box">
-            </div>
-            
-            <button id="btn-confirmar-yape" class="btn-primary w-100">Confirmar Pago</button>
-            <hr>
-            
-            <button id="btn-otro-medio" class="btn-secondary w-100">Pagar con proveedor por WhatsApp</button>
-            <p style="font-size: 12px; color: var(--text-light); margin-top: 8px; line-height: 1.4;">
-                Selecciona esta opción si deseas pagar mediante <b>Plin, BCP, BBVA</b> u otro banco. Te atenderemos personalmente.
-            </p>
+            <div id="contenedor-planes"></div>
+            <button style="background: #F9FAFB; border: 2px dashed #D1D5DB; padding: 12px; width: 100%; border-radius: 8px; cursor: pointer; font-weight: bold; color: #6B7280; margin-bottom: 25px;" onclick="agregarFilaPlan()">+ Añadir otra opción de tiempo</button>
+
+            <button class="btn-primary w-100" id="btn-guardar-servicio" onclick="guardarServicio()" style="width: 100%;">Guardar Servicio</button>
         </div>
     </div>
 
-    <!-- VENTANA DE TIEMPO -->
-    <div id="modal-tiempo" class="modal oculto">
-        <div class="modal-content">
-            <span class="cerrar" id="cerrar-tiempo">&times;</span>
-            <h3>Consultar Suscripción</h3>
-            <p style="font-size: 14px; color: var(--text-light);">Ingresa tu correo o número para ver cuántos días te quedan.</p>
-            <input type="text" id="correo-tiempo" placeholder="Tu correo o número de WhatsApp">
-            <button id="btn-buscar-tiempo" class="btn-primary w-100">Buscar mi tiempo</button>
-            <p id="mensaje-tiempo" style="margin-top: 20px; font-size: 16px; line-height: 1.5;"></p>
-        </div>
+    <!-- MODAL SEGURIDAD -->
+    <div id="modal-seguridad" class="modal">
+        <div class="modal-content"><span class="cerrar-modal" onclick="cerrarSeguridad()">&times;</span><h2 style="margin-top:0; color: #F59E0B;">🛡️ Accesos Recientes</h2><div id="lista-dispositivos"></div></div>
     </div>
 
-    <!-- WHATSAPP FLOTANTE -->
-    <a href="https://wa.me/51928293163" class="float-whatsapp" target="_blank" title="Contáctanos por WhatsApp"><svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" fill="currentColor" viewBox="0 0 16 16"><path d="M13.601 2.326A7.85 7.85 0 0 0 7.994 0C3.627 0 .068 3.558.064 7.926c0 1.399.366 2.76 1.057 3.965L0 16l4.204-1.102a7.9 7.9 0 0 0 3.79.965h.004c4.368 0 7.926-3.558 7.93-7.93A7.9 7.9 0 0 0 13.6 2.326zM7.994 14.521a6.6 6.6 0 0 1-3.356-.92l-.24-.144-2.494.654.666-2.433-.156-.251a6.56 6.56 0 0 1-1.007-3.505c0-3.626 2.957-6.584 6.591-6.584a6.56 6.56 0 0 1 4.66 1.931 6.56 6.56 0 0 1 1.928 4.66c-.004 3.639-2.961 6.592-6.592 6.592m3.615-4.934c-.197-.099-1.17-.578-1.353-.646-.182-.065-.315-.099-.445.099-.133.197-.513.646-.627.775-.114.133-.232.148-.43.05-.197-.1-.836-.308-1.592-.985-.59-.525-.985-1.175-1.103-1.372-.114-.198-.011-.304.088-.403.087-.088.197-.232.296-.346.1-.114.133-.198.198-.33.065-.134.034-.248-.015-.347-.05-.099-.445-1.076-.612-1.47-.16-.389-.323-.335-.445-.34-.114-.007-.247-.007-.38-.007a.73.73 0 0 0-.529.247c-.182.198-.691.677-.691 1.654s.71 1.916.81 2.049c.098.133 1.394 2.132 3.383 2.992.47.205.84.326 1.129.418.475.152.904.129 1.246.08.38-.058 1.171-.48 1.338-.943.164-.464.164-.86.114-.943-.049-.084-.182-.133-.38-.232"/></svg></a>
+    <script>
+        const supabaseClient = window.supabase.createClient('https://rhuhuvevynovfekwhlhb.supabase.co', 'sb_publishable_-8XCScnvNf6QXMsnbyJK9Q_XhrOr9j5');
+        let usuariosGlobal = [];
 
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="main.js"></script>
+        supabaseClient.auth.getSession().then(({ data: { session } }) => { if (session) mostrarPanel(); });
+
+        function obtenerInfoDispositivo() {
+            const ua = navigator.userAgent;
+            let dispositivo = /Mobile|Android|iP(hone|od|ad)/.test(ua) ? "📱 Celular / Tablet" : "💻 Computadora";
+            let navegador = "Navegador Web";
+            if(ua.includes("Chrome")) navegador = "Google Chrome";
+            if(ua.includes("Firefox")) navegador = "Mozilla Firefox";
+            if(ua.includes("Safari") && !ua.includes("Chrome")) navegador = "Apple Safari";
+            if(ua.includes("Edge")) navegador = "Microsoft Edge";
+            return { dispositivo, navegador };
+        }
+
+        async function iniciarSesion() {
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+            const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+            if (error) { document.getElementById('login-error').style.display = 'block'; } 
+            else {
+                const info = obtenerInfoDispositivo();
+                await supabaseClient.from('admin_accesos').insert([{ dispositivo: info.dispositivo, navegador: info.navegador }]);
+                mostrarPanel();
+            }
+        }
+
+        async function cerrarSesion() { await supabaseClient.auth.signOut(); window.location.reload(); }
+        
+        function mostrarPanel() {
+            document.getElementById('login-section').style.display = 'none';
+            document.getElementById('admin-section').style.display = 'block';
+            cargarUsuarios();
+        }
+
+        function switchTab(t) {
+            document.querySelectorAll('.tab-content, .tab-btn').forEach(e => e.classList.remove('active'));
+            document.getElementById('tab-' + t).classList.add('active'); document.getElementById('btn-tab-' + t).classList.add('active');
+            if(t === 'ventas') cargarUsuarios(); else cargarServicios();
+        }
+
+        // ===== USUARIOS =====
+        async function cargarUsuarios() {
+            const { data: usuarios } = await supabaseClient.from('usuarios_canva').select('*').order('creado_en', { ascending: false });
+            usuariosGlobal = usuarios || [];
+            
+            document.getElementById('stat-activos').innerText = usuariosGlobal.filter(u => u.estado === 'Activo').length;
+            document.getElementById('stat-pendientes').innerText = usuariosGlobal.filter(u => u.estado === 'Pendiente').length;
+            
+            const { data: catalogo } = await supabaseClient.from('servicios').select('nombre').order('nombre', { ascending: true });
+            const selectServicios = document.getElementById('filtro-servicio');
+            selectServicios.innerHTML = '<option value="ALL">Todos los Servicios</option>';
+            if (catalogo) { catalogo.forEach(s => selectServicios.innerHTML += `<option value="${s.nombre}">${s.nombre}</option>`); }
+            
+            filtrarTabla(); 
+        }
+
+        function filtrarTabla() {
+            let txt = document.getElementById('buscador').value.toLowerCase();
+            let servFiltro = document.getElementById('filtro-servicio').value;
+            let orden = document.getElementById('filtro-orden').value;
+
+            let filtrados = usuariosGlobal.filter(u => {
+                let servUsuario = u.servicio || 'Canva Pro Edu';
+                let coincideTxt = (u.correo && u.correo.toLowerCase().includes(txt)) || (u.num_operacion && u.num_operacion.toLowerCase().includes(txt)) || (u.token && u.token.toLowerCase().includes(txt));
+                return coincideTxt && (servFiltro === "ALL" || servUsuario === servFiltro);
+            });
+
+            if (orden === 'VENCIMIENTO') {
+                filtrados.sort((a, b) => {
+                    let fA = a.fecha_fin ? new Date(a.fecha_fin).getTime() : 9999999999999;
+                    let fB = b.fecha_fin ? new Date(b.fecha_fin).getTime() : 9999999999999;
+                    return fA - fB; 
+                });
+            } else {
+                filtrados.sort((a, b) => new Date(b.creado_en) - new Date(a.creado_en));
+            }
+            renderizarTabla(filtrados);
+        }
+
+        function renderizarTabla(usuarios) {
+            const tabla = document.getElementById('tabla-usuarios'); tabla.innerHTML = ''; 
+            if(usuarios.length === 0) return tabla.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 20px;">No hay registros.</td></tr>';
+
+            usuarios.forEach(user => {
+                let badge = user.estado === 'Pendiente' ? 'badge-pendiente' : 'badge-activo';
+                let btn = user.estado === 'Pendiente' ? `<button class="btn-aprobar" onclick="aprobarPago(${user.id})">Aprobar</button>` : `<span style="color:#059669; font-weight:bold;">✔️ Activo</span>`;
+                
+                let tiempoTxt = user.meses == 0 ? "Pago Único" : `${user.meses || 1} ${user.unidad || 'Meses'}`;
+                let fechaFinShow = user.fecha_fin ? user.fecha_fin : (user.meses == 0 ? '<strong style="color:var(--primary)">Permanente</strong>' : '---');
+
+                let msjContacto = encodeURIComponent(`Hola! Te escribo de VegaStore. Tu servicio de ${user.servicio || 'Canva'} está ${user.estado}.`);
+                let btnContacto = '';
+                
+                // Si el dato es "Extraer de WhatsApp", mostramos un aviso rojo
+                if (user.correo === 'Extraer de WhatsApp') {
+                    btnContacto = `<span style="font-size:11px; color:#DC2626; font-weight:bold;">Falta Número</span>`;
+                } else {
+                    let esCorreo = user.correo.includes('@');
+                    btnContacto = esCorreo 
+                        ? `<a href="mailto:${user.correo}?subject=Tu Suscripción en VegaStore&body=${msjContacto}" class="btn-copiar" target="_blank">✉️</a>`
+                        : `<a href="https://wa.me/${user.correo.replace(/\D/g,'')}?text=${msjContacto}" class="btn-copiar" target="_blank">💬</a>`;
+                }
+
+                tabla.innerHTML += `<tr>
+                    <td><div class="correo-box"><strong>${user.correo}</strong>${btnContacto}</div></td>
+                    <td><strong>${user.servicio || 'Canva Pro Edu'}</strong><br><span style="font-size:12px; color:#6B7280; font-weight:bold;">${tiempoTxt} • ${user.metodo_pago}</span></td>
+                    <td>${user.num_operacion || user.token || '---'}</td>
+                    <td><span class="${badge}">${user.estado}</span></td>
+                    <td>${fechaFinShow}</td>
+                    <td style="display:flex; gap:8px;">
+                        ${btn} 
+                        <button class="btn-primary" style="padding:6px 10px; font-size:13px; background:#3B82F6;" onclick="editarDatoUsuario(${user.id}, '${user.correo}')" title="Añadir/Editar Contacto">✏️</button>
+                        <button class="btn-borrar" onclick="borrarUsuario(${user.id})">🗑️</button>
+                    </td>
+                </tr>`;
+            });
+        }
+
+        // NUEVA FUNCIÓN: Editar el correo/número del cliente
+        async function editarDatoUsuario(id, datoActual) {
+            let valorDefecto = datoActual === 'Extraer de WhatsApp' ? '' : datoActual;
+            let nuevoDato = prompt("Ingresa el número de WhatsApp o Correo del cliente:", valorDefecto);
+            
+            if (nuevoDato !== null && nuevoDato.trim() !== "") {
+                await supabaseClient.from('usuarios_canva').update({ correo: nuevoDato.trim() }).eq('id', id);
+                cargarUsuarios();
+            }
+        }
+
+        async function aprobarPago(id) {
+            let user = usuariosGlobal.find(u => u.id === id);
+            let cantidad = parseInt(user.meses) || 0;
+            let unidad = user.unidad || 'meses';
+            
+            let inicioStr = new Date().toISOString().split('T')[0];
+            let finStr = null; 
+
+            if (cantidad > 0) {
+                let inicio = new Date(); let fin = new Date();
+                if (user.estado === 'Activo' && user.fecha_fin) {
+                    let fActual = new Date(user.fecha_fin);
+                    if (fActual > new Date()) { fin = fActual; inicioStr = user.fecha_inicio; }
+                }
+                
+                if(unidad === 'dias') fin.setDate(fin.getDate() + cantidad);
+                else if(unidad === 'años') fin.setFullYear(fin.getFullYear() + cantidad);
+                else fin.setMonth(fin.getMonth() + cantidad); 
+                
+                finStr = fin.toISOString().split('T')[0];
+            }
+
+            await supabaseClient.from('usuarios_canva').update({ estado: 'Activo', fecha_inicio: inicioStr, fecha_fin: finStr }).eq('id', id);
+            cargarUsuarios();
+        }
+
+        async function borrarUsuario(id) { if(confirm("¿Borrar cliente permanentemente?")) { await supabaseClient.from('usuarios_canva').delete().eq('id', id); cargarUsuarios(); } }
+
+        async function registroManual() {
+            const correo = prompt("Ingresa el Correo o Número de WhatsApp del cliente:");
+            if (correo) {
+                let serv = prompt("¿Qué servicio adquirió?") || "Canva Pro Edu";
+                let msInput = prompt("¿Cuántos meses? (Escribe 0 para Pago Único)", "1");
+                if (msInput !== null) {
+                    let ms = parseInt(msInput) || 0;
+                    let finStr = null; let inicioStr = new Date().toISOString().split('T')[0];
+                    if (ms > 0) { let fin = new Date(); fin.setMonth(fin.getMonth() + ms); finStr = fin.toISOString().split('T')[0]; }
+                    await supabaseClient.from('usuarios_canva').insert([{ correo: correo, servicio: serv, meses: ms, unidad: 'meses', metodo_pago: 'Manual', estado: 'Activo', fecha_inicio: inicioStr, fecha_fin: finStr }]);
+                    cargarUsuarios();
+                }
+            }
+        }
+
+        // ===== CATÁLOGO =====
+        async function cargarServicios() {
+            const { data } = await supabaseClient.from('servicios').select('*').order('id', { ascending: true });
+            const tabla = document.getElementById('tabla-servicios'); tabla.innerHTML = '';
+            
+            if(!data || data.length===0) return tabla.innerHTML = '<tr><td colspan="4" style="text-align:center; padding: 20px;">No tienes servicios creados.</td></tr>';
+
+            data.forEach(serv => {
+                let planes = serv.planes && serv.planes.length > 0 ? serv.planes : [{ cantidad: serv.meses || 1, unidad: 'meses', precio: serv.precio, promo: serv.precio_promocional }];
+                
+                let txtPlanes = planes.map(p => {
+                    let cant = p.cantidad !== undefined ? p.cantidad : (p.meses || 1);
+                    let uni = p.unidad || (p.meses == 0 ? 'permanente' : 'meses');
+                    
+                    let uText = uni;
+                    if(cant == 1) { if(uni==='meses') uText='Mes'; if(uni==='dias') uText='Día'; if(uni==='años') uText='Año'; }
+                    let t = cant == 0 ? 'Único' : `${cant} ${uText}`;
+                    
+                    return `<span style="background:#E5E7EB; padding:4px 8px; border-radius:6px; font-size:12px; font-weight:bold; color:#374151; display:inline-block; margin-bottom:5px; margin-right:5px;">${t} (S/ ${p.promo || p.precio})</span>`;
+                }).join('');
+                
+                let imgIcon = serv.imagen_url ? '🖼️ ' : '';
+                tabla.innerHTML += `<tr>
+                    <td><strong>${imgIcon}${serv.nombre}</strong></td>
+                    <td><span style="background:#DBEAFE; color:#1E3A8A; padding:4px 8px; border-radius:6px; font-size:12px; font-weight:bold;">${serv.categoria || '---'}</span></td>
+                    <td>${txtPlanes}</td>
+                    <td style="display:flex; gap:8px;"><button class="btn-primary" style="padding:6px 12px; font-size:13px;" onclick='editarServicio(${JSON.stringify(serv).replace(/'/g, "&apos;")})'>✏️ Editar</button><button class="btn-borrar" onclick="borrarServicio(${serv.id})">🗑️</button></td>
+                </tr>`;
+            });
+        }
+
+        function agregarFilaPlan(c = 1, u = 'meses', p = '', pr = '') {
+            const idFila = 'plan-' + Math.random().toString(36).substr(2, 5);
+            document.getElementById('contenedor-planes').insertAdjacentHTML('beforeend', `
+                <div class="plan-row" id="${idFila}" style="display:flex; gap:10px; margin-bottom:15px; background:#F9FAFB; padding:15px; border-radius:8px; border:1px solid #E5E7EB; flex-wrap: wrap;">
+                    <div style="flex:1; min-width: 80px;"><label style="font-size:12px;">Tiempo (0=Único)</label><input type="number" class="plan-cantidad" value="${c}" min="0" style="padding:8px; width:100%; border:1px solid #ccc; border-radius:6px;"></div>
+                    <div style="flex:1; min-width: 100px;"><label style="font-size:12px;">Unidad</label>
+                        <select class="plan-unidad" style="padding:8px; width:100%; border:1px solid #ccc; border-radius:6px; font-size:14px; background:white;">
+                            <option value="dias" ${u==='dias'?'selected':''}>Días</option>
+                            <option value="meses" ${u==='meses'?'selected':''}>Meses</option>
+                            <option value="años" ${u==='años'?'selected':''}>Años</option>
+                        </select>
+                    </div>
+                    <div style="flex:1; min-width: 90px;"><label style="font-size:12px;">Precio Normal</label><input type="number" class="plan-precio" value="${p}" step="0.10" style="padding:8px; width:100%; border:1px solid #ccc; border-radius:6px;"></div>
+                    <div style="flex:1; min-width: 90px;"><label style="font-size:12px;">Precio Oferta</label><input type="number" class="plan-promo" value="${pr}" step="0.10" style="padding:8px; width:100%; border:1px solid #ccc; border-radius:6px;"></div>
+                    <button style="background:#FEE2E2; color:#DC2626; border:none; border-radius:6px; cursor:pointer; padding:0 15px; font-weight:bold; margin-top:20px;" onclick="document.getElementById('${idFila}').remove()">X</button>
+                </div>
+            `);
+        }
+
+        async function subirImagen(input) {
+            const file = input.files[0];
+            if (!file) return;
+            const statusText = document.getElementById('upload-status');
+            const preview = document.getElementById('serv-imagen-preview');
+            const btnGuardar = document.getElementById('btn-guardar-servicio');
+            
+            statusText.style.display = 'block'; statusText.innerText = "Subiendo imagen..."; statusText.style.color = "#F59E0B"; btnGuardar.disabled = true; 
+            const filePath = `${Math.random()}.${file.name.split('.').pop()}`;
+
+            const { error } = await supabaseClient.storage.from('imagenes_servicios').upload(filePath, file);
+            if (error) { statusText.innerText = "Error: " + error.message; statusText.style.color = "red"; btnGuardar.disabled = false; return; }
+
+            const { data } = supabaseClient.storage.from('imagenes_servicios').getPublicUrl(filePath);
+            document.getElementById('serv-imagen-url').value = data.publicUrl;
+            preview.src = data.publicUrl; preview.style.display = 'inline-block';
+            statusText.innerText = "¡Imagen subida con éxito!"; statusText.style.color = "#10B981"; btnGuardar.disabled = false;
+        }
+
+        function abrirModalServicio() {
+            document.getElementById('serv-id').value = ''; document.getElementById('serv-nombre').value = ''; document.getElementById('serv-categoria').value = ''; 
+            document.getElementById('serv-tipo-ingreso').value = 'numero'; document.getElementById('serv-etiqueta').value = ''; document.getElementById('serv-caracteristicas').value = '';
+            document.getElementById('serv-imagen-url').value = ''; document.getElementById('serv-imagen-file').value = ''; document.getElementById('serv-imagen-preview').style.display = 'none'; document.getElementById('upload-status').style.display = 'none';
+            document.getElementById('contenedor-planes').innerHTML = ''; agregarFilaPlan(1, 'meses'); 
+            document.getElementById('titulo-modal-servicio').innerText = 'Nuevo Servicio'; document.getElementById('modal-servicio').style.display = 'flex';
+        }
+
+        function editarServicio(serv) {
+            document.getElementById('serv-id').value = serv.id; document.getElementById('serv-nombre').value = serv.nombre; document.getElementById('serv-categoria').value = serv.categoria || ''; 
+            document.getElementById('serv-tipo-ingreso').value = serv.tipo_ingreso || 'numero'; document.getElementById('serv-etiqueta').value = serv.etiqueta || ''; document.getElementById('serv-caracteristicas').value = serv.caracteristicas || '';
+            if (serv.imagen_url) { document.getElementById('serv-imagen-url').value = serv.imagen_url; document.getElementById('serv-imagen-preview').src = serv.imagen_url; document.getElementById('serv-imagen-preview').style.display = 'inline-block'; } 
+            else { document.getElementById('serv-imagen-url').value = ''; document.getElementById('serv-imagen-preview').style.display = 'none'; }
+            
+            document.getElementById('contenedor-planes').innerHTML = '';
+            let planes = serv.planes && serv.planes.length > 0 ? serv.planes : [{ cantidad: serv.meses || 1, unidad: 'meses', precio: serv.precio, promo: serv.precio_promocional }];
+            planes.forEach(p => {
+                let cant = p.cantidad !== undefined ? p.cantidad : (p.meses !== undefined ? p.meses : 1);
+                let uni = p.unidad || 'meses';
+                agregarFilaPlan(cant, uni, p.precio, p.promo || '');
+            });
+            document.getElementById('titulo-modal-servicio').innerText = 'Editar Servicio'; document.getElementById('modal-servicio').style.display = 'flex';
+        }
+
+        function cerrarModalServicio() { document.getElementById('modal-servicio').style.display = 'none'; }
+
+        async function guardarServicio() {
+            let id = document.getElementById('serv-id').value;
+            let nombre = document.getElementById('serv-nombre').value.trim();
+            let catInput = document.getElementById('serv-categoria').value.trim();
+            let categoria = catInput ? catInput.charAt(0).toUpperCase() + catInput.slice(1).toLowerCase() : null;
+            
+            let planesGuardar = [];
+            document.querySelectorAll('.plan-row').forEach(row => {
+                let c = parseInt(row.querySelector('.plan-cantidad').value); 
+                let u = row.querySelector('.plan-unidad').value;
+                let p = parseFloat(row.querySelector('.plan-precio').value); 
+                let pr = parseFloat(row.querySelector('.plan-promo').value);
+                if(c >= 0 && !isNaN(p)) planesGuardar.push({ cantidad: c, unidad: u, precio: p, promo: isNaN(pr) ? null : pr });
+            });
+
+            if(!nombre || !categoria || planesGuardar.length === 0) return alert("Faltan datos. El servicio necesita nombre, categoría y al menos 1 precio.");
+
+            const datos = { 
+                nombre: nombre, categoria: categoria, tipo_ingreso: document.getElementById('serv-tipo-ingreso').value,
+                etiqueta: document.getElementById('serv-etiqueta').value.trim(), caracteristicas: document.getElementById('serv-caracteristicas').value.trim(), 
+                imagen_url: document.getElementById('serv-imagen-url').value || null,
+                planes: planesGuardar, activo: true, precio: planesGuardar[0].precio, precio_promocional: planesGuardar[0].promo 
+            };
+            
+            let errorGuardado;
+            if(id) { const { error } = await supabaseClient.from('servicios').update(datos).eq('id', id); errorGuardado = error; } 
+            else { const { error } = await supabaseClient.from('servicios').insert([datos]); errorGuardado = error; }
+
+            if (errorGuardado) alert("Error al guardar: " + errorGuardado.message); else { cerrarModalServicio(); cargarServicios(); }
+        }
+
+        async function borrarServicio(id) { if (confirm("¿Borrar servicio del catálogo?")) { await supabaseClient.from('servicios').delete().eq('id', id); cargarServicios(); } }
+
+        async function abrirSeguridad() {
+            document.getElementById('modal-seguridad').style.display = 'flex';
+            const cont = document.getElementById('lista-dispositivos'); cont.innerHTML = 'Cargando accesos...';
+            const { data, error } = await supabaseClient.from('admin_accesos').select('*').order('fecha', { ascending: false }).limit(10);
+            if (error || !data) { cont.innerHTML = '<p>Error al cargar el historial.</p>'; return; }
+            cont.innerHTML = '';
+            data.forEach((acc, index) => {
+                let f = new Date(acc.fecha).toLocaleString('es-PE', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' });
+                let etiqueta = index === 0 ? '<span style="background:#10B981; color:white; padding:2px 8px; border-radius:12px; font-size:11px; margin-left:8px;">Actual</span>' : '';
+                cont.innerHTML += `<div style="padding:15px; border-bottom:1px solid #E5E7EB;"><h4 style="margin:0 0 5px 0;">${acc.dispositivo} ${etiqueta}</h4><p style="margin:0;font-size:13px;color:#6b7280">${acc.navegador} • ${f}</p></div>`;
+            });
+        }
+        function cerrarSeguridad() { document.getElementById('modal-seguridad').style.display = 'none'; }
+    </script>
 </body>
 </html>
