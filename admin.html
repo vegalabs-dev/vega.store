@@ -19,38 +19,21 @@
         .tab-content { display: none; }
         .tab-content.active { display: block; }
 
-        /* ESTADÍSTICAS */
         .stats-container { display: flex; gap: 20px; margin-bottom: 30px; flex-wrap: wrap;}
         .stat-box { background: #F9FAFB; border: 1px solid #E5E7EB; padding: 20px; border-radius: 12px; flex: 1; text-align: center; min-width: 150px;}
         .stat-box h3 { margin: 0 0 5px 0; font-size: 28px; color: var(--primary); }
         .stat-box p { margin: 0; font-size: 13px; color: #6B7280; font-weight: bold; letter-spacing: 0.5px;}
 
-        /* FILTROS */
         .filtros-admin { display: flex; gap: 15px; margin-bottom: 30px; flex-wrap: wrap; align-items: center; background: #F9FAFB; padding: 15px; border-radius: 12px; border: 1px solid #E5E7EB;}
         .search-box { flex: 1; min-width: 250px; padding: 12px 15px; border: 2px solid #E5E7EB; border-radius: 8px; outline: none; transition: 0.3s;}
         .search-box:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(139, 61, 255, 0.15); }
         
         .filtro-select { 
-            padding: 12px 35px 12px 15px; 
-            border: 2px solid #E5E7EB; 
-            border-radius: 8px; 
-            outline: none; 
-            font-weight: 600; 
-            color: #374151; 
-            background-color: white; 
-            cursor: pointer;
-            transition: 0.3s;
-            appearance: none; 
-            -webkit-appearance: none;
+            padding: 12px 35px 12px 15px; border: 2px solid #E5E7EB; border-radius: 8px; outline: none; font-weight: 600; color: #374151; background-color: white; cursor: pointer; transition: 0.3s; appearance: none; -webkit-appearance: none;
             background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236B7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
-            background-repeat: no-repeat;
-            background-position: right 12px center;
-            background-size: 16px;
+            background-repeat: no-repeat; background-position: right 12px center; background-size: 16px;
         }
-        .filtro-select:hover { border-color: #D1D5DB; }
         .filtro-select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(139, 61, 255, 0.15); }
-        .filtro-select option { font-weight: 500; color: #1F2937; background: white; padding: 10px; }
-        /* Ajuste cuando el input es de texto (para la nueva categoría) */
         input.filtro-select { background-image: none; padding-right: 15px; }
 
         table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px; }
@@ -60,29 +43,21 @@
         .badge-pendiente { background: #FEF3C7; color: #D97706; padding: 6px 12px; border-radius: 20px; font-weight: bold; font-size: 12px; }
         .badge-activo { background: #D1FAE5; color: #059669; padding: 6px 12px; border-radius: 20px; font-weight: bold; font-size: 12px; }
         
-        /* BOTONES GLOBALES */
         .btn-primary { background: var(--primary); color: white; border: none; padding: 12px 18px; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.3s;}
         .btn-aprobar { background: #10B981; color: white; border: none; padding: 8px 12px; border-radius: 8px; cursor: pointer; font-weight: bold; }
         .btn-borrar { background: #FEE2E2; color: #DC2626; border: none; padding: 8px 12px; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.2s;}
-        .btn-borrar:hover { background: #FECACA; }
         .btn-manual { background: var(--primary); color: white; border: none; padding: 12px 18px; border-radius: 8px; cursor: pointer; font-weight: bold; }
         .correo-box { display: flex; align-items: center; gap: 8px; }
-        .btn-copiar { background: #F3F4F6; border: 1px solid #E5E7EB; border-radius: 6px; cursor: pointer; font-size: 14px; padding: 5px 8px; transition: 0.2s; text-decoration: none; display: inline-block;}
-        .btn-copiar:hover { background: #E5E7EB; transform: scale(1.1);}
+        .btn-copiar { background: #F3F4F6; border: 1px solid #E5E7EB; border-radius: 6px; cursor: pointer; font-size: 14px; padding: 5px 8px; text-decoration: none; display: inline-block;}
 
-        /* MODALES */
         .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); display: none; justify-content: center; align-items: center; z-index: 1000; overflow-y:auto; padding:20px;}
-        .modal-content { background: white; padding: 30px; border-radius: 15px; width: 100%; max-width: 550px; position: relative; margin: auto;}
+        .modal-content { background: white; padding: 30px; border-radius: 15px; width: 100%; max-width: 600px; position: relative; margin: auto;}
         .cerrar-modal { position: absolute; top: 15px; right: 20px; font-size: 28px; cursor: pointer; color: #6B7280; transition: 0.2s;}
-        .cerrar-modal:hover { color: #111; }
         .input-group { margin-bottom: 15px; text-align: left;}
         .input-group label { display: block; font-size: 13px; font-weight: bold; color: #374151; margin-bottom: 5px;}
-        .input-group input, .input-group textarea, .input-group select { width: 100%; padding: 12px; border: 1px solid #D1D5DB; border-radius: 8px; box-sizing: border-box; outline: none; transition: 0.3s; font-family: inherit;}
-        .input-group input:focus, .input-group textarea:focus, .input-group select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(139, 61, 255, 0.15); }
+        .input-group input, .input-group textarea, .input-group select { width: 100%; padding: 12px; border: 1px solid #D1D5DB; border-radius: 8px; box-sizing: border-box; outline: none; font-family: inherit;}
         
-        /* ESTILO PARA LA SUBIDA DE IMAGEN */
-        .upload-box { border: 2px dashed #D1D5DB; border-radius: 8px; padding: 15px; text-align: center; background: #F9FAFB; transition: 0.3s; position: relative; }
-        .upload-box:hover { border-color: var(--primary); background: #F3F4F6; }
+        .upload-box { border: 2px dashed #D1D5DB; border-radius: 8px; padding: 15px; text-align: center; background: #F9FAFB; position: relative; }
         .upload-box input[type="file"] { position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
         .upload-preview { width: 100px; height: 100px; object-fit: cover; border-radius: 8px; margin-top: 10px; display: none; border: 2px solid #E5E7EB; }
     </style>
@@ -102,12 +77,9 @@
     <div id="admin-section" style="display:none; width:100%; max-width:1100px;">
         <div class="panel-container">
             <div class="header-panel">
-                <div>
-                    <h1>👑 Panel de VegaStore</h1>
-                    <p style="margin-top: 5px; color: #6b7280; font-size: 14px;">Administración General</p>
-                </div>
+                <div><h1>👑 Panel de VegaStore</h1><p style="margin-top: 5px; color: #6b7280; font-size: 14px;">Administración General</p></div>
                 <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                    <button class="btn-primary" style="background:#F59E0B; display:flex; align-items:center; gap:5px;" onclick="abrirSeguridad()">🛡️ Accesos</button>
+                    <button class="btn-primary" style="background:#F59E0B;" onclick="abrirSeguridad()">🛡️ Accesos</button>
                     <button class="btn-primary" style="background:#374151;" onclick="cerrarSesion()">Salir</button>
                 </div>
             </div>
@@ -174,21 +146,17 @@
                     <p id="upload-status" style="font-size: 12px; color: #10B981; margin-top: 5px; display: none;">Subiendo imagen...</p>
                 </div>
                 <input type="hidden" id="serv-imagen-url">
-                <div style="text-align: center;">
-                    <img id="serv-imagen-preview" class="upload-preview" src="">
-                </div>
+                <div style="text-align: center;"><img id="serv-imagen-preview" class="upload-preview" src=""></div>
             </div>
 
             <div class="input-group"><label>Nombre del Servicio</label><input type="text" id="serv-nombre" placeholder="Ej: Canva Pro Edu"></div>
             
             <div class="input-group" style="display: flex; gap: 15px;">
                 <div style="flex: 1;">
-                    <label>Categoría (Crea una o elige)</label>
+                    <label>Categoría</label>
                     <input type="text" id="serv-categoria" class="filtro-select" style="width: 100%; box-sizing: border-box;" placeholder="Ej: Streaming, Juegos..." list="opciones-categoria">
                     <datalist id="opciones-categoria">
-                        <option value="Streaming"></option>
-                        <option value="Seguros"></option>
-                        <option value="Software"></option>
+                        <option value="Streaming"></option><option value="Seguros"></option><option value="Software"></option>
                     </datalist>
                 </div>
                 <div style="flex: 1;">
@@ -205,23 +173,18 @@
 
             <hr style="margin:25px 0; border:0; border-top:1px solid #E5E7EB;">
             <h3 style="font-size:16px; margin-bottom:10px; color: #374151;">⏳ Opciones de Tiempo (Planes)</h3>
-            <p style="font-size:13px; color:#6B7280; margin-bottom:15px;">Pon <b>0</b> en meses si es un servicio de <b>Pago Único (Permanente)</b>.</p>
+            <p style="font-size:13px; color:#6B7280; margin-bottom:15px;">Pon <b>0</b> en Tiempo si es un servicio de <b>Pago Único (Permanente)</b>.</p>
             
             <div id="contenedor-planes"></div>
-            <button style="background: #F9FAFB; border: 2px dashed #D1D5DB; padding: 12px; width: 100%; border-radius: 8px; cursor: pointer; font-weight: bold; color: #6B7280; margin-bottom: 25px; transition: 0.3s;" onclick="agregarFilaPlan()">+ Añadir otra opción de tiempo</button>
+            <button style="background: #F9FAFB; border: 2px dashed #D1D5DB; padding: 12px; width: 100%; border-radius: 8px; cursor: pointer; font-weight: bold; color: #6B7280; margin-bottom: 25px;" onclick="agregarFilaPlan()">+ Añadir otra opción de tiempo</button>
 
-            <button class="btn-primary w-100" id="btn-guardar-servicio" onclick="guardarServicio()" style="width: 100%;">Guardar Servicio en Catálogo</button>
+            <button class="btn-primary w-100" id="btn-guardar-servicio" onclick="guardarServicio()" style="width: 100%;">Guardar Servicio</button>
         </div>
     </div>
 
     <!-- MODAL SEGURIDAD -->
     <div id="modal-seguridad" class="modal">
-        <div class="modal-content">
-            <span class="cerrar-modal" onclick="cerrarSeguridad()">&times;</span>
-            <h2 style="margin-top:0; color: #F59E0B;">🛡️ Accesos Recientes</h2>
-            <p style="font-size: 13px; color: #6B7280; margin-bottom: 15px;">Registro inborrable de dispositivos que entraron al panel.</p>
-            <div id="lista-dispositivos"><p>Cargando registro...</p></div>
-        </div>
+        <div class="modal-content"><span class="cerrar-modal" onclick="cerrarSeguridad()">&times;</span><h2 style="margin-top:0; color: #F59E0B;">🛡️ Accesos Recientes</h2><div id="lista-dispositivos"></div></div>
     </div>
 
     <script>
@@ -245,10 +208,8 @@
             const email = document.getElementById('login-email').value;
             const password = document.getElementById('login-password').value;
             const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
-            
-            if (error) {
-                document.getElementById('login-error').style.display = 'block';
-            } else {
+            if (error) { document.getElementById('login-error').style.display = 'block'; } 
+            else {
                 const info = obtenerInfoDispositivo();
                 await supabaseClient.from('admin_accesos').insert([{ dispositivo: info.dispositivo, navegador: info.navegador }]);
                 mostrarPanel();
@@ -278,13 +239,9 @@
             document.getElementById('stat-pendientes').innerText = usuariosGlobal.filter(u => u.estado === 'Pendiente').length;
             
             const { data: catalogo } = await supabaseClient.from('servicios').select('nombre').order('nombre', { ascending: true });
-            
             const selectServicios = document.getElementById('filtro-servicio');
             selectServicios.innerHTML = '<option value="ALL">Todos los Servicios</option>';
-            
-            if (catalogo) {
-                catalogo.forEach(s => selectServicios.innerHTML += `<option value="${s.nombre}">${s.nombre}</option>`);
-            }
+            if (catalogo) { catalogo.forEach(s => selectServicios.innerHTML += `<option value="${s.nombre}">${s.nombre}</option>`); }
             
             filtrarTabla(); 
         }
@@ -314,59 +271,52 @@
 
         function renderizarTabla(usuarios) {
             const tabla = document.getElementById('tabla-usuarios'); tabla.innerHTML = ''; 
-            if(usuarios.length === 0) return tabla.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 20px;">No hay registros encontrados.</td></tr>';
+            if(usuarios.length === 0) return tabla.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 20px;">No hay registros.</td></tr>';
 
             usuarios.forEach(user => {
                 let badge = user.estado === 'Pendiente' ? 'badge-pendiente' : 'badge-activo';
-                let btn = user.estado === 'Pendiente' ? `<button class="btn-aprobar" onclick="aprobarPago(${user.id})">Aprobar Pago</button>` : `<span style="color:#059669; font-weight:bold;">✔️ Activo</span>`;
+                let btn = user.estado === 'Pendiente' ? `<button class="btn-aprobar" onclick="aprobarPago(${user.id})">Aprobar</button>` : `<span style="color:#059669; font-weight:bold;">✔️ Activo</span>`;
                 
-                let mesesTxt = user.meses == 0 ? "Pago Único" : (user.meses == 1 ? "1 Mes" : `${user.meses || 1} Meses`);
+                // Formateo del tiempo para la tabla de admin
+                let tiempoTxt = user.meses == 0 ? "Pago Único" : `${user.meses || 1} ${user.unidad || 'Meses'}`;
                 let fechaFinShow = user.fecha_fin ? user.fecha_fin : (user.meses == 0 ? '<strong style="color:var(--primary)">Permanente</strong>' : '---');
 
                 let esCorreo = user.correo.includes('@');
-                let diasRestantes = "---";
-                if(user.estado === 'Activo' && user.fecha_fin) {
-                    let hoy = new Date(); let fin = new Date(user.fecha_fin);
-                    let dias = Math.ceil((fin.getTime() - hoy.getTime()) / (1000 * 3600 * 24));
-                    diasRestantes = dias > 0 ? dias : 0;
-                }
-                
-                let msjContacto = encodeURIComponent(`Hola! Te escribo de VegaStore. Tu servicio de ${user.servicio || 'Canva'} está ${user.estado}. ${diasRestantes !== "---" ? `Te quedan ${diasRestantes} días de suscripción.` : ''}`);
-                
-                let btnContacto = '';
-                if(esCorreo) {
-                    btnContacto = `<a href="mailto:${user.correo}?subject=Tu Suscripción en VegaStore&body=${msjContacto}" class="btn-copiar" title="Enviar Correo" target="_blank">✉️</a>`;
-                } else {
-                    let numLimpio = user.correo.replace(/\D/g,'');
-                    if(numLimpio.length === 9) numLimpio = '51' + numLimpio; 
-                    btnContacto = `<a href="https://wa.me/${numLimpio}?text=${msjContacto}" class="btn-copiar" title="Enviar WhatsApp" target="_blank">💬</a>`;
-                }
+                let msjContacto = encodeURIComponent(`Hola! Te escribo de VegaStore. Tu servicio de ${user.servicio || 'Canva'} está ${user.estado}.`);
+                let btnContacto = esCorreo 
+                    ? `<a href="mailto:${user.correo}?subject=Tu Suscripción en VegaStore&body=${msjContacto}" class="btn-copiar" target="_blank">✉️</a>`
+                    : `<a href="https://wa.me/${user.correo.replace(/\D/g,'')}?text=${msjContacto}" class="btn-copiar" target="_blank">💬</a>`;
 
                 tabla.innerHTML += `<tr>
                     <td><div class="correo-box"><strong>${user.correo}</strong>${btnContacto}</div></td>
-                    <td><strong>${user.servicio || 'Canva Pro Edu'}</strong><br><span style="font-size:12px; color:#6B7280; font-weight:bold;">${mesesTxt} • ${user.metodo_pago}</span></td>
+                    <td><strong>${user.servicio || 'Canva Pro Edu'}</strong><br><span style="font-size:12px; color:#6B7280; font-weight:bold;">${tiempoTxt} • ${user.metodo_pago}</span></td>
                     <td>${user.num_operacion || user.token || '---'}</td>
                     <td><span class="${badge}">${user.estado}</span></td>
                     <td>${fechaFinShow}</td>
-                    <td style="display:flex; gap:8px;">${btn} <button class="btn-borrar" onclick="borrarUsuario(${user.id})" title="Borrar registro">🗑️</button></td>
+                    <td style="display:flex; gap:8px;">${btn} <button class="btn-borrar" onclick="borrarUsuario(${user.id})">🗑️</button></td>
                 </tr>`;
             });
         }
 
         async function aprobarPago(id) {
             let user = usuariosGlobal.find(u => u.id === id);
-            let mesesAdicionales = parseInt(user.meses) || 0;
+            let cantidad = parseInt(user.meses) || 0;
+            let unidad = user.unidad || 'meses';
             
             let inicioStr = new Date().toISOString().split('T')[0];
             let finStr = null; 
 
-            if (mesesAdicionales > 0) {
+            if (cantidad > 0) {
                 let inicio = new Date(); let fin = new Date();
                 if (user.estado === 'Activo' && user.fecha_fin) {
                     let fActual = new Date(user.fecha_fin);
                     if (fActual > new Date()) { fin = fActual; inicioStr = user.fecha_inicio; }
                 }
-                fin.setMonth(fin.getMonth() + mesesAdicionales);
+                
+                if(unidad === 'dias') fin.setDate(fin.getDate() + cantidad);
+                else if(unidad === 'años') fin.setFullYear(fin.getFullYear() + cantidad);
+                else fin.setMonth(fin.getMonth() + cantidad); // meses por defecto
+                
                 finStr = fin.toISOString().split('T')[0];
             }
 
@@ -379,13 +329,13 @@
         async function registroManual() {
             const correo = prompt("Ingresa el Correo o Número del cliente:");
             if (correo) {
-                let serv = prompt("¿Qué servicio adquirió? (Ej: Canva, Netflix)") || "Canva Pro Edu";
+                let serv = prompt("¿Qué servicio adquirió?") || "Canva Pro Edu";
                 let msInput = prompt("¿Cuántos meses? (Escribe 0 para Pago Único)", "1");
                 if (msInput !== null) {
                     let ms = parseInt(msInput) || 0;
                     let finStr = null; let inicioStr = new Date().toISOString().split('T')[0];
                     if (ms > 0) { let fin = new Date(); fin.setMonth(fin.getMonth() + ms); finStr = fin.toISOString().split('T')[0]; }
-                    await supabaseClient.from('usuarios_canva').insert([{ correo: correo, servicio: serv, meses: ms, metodo_pago: 'Manual', estado: 'Activo', fecha_inicio: inicioStr, fecha_fin: finStr }]);
+                    await supabaseClient.from('usuarios_canva').insert([{ correo: correo, servicio: serv, meses: ms, unidad: 'meses', metodo_pago: 'Manual', estado: 'Activo', fecha_inicio: inicioStr, fecha_fin: finStr }]);
                     cargarUsuarios();
                 }
             }
@@ -399,166 +349,123 @@
             if(!data || data.length===0) return tabla.innerHTML = '<tr><td colspan="4" style="text-align:center; padding: 20px;">No tienes servicios creados.</td></tr>';
 
             data.forEach(serv => {
-                let planes = serv.planes && serv.planes.length > 0 ? serv.planes : [{ meses: 1, precio: serv.precio, promo: serv.precio_promocional }];
+                let planes = serv.planes && serv.planes.length > 0 ? serv.planes : [{ cantidad: serv.meses || 1, unidad: 'meses', precio: serv.precio, promo: serv.precio_promocional }];
+                
                 let txtPlanes = planes.map(p => {
-                    let t = p.meses == 0 ? 'Único' : `${p.meses}M`;
-                    return `<span style="background:#E5E7EB; padding:4px 8px; border-radius:6px; font-size:12px; font-weight:bold; color:#374151; display:inline-block; margin-bottom:5px;">${t} (S/ ${p.promo || p.precio})</span>`;
-                }).join(' ');
+                    let cant = p.cantidad !== undefined ? p.cantidad : (p.meses || 1);
+                    let uni = p.unidad || (p.meses == 0 ? 'permanente' : 'meses');
+                    
+                    let uText = uni;
+                    if(cant == 1) { if(uni==='meses') uText='Mes'; if(uni==='dias') uText='Día'; if(uni==='años') uText='Año'; }
+                    let t = cant == 0 ? 'Único' : `${cant} ${uText}`;
+                    
+                    return `<span style="background:#E5E7EB; padding:4px 8px; border-radius:6px; font-size:12px; font-weight:bold; color:#374151; display:inline-block; margin-bottom:5px; margin-right:5px;">${t} (S/ ${p.promo || p.precio})</span>`;
+                }).join('');
                 
                 let imgIcon = serv.imagen_url ? '🖼️ ' : '';
-                let categoriaBadge = serv.categoria ? `<span style="background:#DBEAFE; color:#1E3A8A; padding:4px 8px; border-radius:6px; font-size:12px; font-weight:bold;">${serv.categoria}</span>` : '---';
-
                 tabla.innerHTML += `<tr>
                     <td><strong>${imgIcon}${serv.nombre}</strong></td>
-                    <td>${categoriaBadge}</td>
+                    <td><span style="background:#DBEAFE; color:#1E3A8A; padding:4px 8px; border-radius:6px; font-size:12px; font-weight:bold;">${serv.categoria || '---'}</span></td>
                     <td>${txtPlanes}</td>
-                    <td style="display:flex; gap:8px;"><button class="btn-primary" style="padding:6px 12px; font-size:13px;" onclick='editarServicio(${JSON.stringify(serv).replace(/'/g, "&apos;")})'>✏️ Editar</button><button class="btn-borrar" onclick="borrarServicio(${serv.id})" title="Eliminar servicio">🗑️</button></td>
+                    <td style="display:flex; gap:8px;"><button class="btn-primary" style="padding:6px 12px; font-size:13px;" onclick='editarServicio(${JSON.stringify(serv).replace(/'/g, "&apos;")})'>✏️ Editar</button><button class="btn-borrar" onclick="borrarServicio(${serv.id})">🗑️</button></td>
                 </tr>`;
             });
         }
 
-        function agregarFilaPlan(m = 1, p = '', pr = '') {
+        // NUEVA LÓGICA DE FILA DE PLAN CON SELECTOR DE UNIDAD
+        function agregarFilaPlan(c = 1, u = 'meses', p = '', pr = '') {
             const idFila = 'plan-' + Math.random().toString(36).substr(2, 5);
             document.getElementById('contenedor-planes').insertAdjacentHTML('beforeend', `
-                <div class="plan-row" id="${idFila}" style="display:flex; gap:10px; margin-bottom:15px; background:#F9FAFB; padding:15px; border-radius:8px; border:1px solid #E5E7EB;">
-                    <div style="flex:0.8;"><label style="font-size:12px;">Meses (0=Único)</label><input type="number" class="plan-meses" value="${m}" min="0" style="padding:8px; width:100%; border:1px solid #ccc; border-radius:6px;"></div>
-                    <div style="flex:1;"><label style="font-size:12px;">Precio Normal</label><input type="number" class="plan-precio" value="${p}" step="0.10" style="padding:8px; width:100%; border:1px solid #ccc; border-radius:6px;"></div>
-                    <div style="flex:1;"><label style="font-size:12px;">Precio Oferta</label><input type="number" class="plan-promo" value="${pr}" step="0.10" style="padding:8px; width:100%; border:1px solid #ccc; border-radius:6px;"></div>
+                <div class="plan-row" id="${idFila}" style="display:flex; gap:10px; margin-bottom:15px; background:#F9FAFB; padding:15px; border-radius:8px; border:1px solid #E5E7EB; flex-wrap: wrap;">
+                    <div style="flex:1; min-width: 80px;"><label style="font-size:12px;">Tiempo (0=Único)</label><input type="number" class="plan-cantidad" value="${c}" min="0" style="padding:8px; width:100%; border:1px solid #ccc; border-radius:6px;"></div>
+                    <div style="flex:1; min-width: 100px;"><label style="font-size:12px;">Unidad</label>
+                        <select class="plan-unidad" style="padding:8px; width:100%; border:1px solid #ccc; border-radius:6px; font-size:14px; background:white;">
+                            <option value="dias" ${u==='dias'?'selected':''}>Días</option>
+                            <option value="meses" ${u==='meses'?'selected':''}>Meses</option>
+                            <option value="años" ${u==='años'?'selected':''}>Años</option>
+                        </select>
+                    </div>
+                    <div style="flex:1; min-width: 90px;"><label style="font-size:12px;">Precio Normal</label><input type="number" class="plan-precio" value="${p}" step="0.10" style="padding:8px; width:100%; border:1px solid #ccc; border-radius:6px;"></div>
+                    <div style="flex:1; min-width: 90px;"><label style="font-size:12px;">Precio Oferta</label><input type="number" class="plan-promo" value="${pr}" step="0.10" style="padding:8px; width:100%; border:1px solid #ccc; border-radius:6px;"></div>
                     <button style="background:#FEE2E2; color:#DC2626; border:none; border-radius:6px; cursor:pointer; padding:0 15px; font-weight:bold; margin-top:20px;" onclick="document.getElementById('${idFila}').remove()">X</button>
                 </div>
             `);
         }
 
-        // LÓGICA DE SUBIDA DE IMAGEN A SUPABASE
         async function subirImagen(input) {
             const file = input.files[0];
             if (!file) return;
-
             const statusText = document.getElementById('upload-status');
             const preview = document.getElementById('serv-imagen-preview');
             const btnGuardar = document.getElementById('btn-guardar-servicio');
             
-            statusText.style.display = 'block';
-            statusText.innerText = "Subiendo imagen...";
-            statusText.style.color = "#F59E0B";
-            btnGuardar.disabled = true; 
+            statusText.style.display = 'block'; statusText.innerText = "Subiendo imagen..."; statusText.style.color = "#F59E0B"; btnGuardar.disabled = true; 
+            const filePath = `${Math.random()}.${file.name.split('.').pop()}`;
 
-            const fileExt = file.name.split('.').pop();
-            const fileName = `${Math.random()}.${fileExt}`;
-            const filePath = `${fileName}`;
+            const { error } = await supabaseClient.storage.from('imagenes_servicios').upload(filePath, file);
+            if (error) { statusText.innerText = "Error: " + error.message; statusText.style.color = "red"; btnGuardar.disabled = false; return; }
 
-            const { error: uploadError } = await supabaseClient.storage
-                .from('imagenes_servicios')
-                .upload(filePath, file);
-
-            if (uploadError) {
-                statusText.innerText = "Error al subir: " + uploadError.message;
-                statusText.style.color = "red";
-                btnGuardar.disabled = false;
-                return;
-            }
-
-            const { data } = supabaseClient.storage
-                .from('imagenes_servicios')
-                .getPublicUrl(filePath);
-
+            const { data } = supabaseClient.storage.from('imagenes_servicios').getPublicUrl(filePath);
             document.getElementById('serv-imagen-url').value = data.publicUrl;
-            preview.src = data.publicUrl;
-            preview.style.display = 'inline-block';
-
-            statusText.innerText = "¡Imagen subida con éxito!";
-            statusText.style.color = "#10B981";
-            btnGuardar.disabled = false;
+            preview.src = data.publicUrl; preview.style.display = 'inline-block';
+            statusText.innerText = "¡Imagen subida con éxito!"; statusText.style.color = "#10B981"; btnGuardar.disabled = false;
         }
 
         function abrirModalServicio() {
-            document.getElementById('serv-id').value = ''; 
-            document.getElementById('serv-nombre').value = ''; 
-            document.getElementById('serv-categoria').value = ''; 
-            document.getElementById('serv-tipo-ingreso').value = 'correo'; 
-            document.getElementById('serv-etiqueta').value = ''; 
-            document.getElementById('serv-caracteristicas').value = '';
-            
-            document.getElementById('serv-imagen-url').value = '';
-            document.getElementById('serv-imagen-file').value = '';
-            document.getElementById('serv-imagen-preview').style.display = 'none';
-            document.getElementById('upload-status').style.display = 'none';
-
-            document.getElementById('contenedor-planes').innerHTML = ''; 
-            agregarFilaPlan(1); 
-            document.getElementById('titulo-modal-servicio').innerText = 'Nuevo Servicio';
-            document.getElementById('modal-servicio').style.display = 'flex';
+            document.getElementById('serv-id').value = ''; document.getElementById('serv-nombre').value = ''; document.getElementById('serv-categoria').value = ''; 
+            document.getElementById('serv-tipo-ingreso').value = 'correo'; document.getElementById('serv-etiqueta').value = ''; document.getElementById('serv-caracteristicas').value = '';
+            document.getElementById('serv-imagen-url').value = ''; document.getElementById('serv-imagen-file').value = ''; document.getElementById('serv-imagen-preview').style.display = 'none'; document.getElementById('upload-status').style.display = 'none';
+            document.getElementById('contenedor-planes').innerHTML = ''; agregarFilaPlan(1, 'meses'); 
+            document.getElementById('titulo-modal-servicio').innerText = 'Nuevo Servicio'; document.getElementById('modal-servicio').style.display = 'flex';
         }
 
         function editarServicio(serv) {
-            document.getElementById('serv-id').value = serv.id; 
-            document.getElementById('serv-nombre').value = serv.nombre; 
-            document.getElementById('serv-categoria').value = serv.categoria || ''; 
-            document.getElementById('serv-tipo-ingreso').value = serv.tipo_ingreso || 'correo'; 
-            document.getElementById('serv-etiqueta').value = serv.etiqueta || ''; 
-            document.getElementById('serv-caracteristicas').value = serv.caracteristicas || '';
+            document.getElementById('serv-id').value = serv.id; document.getElementById('serv-nombre').value = serv.nombre; document.getElementById('serv-categoria').value = serv.categoria || ''; 
+            document.getElementById('serv-tipo-ingreso').value = serv.tipo_ingreso || 'correo'; document.getElementById('serv-etiqueta').value = serv.etiqueta || ''; document.getElementById('serv-caracteristicas').value = serv.caracteristicas || '';
+            if (serv.imagen_url) { document.getElementById('serv-imagen-url').value = serv.imagen_url; document.getElementById('serv-imagen-preview').src = serv.imagen_url; document.getElementById('serv-imagen-preview').style.display = 'inline-block'; } 
+            else { document.getElementById('serv-imagen-url').value = ''; document.getElementById('serv-imagen-preview').style.display = 'none'; }
             
-            if (serv.imagen_url) {
-                document.getElementById('serv-imagen-url').value = serv.imagen_url;
-                document.getElementById('serv-imagen-preview').src = serv.imagen_url;
-                document.getElementById('serv-imagen-preview').style.display = 'inline-block';
-            } else {
-                document.getElementById('serv-imagen-url').value = '';
-                document.getElementById('serv-imagen-preview').style.display = 'none';
-            }
-            document.getElementById('upload-status').style.display = 'none';
-
             document.getElementById('contenedor-planes').innerHTML = '';
-            
-            let planes = serv.planes && serv.planes.length > 0 ? serv.planes : [{ meses: 1, precio: serv.precio, promo: serv.precio_promocional }];
-            planes.forEach(p => agregarFilaPlan(p.meses, p.precio, p.promo || ''));
-            
-            document.getElementById('titulo-modal-servicio').innerText = 'Editar Servicio';
-            document.getElementById('modal-servicio').style.display = 'flex';
+            let planes = serv.planes && serv.planes.length > 0 ? serv.planes : [{ cantidad: serv.meses || 1, unidad: 'meses', precio: serv.precio, promo: serv.precio_promocional }];
+            planes.forEach(p => {
+                let cant = p.cantidad !== undefined ? p.cantidad : (p.meses !== undefined ? p.meses : 1);
+                let uni = p.unidad || 'meses';
+                agregarFilaPlan(cant, uni, p.precio, p.promo || '');
+            });
+            document.getElementById('titulo-modal-servicio').innerText = 'Editar Servicio'; document.getElementById('modal-servicio').style.display = 'flex';
         }
 
-        function cerrarModalServicio() {
-            document.getElementById('modal-servicio').style.display = 'none';
-        }
+        function cerrarModalServicio() { document.getElementById('modal-servicio').style.display = 'none'; }
 
         async function guardarServicio() {
             let id = document.getElementById('serv-id').value;
             let nombre = document.getElementById('serv-nombre').value.trim();
-            // Capitalizamos la primera letra de la categoría para que siempre se vea bien
-            let categoriaInput = document.getElementById('serv-categoria').value.trim();
-            let categoria = categoriaInput ? categoriaInput.charAt(0).toUpperCase() + categoriaInput.slice(1).toLowerCase() : null;
-            let tipoIngreso = document.getElementById('serv-tipo-ingreso').value;
-            let imagenUrl = document.getElementById('serv-imagen-url').value;
+            let catInput = document.getElementById('serv-categoria').value.trim();
+            let categoria = catInput ? catInput.charAt(0).toUpperCase() + catInput.slice(1).toLowerCase() : null;
             
             let planesGuardar = [];
             document.querySelectorAll('.plan-row').forEach(row => {
-                let m = parseInt(row.querySelector('.plan-meses').value); 
+                let c = parseInt(row.querySelector('.plan-cantidad').value); 
+                let u = row.querySelector('.plan-unidad').value;
                 let p = parseFloat(row.querySelector('.plan-precio').value); 
                 let pr = parseFloat(row.querySelector('.plan-promo').value);
-                if(m >= 0 && !isNaN(p)) planesGuardar.push({ meses: m, precio: p, promo: isNaN(pr) ? null : pr });
+                if(c >= 0 && !isNaN(p)) planesGuardar.push({ cantidad: c, unidad: u, precio: p, promo: isNaN(pr) ? null : pr });
             });
 
-            if(!nombre || !categoria || planesGuardar.length === 0) return alert("Faltan datos. El servicio necesita nombre, categoría y al menos 1 precio normal.");
+            if(!nombre || !categoria || planesGuardar.length === 0) return alert("Faltan datos. El servicio necesita nombre, categoría y al menos 1 precio.");
 
             const datos = { 
-                nombre: nombre, 
-                categoria: categoria,
-                tipo_ingreso: tipoIngreso,
-                etiqueta: document.getElementById('serv-etiqueta').value.trim(), 
-                caracteristicas: document.getElementById('serv-caracteristicas').value.trim(), 
-                imagen_url: imagenUrl || null,
-                planes: planesGuardar, 
-                activo: true,
-                precio: planesGuardar[0].precio, 
-                precio_promocional: planesGuardar[0].promo 
+                nombre: nombre, categoria: categoria, tipo_ingreso: document.getElementById('serv-tipo-ingreso').value,
+                etiqueta: document.getElementById('serv-etiqueta').value.trim(), caracteristicas: document.getElementById('serv-caracteristicas').value.trim(), 
+                imagen_url: document.getElementById('serv-imagen-url').value || null,
+                planes: planesGuardar, activo: true, precio: planesGuardar[0].precio, precio_promocional: planesGuardar[0].promo 
             };
             
             let errorGuardado;
             if(id) { const { error } = await supabaseClient.from('servicios').update(datos).eq('id', id); errorGuardado = error; } 
             else { const { error } = await supabaseClient.from('servicios').insert([datos]); errorGuardado = error; }
 
-            if (errorGuardado) { alert("Error al guardar: " + errorGuardado.message); } 
-            else { cerrarModalServicio(); cargarServicios(); }
+            if (errorGuardado) alert("Error al guardar: " + errorGuardado.message); else { cerrarModalServicio(); cargarServicios(); }
         }
 
         async function borrarServicio(id) { if (confirm("¿Borrar servicio del catálogo?")) { await supabaseClient.from('servicios').delete().eq('id', id); cargarServicios(); } }
@@ -566,22 +473,16 @@
         // ===== SEGURIDAD =====
         async function abrirSeguridad() {
             document.getElementById('modal-seguridad').style.display = 'flex';
-            const cont = document.getElementById('lista-dispositivos'); 
-            cont.innerHTML = 'Cargando accesos...';
-            
+            const cont = document.getElementById('lista-dispositivos'); cont.innerHTML = 'Cargando accesos...';
             const { data, error } = await supabaseClient.from('admin_accesos').select('*').order('fecha', { ascending: false }).limit(10);
-            
-            if (error) { cont.innerHTML = '<p style="color:red; text-align:center;">Error al cargar el historial.</p>'; return; }
-            if (!data || data.length === 0) { cont.innerHTML = '<p style="text-align:center; color:#6b7280;">No hay registros de acceso aún.</p>'; return; }
-            
+            if (error || !data) { cont.innerHTML = '<p>Error al cargar el historial.</p>'; return; }
             cont.innerHTML = '';
             data.forEach((acc, index) => {
                 let f = new Date(acc.fecha).toLocaleString('es-PE', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' });
-                let etiqueta = index === 0 ? '<span style="background:#10B981; color:white; padding:2px 8px; border-radius:12px; font-size:11px; margin-left:8px; font-weight:bold;">Sesión Actual</span>' : '';
-                cont.innerHTML += `<div style="padding:15px; border-bottom:1px solid #E5E7EB;"><h4 style="margin:0 0 5px 0; color:#1F2937;">${acc.dispositivo} ${etiqueta}</h4><p style="margin:0;font-size:13px;color:#6b7280">${acc.navegador} • ${f}</p></div>`;
+                let etiqueta = index === 0 ? '<span style="background:#10B981; color:white; padding:2px 8px; border-radius:12px; font-size:11px; margin-left:8px;">Actual</span>' : '';
+                cont.innerHTML += `<div style="padding:15px; border-bottom:1px solid #E5E7EB;"><h4 style="margin:0 0 5px 0;">${acc.dispositivo} ${etiqueta}</h4><p style="margin:0;font-size:13px;color:#6b7280">${acc.navegador} • ${f}</p></div>`;
             });
         }
-
         function cerrarSeguridad() { document.getElementById('modal-seguridad').style.display = 'none'; }
     </script>
 </body>
