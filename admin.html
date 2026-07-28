@@ -68,6 +68,7 @@
 </head>
 <body>
 
+    <!-- LOGIN -->
     <div id="login-section" style="background: white; padding: 40px; border-radius: 15px; width: 100%; max-width: 400px; margin: auto; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.1);">
         <h2>🔒 Acceso Restringido</h2>
         <input type="email" id="login-email" placeholder="Correo de Admin" style="width: 100%; padding: 14px; margin: 10px 0; border: 2px solid #E5E7EB; border-radius: 8px; outline: none;">
@@ -76,6 +77,7 @@
         <p id="login-error" style="color: red; font-size: 13px; display: none;">Credenciales incorrectas.</p>
     </div>
 
+    <!-- PANEL ADMIN -->
     <div id="admin-section" style="display:none; width:100%; max-width:1100px;">
         <div class="panel-container">
             <div class="header-panel">
@@ -103,6 +105,10 @@
                 <div class="filtros-admin">
                     <input type="text" id="buscador-clientes" class="search-box" placeholder="Buscar teléfono o correo..." oninput="filtrarClientes()">
                     <select id="filtro-servicio" class="filtro-select" onchange="filtrarClientes()"><option value="ALL">Todos los Servicios</option></select>
+                    <select id="filtro-orden" class="filtro-select" onchange="filtrarClientes()">
+                        <option value="RECIENTES">Más Recientes</option>
+                        <option value="VENCIMIENTO">Por Vencer Primero</option>
+                    </select>
                     <button class="btn-manual" onclick="registroManual()">+ Añadir Cliente Manual</button>
                 </div>
                 <div style="overflow-x: auto;">
@@ -113,7 +119,7 @@
                 </div>
             </div>
 
-            <!-- PESTAÑA SOLICITUDES (NUEVA) -->
+            <!-- PESTAÑA SOLICITUDES -->
             <div id="tab-solicitudes" class="tab-content">
                 <div style="background: #FFFBEB; border: 1px solid #FDE68A; padding: 15px; border-radius: 12px; margin-bottom: 20px;">
                     <p style="margin: 0; color: #92400E; font-size: 14px;"><strong>Información:</strong> Aquí llegan los pedidos nuevos. Si no apruebas un pedido en 24 horas, el sistema lo borrará automáticamente para no saturar tu base de datos.</p>
@@ -220,7 +226,9 @@
                 <div style="flex: 1;">
                     <label>Categoría</label>
                     <input type="text" id="serv-categoria" class="filtro-select" style="width: 100%; box-sizing: border-box;" placeholder="Ej: Streaming, Juegos..." list="opciones-categoria">
-                    <datalist id="opciones-categoria"><option value="Streaming"></option><option value="Seguros"></option><option value="Software"></option></datalist>
+                    <datalist id="opciones-categoria">
+                        <!-- Se llenará dinámicamente -->
+                    </datalist>
                 </div>
                 <div style="flex: 1;">
                     <label>¿Qué pedir al cliente?</label>
@@ -268,12 +276,18 @@
 
         supabaseClient.auth.getSession().then(({ data: { session } }) => { if (session) mostrarPanel(); });
 
+        function obtenerInfoDispositivo() {
+            const ua = navigator.userAgent;
+            let dispositivo = /Mobile|Android|iP(hone|od|ad)/.test(ua) ? "📱 Celular" : "💻 Computadora";
+            return { dispositivo, navegador: "Navegador Web" };
+        }
+
         async function iniciarSesion() {
             const email = document.getElementById('login-email').value;
             const password = document.getElementById('login-password').value;
             const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
             if (error) { document.getElementById('login-error').style.display = 'block'; } 
-            else { mostrarPanel(); }
+            else { await supabaseClient.from('admin_accesos').insert([obtenerInfoDispositivo()]); mostrarPanel(); }
         }
 
         async function cerrarSesion() { await supabaseClient.auth.signOut(); window.location.reload(); }
@@ -288,25 +302,28 @@
         function switchTab(t) {
             document.querySelectorAll('.tab-content, .tab-btn').forEach(e => e.classList.remove('active'));
             document.getElementById('tab-' + t).classList.add('active'); document.getElementById('btn-tab-' + t).classList.add('active');
-            if(t === 'ventas' || t === 'solicitudes') cargarDatosPrincipales(); 
+            if(t === 'ventas') cargarDatosPrincipales(); 
+            else if(t === 'solicitudes') cargarDatosPrincipales();
             else if(t === 'catalogo') cargarServicios();
             else if(t === 'papelera') cargarPapelera();
         }
 
-        window.copiarTexto = function(texto) { navigator.clipboard.writeText(texto).then(() => alert("Copiado: " + texto)).catch(() => alert("Error al copiar")); }
+        window.copiarTexto = function(texto) {
+            navigator.clipboard.writeText(texto).then(() => alert("Copiado: " + texto)).catch(() => alert("Error al copiar"));
+        }
 
-        // ===== LIMPIEZA AUTOMÁTICA DE BASURA (Papelera y Solicitudes Viejas) =====
+        // ===== LIMPIEZA AUTOMÁTICA DE BASURA =====
         async function limpiarRegistrosAntiguos() {
             const ahora = new Date();
             
-            // 1. Limpiar Papelera > 24h
+            // 1. Papelera > 24h
             const { data: cancelados } = await supabaseClient.from('usuarios_canva').select('id, fecha_cancelacion').eq('estado', 'Cancelado');
             if (cancelados) {
                 const idsCancelados = cancelados.filter(item => item.fecha_cancelacion && ((ahora - new Date(item.fecha_cancelacion)) / 3600000) >= 24).map(i => i.id);
                 if (idsCancelados.length > 0) await supabaseClient.from('usuarios_canva').delete().in('id', idsCancelados);
             }
 
-            // 2. Limpiar Solicitudes Pendientes > 24h (Anti-saturación)
+            // 2. Solicitudes > 24h
             const { data: pendientes } = await supabaseClient.from('usuarios_canva').select('id, creado_en').eq('estado', 'Pendiente');
             if (pendientes) {
                 const idsPendientes = pendientes.filter(item => item.creado_en && ((ahora - new Date(item.creado_en)) / 3600000) >= 24).map(i => i.id);
@@ -314,12 +331,11 @@
             }
         }
 
-        // ===== CARGAR CLIENTES Y SOLICITUDES =====
+        // ===== CARGAR DATOS PRINCIPALES =====
         async function cargarDatosPrincipales() {
             const { data: todos } = await supabaseClient.from('usuarios_canva').select('*').neq('estado', 'Cancelado').order('creado_en', { ascending: false });
             let todosLosRegistros = todos || [];
             
-            // Separamos en Clientes Activos/Vencidos y Solicitudes Pendientes
             clientesGlobal = todosLosRegistros.filter(u => u.estado === 'Activo');
             solicitudesGlobal = todosLosRegistros.filter(u => u.estado === 'Pendiente');
             
@@ -371,16 +387,16 @@
                 let tiempoTxt = user.meses == 0 ? "Pago Único" : `${user.meses || 1} ${user.unidad || 'Meses'}`;
                 let fechaFinShow = user.fecha_fin ? user.fecha_fin : (user.meses == 0 ? '<strong style="color:var(--primary)">Permanente</strong>' : '---');
 
-                // Contacto Limpio
                 let numWhatsApp = user.telefono ? user.telefono.replace(/\s+/g, '') : null;
                 let emailCliente = user.correo;
                 if (!numWhatsApp && emailCliente && !emailCliente.includes('@') && emailCliente.replace(/\D/g,'').length >= 9) {
                     numWhatsApp = emailCliente.replace(/\D/g,''); emailCliente = null; 
                 }
 
-                // Plantilla WhatsApp Inteligente
+                // PLANTILLA WHATSAPP CORREGIDA
                 let msjContacto = "";
                 let nombreServicio = user.servicio || 'Servicio';
+                
                 if (estadoReal === 'Vencido') {
                     msjContacto = `Hola! Tu servicio de *${nombreServicio}* ha vencido. 😔\n\nSi deseas renovar o cambiar de plan, escríbeme por aquí o hazlo directo desde tu panel en la web:\n${URL_TIENDA}`;
                 } else if (user.meses == 0) {
@@ -415,8 +431,9 @@
                 if (!numWhatsApp && emailCliente && !emailCliente.includes('@') && emailCliente.replace(/\D/g,'').length >= 9) {
                     numWhatsApp = emailCliente.replace(/\D/g,''); emailCliente = null; 
                 }
+                
                 let telRow = numWhatsApp ? `<div style="font-size: 13px; margin-bottom: 3px;">📱 <strong>${numWhatsApp}</strong></div>` : '';
-                let corRow = emailCliente ? `<div style="font-size: 12px; margin-top: 3px;">✉️ <span style="color: #6B7280;">${emailCliente}</span></div>` : '';
+                let corRow = emailCliente ? `<div style="font-size: 12px; margin-top: 3px; display: flex; align-items: center; gap: 8px;">✉️ <span style="color: #6B7280;">${emailCliente}</span> <button onclick="copiarTexto('${emailCliente}')" class="btn-copiar" style="padding: 2px 6px; font-size: 11px; border: 1px solid #E5E7EB; background: #F9FAFB;">📋 Copiar</button></div>` : '';
                 let tiempoTxt = user.meses == 0 ? "Pago Único" : `${user.meses || 1} ${user.unidad || 'Meses'}`;
 
                 tabla.innerHTML += `<tr>
@@ -550,6 +567,14 @@
             const tabla = document.getElementById('tabla-servicios'); tabla.innerHTML = '';
             if(!data || data.length===0) return tabla.innerHTML = '<tr><td colspan="5" style="text-align:center;">No hay servicios.</td></tr>';
 
+            // Actualizar datalist de categorías
+            const datalist = document.getElementById('opciones-categoria');
+            datalist.innerHTML = '';
+            const categoriasUnicas = [...new Set(data.map(s => s.categoria).filter(Boolean))];
+            categoriasUnicas.forEach(cat => {
+                datalist.innerHTML += `<option value="${cat}"></option>`;
+            });
+
             data.forEach(serv => {
                 let geoText = '🌍 Todos';
                 if(serv.geo_tipo === 'solo') geoText = `✅ Solo: ${serv.geo_paises}`;
@@ -606,16 +631,44 @@
         function abrirModalServicio() {
             document.getElementById('serv-id').value = ''; document.getElementById('serv-nombre').value = ''; document.getElementById('serv-categoria').value = ''; 
             document.getElementById('serv-tipo-ingreso').value = 'numero'; document.getElementById('serv-geo-tipo').value = 'todos'; document.getElementById('serv-geo-paises').value = ''; toggleGeoInput();
+            document.getElementById('serv-etiqueta').value = ''; document.getElementById('serv-caracteristicas').value = '';
+            document.getElementById('serv-imagen-url').value = ''; document.getElementById('serv-imagen-file').value = ''; document.getElementById('serv-imagen-preview').style.display = 'none'; document.getElementById('upload-status').style.display = 'none';
             document.getElementById('contenedor-planes').innerHTML = ''; agregarFilaPlan(1, 'meses'); document.getElementById('modal-servicio').style.display = 'flex';
         }
 
+        // ====== SOLUCIÓN AL PROBLEMA DE EDITAR SERVICIO ======
         function editarServicio(serv) {
-            document.getElementById('serv-id').value = serv.id; document.getElementById('serv-nombre').value = serv.nombre; document.getElementById('serv-categoria').value = serv.categoria || ''; 
-            document.getElementById('serv-tipo-ingreso').value = serv.tipo_ingreso || 'numero'; document.getElementById('serv-geo-tipo').value = serv.geo_tipo || 'todos'; document.getElementById('serv-geo-paises').value = serv.geo_paises || ''; toggleGeoInput();
+            // 1. Asignar IDs básicos
+            document.getElementById('serv-id').value = serv.id; 
+            document.getElementById('serv-nombre').value = serv.nombre || ''; 
+            document.getElementById('serv-categoria').value = serv.categoria || ''; 
+            document.getElementById('serv-tipo-ingreso').value = serv.tipo_ingreso || 'numero'; 
             
+            // 2. Asignar Georeferenciación
+            document.getElementById('serv-geo-tipo').value = serv.geo_tipo || 'todos'; 
+            document.getElementById('serv-geo-paises').value = serv.geo_paises || ''; 
+            toggleGeoInput();
+            
+            // 3. Asignar Textos y Etiquetas (¡Aquí estaba el error de los campos en blanco!)
+            document.getElementById('serv-etiqueta').value = serv.etiqueta || ''; 
+            document.getElementById('serv-caracteristicas').value = serv.caracteristicas || '';
+            
+            // 4. Asignar Imagen
+            if (serv.imagen_url) { 
+                document.getElementById('serv-imagen-url').value = serv.imagen_url; 
+                document.getElementById('serv-imagen-preview').src = serv.imagen_url; 
+                document.getElementById('serv-imagen-preview').style.display = 'inline-block'; 
+            } else { 
+                document.getElementById('serv-imagen-url').value = ''; 
+                document.getElementById('serv-imagen-preview').style.display = 'none'; 
+            }
+            
+            // 5. Asignar Planes
             document.getElementById('contenedor-planes').innerHTML = '';
             let planes = serv.planes && serv.planes.length > 0 ? serv.planes : [{ cantidad: serv.meses || 1, unidad: 'meses', precio: serv.precio, promo: serv.precio_promocional }];
             planes.forEach(p => agregarFilaPlan(p.cantidad !== undefined ? p.cantidad : p.meses, p.unidad || 'meses', p.precio, p.promo || ''));
+            
+            // 6. Mostrar el Modal
             document.getElementById('modal-servicio').style.display = 'flex';
         }
 
@@ -644,7 +697,6 @@
             cerrarModalServicio(); cargarServicios();
         }
 
-        async function borrarUsuario(id) { if(confirm("¿Borrar cliente permanentemente?")) { await supabaseClient.from('usuarios_canva').delete().eq('id', id); cargarDatosPrincipales(); cargarPapelera(); } }
         async function borrarServicio(id) { if (confirm("¿Borrar servicio?")) { await supabaseClient.from('servicios').delete().eq('id', id); cargarServicios(); } }
 
         async function registroManual() {
