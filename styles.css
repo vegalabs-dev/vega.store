@@ -309,3 +309,19 @@ button { padding: 14px 20px; border: none; border-radius: 12px; cursor: pointer;
         font-size: 12px !important;
     }
 }
+/* ESTILOS PARA EL PANEL DEL CLIENTE */
+.panel-tabs .tab-btn {
+    background: transparent; border: none; color: #6B7280; font-weight: bold; font-size: 14px;
+    padding: 8px 15px; cursor: pointer; border-radius: 8px; transition: 0.3s;
+}
+.panel-tabs .tab-btn:hover { background: #F3F4F6; }
+.panel-tabs .tab-btn.active { background: var(--primary-gradient); color: white; }
+
+.item-servicio-cliente {
+    background: #F9FAFB; border: 1px solid #E5E7EB; padding: 15px; border-radius: 12px;
+    margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;
+}
+.item-promo {
+    background: linear-gradient(135deg, #FEF3C7, #FEF08A); border: 1px solid #FDE68A; padding: 15px; border-radius: 12px;
+    margin-bottom: 10px;
+}
