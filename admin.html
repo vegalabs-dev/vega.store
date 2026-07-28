@@ -52,7 +52,8 @@
         .btn-gestionar:hover { background: #2563EB; }
         
         .correo-box { display: flex; align-items: center; gap: 8px; }
-        .btn-copiar { background: #F3F4F6; border: 1px solid #E5E7EB; border-radius: 6px; cursor: pointer; font-size: 14px; padding: 5px 8px; text-decoration: none; display: inline-block;}
+        .btn-copiar { background: #F3F4F6; border: 1px solid #E5E7EB; border-radius: 6px; cursor: pointer; font-size: 14px; padding: 5px 8px; text-decoration: none; display: inline-block; transition: 0.2s;}
+        .btn-copiar:hover { background: #E5E7EB; transform: scale(1.1); }
 
         .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); display: none; justify-content: center; align-items: center; z-index: 1000; overflow-y:auto; padding:20px;}
         .modal-content { background: white; padding: 30px; border-radius: 15px; width: 100%; max-width: 600px; position: relative; margin: auto;}
@@ -65,7 +66,6 @@
         .upload-box input[type="file"] { position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
         .upload-preview { width: 100px; height: 100px; object-fit: cover; border-radius: 8px; margin-top: 10px; display: none; border: 2px solid #E5E7EB; }
 
-        /* Estilos para los botones del modal de gestión */
         .btn-accion-gestion { flex: 1; padding: 10px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; transition: 0.2s; font-size: 12px;}
         .btn-accion-gestion:hover { filter: brightness(0.9); }
     </style>
@@ -153,7 +153,7 @@
         </div>
     </div>
 
-    <!-- MODAL GESTIONAR CLIENTE (EL SÚPER MODAL) -->
+    <!-- MODAL GESTIONAR CLIENTE -->
     <div id="modal-gestionar-cliente" class="modal">
         <div class="modal-content" style="max-width: 500px;">
             <span class="cerrar-modal" onclick="document.getElementById('modal-gestionar-cliente').style.display='none'">&times;</span>
@@ -254,7 +254,7 @@
     <script>
         const supabaseClient = window.supabase.createClient('https://rhuhuvevynovfekwhlhb.supabase.co', 'sb_publishable_-8XCScnvNf6QXMsnbyJK9Q_XhrOr9j5');
         let usuariosGlobal = [];
-        let catalogoOpciones = []; // Para el modal de cambiar servicio
+        let catalogoOpciones = [];
 
         supabaseClient.auth.getSession().then(({ data: { session } }) => { if (session) mostrarPanel(); });
 
@@ -286,7 +286,7 @@
         function mostrarPanel() {
             document.getElementById('login-section').style.display = 'none';
             document.getElementById('admin-section').style.display = 'block';
-            limpiarPapeleraAutomatica(); // Ejecuta la limpieza silenciosa al entrar
+            limpiarPapeleraAutomatica(); 
             cargarUsuarios();
         }
 
@@ -314,7 +314,6 @@
                 
                 if (idsParaBorrar.length > 0) {
                     await supabaseClient.from('usuarios_canva').delete().in('id', idsParaBorrar);
-                    console.log(`Se eliminaron ${idsParaBorrar.length} registros antiguos de la papelera.`);
                 }
             }
         }
@@ -373,18 +372,33 @@
                 let tiempoTxt = user.meses == 0 ? "Pago Único" : `${user.meses || 1} ${user.unidad || 'Meses'}`;
                 let fechaFinShow = user.fecha_fin ? user.fecha_fin : (user.meses == 0 ? '<strong style="color:var(--primary)">Permanente</strong>' : '---');
 
-                let telShow = user.telefono ? `📱 ${user.telefono}` : '<span style="color:#DC2626; font-size:11px;">Sin número</span>';
-                let corShow = user.correo ? `✉️ ${user.correo}` : '<span style="color:#DC2626; font-size:11px;">Sin correo</span>';
+                // LÓGICA INTELIGENTE DE CONTACTO (Sin letras rojas)
+                let numWhatsApp = user.telefono;
+                let emailCliente = user.correo;
 
+                if (!numWhatsApp && emailCliente && !emailCliente.includes('@') && emailCliente.replace(/\D/g,'').length >= 9) {
+                    numWhatsApp = emailCliente.replace(/\D/g,'');
+                    emailCliente = null; 
+                }
+
+                let telShow = numWhatsApp ? `📱 <strong>${numWhatsApp}</strong>` : '';
+                let corShow = emailCliente ? `✉️ <span style="color: #6B7280;">${emailCliente}</span>` : '';
+                
                 let msjContacto = encodeURIComponent(`Hola! Te escribo de VegaStore. Tu servicio de ${user.servicio || 'Canva'} está ${user.estado}.`);
-                let btnContacto = user.telefono 
-                    ? `<a href="https://wa.me/${user.telefono.replace(/\D/g,'')}?text=${msjContacto}" class="btn-copiar" target="_blank" title="Enviar WhatsApp">💬</a>`
+                let btnContacto = numWhatsApp 
+                    ? `<a href="https://wa.me/${numWhatsApp}?text=${msjContacto}" class="btn-copiar" target="_blank" title="Enviar WhatsApp">💬</a>`
                     : '';
+
+                if (!numWhatsApp && emailCliente) {
+                    btnContacto = `<a href="mailto:${emailCliente}?subject=Tu Suscripción en VegaStore&body=${msjContacto}" class="btn-copiar" target="_blank" title="Enviar Correo">✉️</a>`;
+                }
 
                 tabla.innerHTML += `<tr>
                     <td>
-                        <div style="font-size: 13px; margin-bottom: 3px;"><strong>${telShow}</strong> ${btnContacto}</div>
-                        <div style="font-size: 12px; color: #6B7280;">${corShow}</div>
+                        <div style="font-size: 13px; margin-bottom: 3px; display: flex; align-items: center; gap: 8px;">
+                            ${telShow} ${btnContacto}
+                        </div>
+                        ${corShow ? `<div style="font-size: 12px; margin-top: 3px;">${corShow}</div>` : ''}
                     </td>
                     <td><strong>${user.servicio || 'Canva Pro Edu'}</strong><br><span style="font-size:12px; color:#6B7280; font-weight:bold;">${tiempoTxt} • ${user.metodo_pago}</span></td>
                     <td>${user.num_operacion || user.token || '---'}</td>
@@ -402,8 +416,17 @@
 
             document.getElementById('gestion-id').value = user.id;
             document.getElementById('gestion-servicio-titulo').innerText = `${user.servicio} (${user.meses == 0 ? 'Permanente' : user.meses + ' ' + (user.unidad || 'meses')})`;
-            document.getElementById('gestion-telefono').value = user.telefono || '';
-            document.getElementById('gestion-correo').value = user.correo || '';
+            
+            // Lógica inteligente para cargar los datos en el modal
+            let numEdit = user.telefono || '';
+            let corEdit = user.correo || '';
+            if (!numEdit && corEdit && !corEdit.includes('@')) {
+                numEdit = corEdit.replace(/\D/g,'');
+                corEdit = '';
+            }
+
+            document.getElementById('gestion-telefono').value = numEdit;
+            document.getElementById('gestion-correo').value = corEdit;
             
             document.getElementById('modal-gestionar-cliente').style.display = 'flex';
         }
@@ -496,12 +519,19 @@
 
             tabla.innerHTML = '';
             data.forEach(user => {
-                let telShow = user.telefono ? `📱 ${user.telefono}` : '<span style="color:#DC2626; font-size:11px;">Sin número</span>';
-                let corShow = user.correo ? `✉️ ${user.correo}` : '<span style="color:#DC2626; font-size:11px;">Sin correo</span>';
+                let numWhatsApp = user.telefono;
+                let emailCliente = user.correo;
+                if (!numWhatsApp && emailCliente && !emailCliente.includes('@') && emailCliente.replace(/\D/g,'').length >= 9) {
+                    numWhatsApp = emailCliente.replace(/\D/g,'');
+                    emailCliente = null; 
+                }
+
+                let telShow = numWhatsApp ? `📱 <strong>${numWhatsApp}</strong>` : '';
+                let corShow = emailCliente ? `✉️ <span style="color: #6B7280;">${emailCliente}</span>` : '';
                 let fechaCancel = user.fecha_cancelacion ? new Date(user.fecha_cancelacion).toLocaleString('es-PE') : '---';
 
                 tabla.innerHTML += `<tr>
-                    <td><div style="font-size: 13px; margin-bottom: 3px;"><strong>${telShow}</strong></div><div style="font-size: 12px; color: #6B7280;">${corShow}</div></td>
+                    <td><div style="font-size: 13px; margin-bottom: 3px;">${telShow}</div><div style="font-size: 12px; color: #6B7280;">${corShow}</div></td>
                     <td><strong>${user.servicio || 'Servicio'}</strong></td>
                     <td><span class="badge-cancelado">Cancelado</span></td>
                     <td>${fechaCancel}</td>
@@ -520,7 +550,7 @@
             }
         }
 
-        // ===== OTRAS FUNCIONES ORIGINALES (Aprobar, Manual, Catálogo...) =====
+        // ===== OTRAS FUNCIONES ORIGINALES =====
         async function aprobarPago(id) {
             let user = usuariosGlobal.find(u => u.id === id);
             let cantidad = parseInt(user.meses) || 0;
