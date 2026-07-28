@@ -42,11 +42,15 @@
         
         .badge-pendiente { background: #FEF3C7; color: #D97706; padding: 6px 12px; border-radius: 20px; font-weight: bold; font-size: 12px; }
         .badge-activo { background: #D1FAE5; color: #059669; padding: 6px 12px; border-radius: 20px; font-weight: bold; font-size: 12px; }
+        .badge-cancelado { background: #FEE2E2; color: #DC2626; padding: 6px 12px; border-radius: 20px; font-weight: bold; font-size: 12px; }
         
         .btn-primary { background: var(--primary); color: white; border: none; padding: 12px 18px; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.3s;}
         .btn-aprobar { background: #10B981; color: white; border: none; padding: 8px 12px; border-radius: 8px; cursor: pointer; font-weight: bold; }
         .btn-borrar { background: #FEE2E2; color: #DC2626; border: none; padding: 8px 12px; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.2s;}
         .btn-manual { background: var(--primary); color: white; border: none; padding: 12px 18px; border-radius: 8px; cursor: pointer; font-weight: bold; }
+        .btn-gestionar { background: #3B82F6; color: white; border: none; padding: 8px 12px; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.2s; }
+        .btn-gestionar:hover { background: #2563EB; }
+        
         .correo-box { display: flex; align-items: center; gap: 8px; }
         .btn-copiar { background: #F3F4F6; border: 1px solid #E5E7EB; border-radius: 6px; cursor: pointer; font-size: 14px; padding: 5px 8px; text-decoration: none; display: inline-block;}
 
@@ -60,6 +64,10 @@
         .upload-box { border: 2px dashed #D1D5DB; border-radius: 8px; padding: 15px; text-align: center; background: #F9FAFB; position: relative; }
         .upload-box input[type="file"] { position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
         .upload-preview { width: 100px; height: 100px; object-fit: cover; border-radius: 8px; margin-top: 10px; display: none; border: 2px solid #E5E7EB; }
+
+        /* Estilos para los botones del modal de gestión */
+        .btn-accion-gestion { flex: 1; padding: 10px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; transition: 0.2s; font-size: 12px;}
+        .btn-accion-gestion:hover { filter: brightness(0.9); }
     </style>
 </head>
 <body>
@@ -87,6 +95,7 @@
             <div class="tabs">
                 <button id="btn-tab-ventas" class="tab-btn active" onclick="switchTab('ventas')">💰 Ventas y Clientes</button>
                 <button id="btn-tab-catalogo" class="tab-btn" onclick="switchTab('catalogo')">📦 Catálogo de Servicios</button>
+                <button id="btn-tab-papelera" class="tab-btn" onclick="switchTab('papelera')" style="color: #DC2626;">🗑️ Papelera</button>
             </div>
 
             <!-- PESTAÑA VENTAS -->
@@ -97,7 +106,7 @@
                 </div>
 
                 <div class="filtros-admin">
-                    <input type="text" id="buscador" class="search-box" placeholder="Buscar dato o token..." oninput="filtrarTabla()">
+                    <input type="text" id="buscador" class="search-box" placeholder="Buscar teléfono, correo o token..." oninput="filtrarTabla()">
                     <select id="filtro-servicio" class="filtro-select" onchange="filtrarTabla()"><option value="ALL">Todos los Servicios</option></select>
                     <select id="filtro-orden" class="filtro-select" onchange="filtrarTabla()">
                         <option value="RECIENTES">Más Recientes</option>
@@ -108,7 +117,7 @@
 
                 <div style="overflow-x: auto;">
                     <table>
-                        <thead><tr><th>Dato del Cliente</th><th>Servicio y Tiempo</th><th>N° Op / Token</th><th>Estado</th><th>Vencimiento</th><th>Acciones</th></tr></thead>
+                        <thead><tr><th>Datos de Contacto</th><th>Servicio y Tiempo</th><th>N° Op / Token</th><th>Estado</th><th>Vencimiento</th><th>Acciones</th></tr></thead>
                         <tbody id="tabla-usuarios"><tr><td colspan="6" style="text-align:center;">Cargando datos...</td></tr></tbody>
                     </table>
                 </div>
@@ -128,10 +137,65 @@
                     </table>
                 </div>
             </div>
+
+            <!-- PESTAÑA PAPELERA -->
+            <div id="tab-papelera" class="tab-content">
+                <div style="background: #FEF2F2; border: 1px solid #FCA5A5; padding: 15px; border-radius: 12px; margin-bottom: 20px;">
+                    <p style="margin: 0; color: #991B1B; font-size: 14px;"><strong>Información:</strong> Los servicios cancelados permanecerán aquí. Si pasan más de 24 horas desde su cancelación, el sistema los eliminará permanentemente la próxima vez que entres al panel.</p>
+                </div>
+                <div style="overflow-x: auto;">
+                    <table>
+                        <thead><tr><th>Datos de Contacto</th><th>Servicio</th><th>Estado</th><th>Fecha de Cancelación</th><th>Acciones</th></tr></thead>
+                        <tbody id="tabla-papelera"><tr><td colspan="5" style="text-align:center;">Cargando papelera...</td></tr></tbody>
+                    </table>
+                </div>
+            </div>
         </div>
     </div>
 
-    <!-- MODAL GESTIONAR SERVICIO -->
+    <!-- MODAL GESTIONAR CLIENTE (EL SÚPER MODAL) -->
+    <div id="modal-gestionar-cliente" class="modal">
+        <div class="modal-content" style="max-width: 500px;">
+            <span class="cerrar-modal" onclick="document.getElementById('modal-gestionar-cliente').style.display='none'">&times;</span>
+            <h2 style="margin-top:0; color: var(--primary); margin-bottom: 5px;">⚙️ Gestionar Cliente</h2>
+            <p id="gestion-servicio-titulo" style="color: #6B7280; font-weight: bold; margin-bottom: 20px;">Servicio</p>
+            
+            <input type="hidden" id="gestion-id">
+
+            <div style="background: #F9FAFB; padding: 20px; border-radius: 12px; border: 1px solid #E5E7EB; margin-bottom: 20px;">
+                <h3 style="font-size: 15px; margin-top: 0; margin-bottom: 15px; color: #374151;">📞 Datos de Contacto</h3>
+                <div style="display: flex; gap: 15px;">
+                    <div style="flex: 1;">
+                        <label style="font-size: 12px; font-weight: bold; color: #6B7280;">N° WhatsApp</label>
+                        <input type="text" id="gestion-telefono" style="width: 100%; padding: 10px; border: 1px solid #D1D5DB; border-radius: 8px; margin-top: 5px;" placeholder="Ej: 51987654321">
+                    </div>
+                    <div style="flex: 1;">
+                        <label style="font-size: 12px; font-weight: bold; color: #6B7280;">Correo Electrónico</label>
+                        <input type="email" id="gestion-correo" style="width: 100%; padding: 10px; border: 1px solid #D1D5DB; border-radius: 8px; margin-top: 5px;" placeholder="correo@ejemplo.com">
+                    </div>
+                </div>
+                <button class="btn-primary" style="width: 100%; margin-top: 15px; padding: 10px; font-size: 14px;" onclick="guardarDatosContacto()">Guardar Contacto</button>
+            </div>
+
+            <h3 style="font-size: 15px; margin-top: 0; margin-bottom: 10px; color: #374151;">⚡ Acciones Rápidas</h3>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                <button class="btn-accion-gestion" style="background: #ECFDF5; color: #059669;" onclick="darDiasExtra()">
+                    <span style="font-size: 20px;">🎁</span> Dar Días Extra
+                </button>
+                <button class="btn-accion-gestion" style="background: #EFF6FF; color: #2563EB;" onclick="renovarServicio()">
+                    <span style="font-size: 20px;">🔄</span> Renovar
+                </button>
+                <button class="btn-accion-gestion" style="background: #F3F4F6; color: #4B5563;" onclick="cambiarServicio()">
+                    <span style="font-size: 20px;">🔀</span> Cambiar Plan
+                </button>
+                <button class="btn-accion-gestion" style="background: #FEF2F2; color: #DC2626;" onclick="cancelarServicio()">
+                    <span style="font-size: 20px;">🚫</span> Cancelar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL GESTIONAR SERVICIO (CATÁLOGO) -->
     <div id="modal-servicio" class="modal">
         <div class="modal-content">
             <span class="cerrar-modal" onclick="cerrarModalServicio()">&times;</span>
@@ -190,6 +254,7 @@
     <script>
         const supabaseClient = window.supabase.createClient('https://rhuhuvevynovfekwhlhb.supabase.co', 'sb_publishable_-8XCScnvNf6QXMsnbyJK9Q_XhrOr9j5');
         let usuariosGlobal = [];
+        let catalogoOpciones = []; // Para el modal de cambiar servicio
 
         supabaseClient.auth.getSession().then(({ data: { session } }) => { if (session) mostrarPanel(); });
 
@@ -221,24 +286,50 @@
         function mostrarPanel() {
             document.getElementById('login-section').style.display = 'none';
             document.getElementById('admin-section').style.display = 'block';
+            limpiarPapeleraAutomatica(); // Ejecuta la limpieza silenciosa al entrar
             cargarUsuarios();
         }
 
         function switchTab(t) {
             document.querySelectorAll('.tab-content, .tab-btn').forEach(e => e.classList.remove('active'));
             document.getElementById('tab-' + t).classList.add('active'); document.getElementById('btn-tab-' + t).classList.add('active');
-            if(t === 'ventas') cargarUsuarios(); else cargarServicios();
+            if(t === 'ventas') cargarUsuarios(); 
+            else if(t === 'catalogo') cargarServicios();
+            else if(t === 'papelera') cargarPapelera();
         }
 
-        // ===== USUARIOS =====
+        // ===== LIMPIEZA AUTOMÁTICA DE PAPELERA =====
+        async function limpiarPapeleraAutomatica() {
+            const { data } = await supabaseClient.from('usuarios_canva').select('id, fecha_cancelacion').eq('estado', 'Cancelado');
+            if (data && data.length > 0) {
+                const ahora = new Date();
+                const idsParaBorrar = [];
+                data.forEach(item => {
+                    if (item.fecha_cancelacion) {
+                        let fechaCancel = new Date(item.fecha_cancelacion);
+                        let diffHoras = (ahora - fechaCancel) / (1000 * 60 * 60);
+                        if (diffHoras >= 24) idsParaBorrar.push(item.id);
+                    }
+                });
+                
+                if (idsParaBorrar.length > 0) {
+                    await supabaseClient.from('usuarios_canva').delete().in('id', idsParaBorrar);
+                    console.log(`Se eliminaron ${idsParaBorrar.length} registros antiguos de la papelera.`);
+                }
+            }
+        }
+
+        // ===== USUARIOS Y VENTAS =====
         async function cargarUsuarios() {
-            const { data: usuarios } = await supabaseClient.from('usuarios_canva').select('*').order('creado_en', { ascending: false });
+            const { data: usuarios } = await supabaseClient.from('usuarios_canva').select('*').neq('estado', 'Cancelado').order('creado_en', { ascending: false });
             usuariosGlobal = usuarios || [];
             
             document.getElementById('stat-activos').innerText = usuariosGlobal.filter(u => u.estado === 'Activo').length;
             document.getElementById('stat-pendientes').innerText = usuariosGlobal.filter(u => u.estado === 'Pendiente').length;
             
             const { data: catalogo } = await supabaseClient.from('servicios').select('nombre').order('nombre', { ascending: true });
+            catalogoOpciones = catalogo || [];
+            
             const selectServicios = document.getElementById('filtro-servicio');
             selectServicios.innerHTML = '<option value="ALL">Todos los Servicios</option>';
             if (catalogo) { catalogo.forEach(s => selectServicios.innerHTML += `<option value="${s.nombre}">${s.nombre}</option>`); }
@@ -253,7 +344,7 @@
 
             let filtrados = usuariosGlobal.filter(u => {
                 let servUsuario = u.servicio || 'Canva Pro Edu';
-                let coincideTxt = (u.correo && u.correo.toLowerCase().includes(txt)) || (u.num_operacion && u.num_operacion.toLowerCase().includes(txt)) || (u.token && u.token.toLowerCase().includes(txt));
+                let coincideTxt = (u.correo && u.correo.toLowerCase().includes(txt)) || (u.telefono && u.telefono.toLowerCase().includes(txt)) || (u.num_operacion && u.num_operacion.toLowerCase().includes(txt)) || (u.token && u.token.toLowerCase().includes(txt));
                 return coincideTxt && (servFiltro === "ALL" || servUsuario === servFiltro);
             });
 
@@ -275,50 +366,161 @@
 
             usuarios.forEach(user => {
                 let badge = user.estado === 'Pendiente' ? 'badge-pendiente' : 'badge-activo';
-                let btn = user.estado === 'Pendiente' ? `<button class="btn-aprobar" onclick="aprobarPago(${user.id})">Aprobar</button>` : `<span style="color:#059669; font-weight:bold;">✔️ Activo</span>`;
+                let btnAccion = user.estado === 'Pendiente' 
+                    ? `<button class="btn-aprobar" onclick="aprobarPago(${user.id})">Aprobar</button>` 
+                    : `<button class="btn-gestionar" onclick="abrirGestionCliente(${user.id})">⚙️ Gestionar</button>`;
                 
                 let tiempoTxt = user.meses == 0 ? "Pago Único" : `${user.meses || 1} ${user.unidad || 'Meses'}`;
                 let fechaFinShow = user.fecha_fin ? user.fecha_fin : (user.meses == 0 ? '<strong style="color:var(--primary)">Permanente</strong>' : '---');
 
+                let telShow = user.telefono ? `📱 ${user.telefono}` : '<span style="color:#DC2626; font-size:11px;">Sin número</span>';
+                let corShow = user.correo ? `✉️ ${user.correo}` : '<span style="color:#DC2626; font-size:11px;">Sin correo</span>';
+
                 let msjContacto = encodeURIComponent(`Hola! Te escribo de VegaStore. Tu servicio de ${user.servicio || 'Canva'} está ${user.estado}.`);
-                let btnContacto = '';
-                
-                // Si el dato es "Extraer de WhatsApp", mostramos un aviso rojo
-                if (user.correo === 'Extraer de WhatsApp') {
-                    btnContacto = `<span style="font-size:11px; color:#DC2626; font-weight:bold;">Falta Número</span>`;
-                } else {
-                    let esCorreo = user.correo.includes('@');
-                    btnContacto = esCorreo 
-                        ? `<a href="mailto:${user.correo}?subject=Tu Suscripción en VegaStore&body=${msjContacto}" class="btn-copiar" target="_blank">✉️</a>`
-                        : `<a href="https://wa.me/${user.correo.replace(/\D/g,'')}?text=${msjContacto}" class="btn-copiar" target="_blank">💬</a>`;
-                }
+                let btnContacto = user.telefono 
+                    ? `<a href="https://wa.me/${user.telefono.replace(/\D/g,'')}?text=${msjContacto}" class="btn-copiar" target="_blank" title="Enviar WhatsApp">💬</a>`
+                    : '';
 
                 tabla.innerHTML += `<tr>
-                    <td><div class="correo-box"><strong>${user.correo}</strong>${btnContacto}</div></td>
+                    <td>
+                        <div style="font-size: 13px; margin-bottom: 3px;"><strong>${telShow}</strong> ${btnContacto}</div>
+                        <div style="font-size: 12px; color: #6B7280;">${corShow}</div>
+                    </td>
                     <td><strong>${user.servicio || 'Canva Pro Edu'}</strong><br><span style="font-size:12px; color:#6B7280; font-weight:bold;">${tiempoTxt} • ${user.metodo_pago}</span></td>
                     <td>${user.num_operacion || user.token || '---'}</td>
                     <td><span class="${badge}">${user.estado}</span></td>
                     <td>${fechaFinShow}</td>
-                    <td style="display:flex; gap:8px;">
-                        ${btn} 
-                        <button class="btn-primary" style="padding:6px 10px; font-size:13px; background:#3B82F6;" onclick="editarDatoUsuario(${user.id}, '${user.correo}')" title="Añadir/Editar Contacto">✏️</button>
-                        <button class="btn-borrar" onclick="borrarUsuario(${user.id})">🗑️</button>
+                    <td>${btnAccion}</td>
+                </tr>`;
+            });
+        }
+
+        // ===== SÚPER MODAL DE GESTIÓN =====
+        function abrirGestionCliente(id) {
+            let user = usuariosGlobal.find(u => u.id === id);
+            if (!user) return;
+
+            document.getElementById('gestion-id').value = user.id;
+            document.getElementById('gestion-servicio-titulo').innerText = `${user.servicio} (${user.meses == 0 ? 'Permanente' : user.meses + ' ' + (user.unidad || 'meses')})`;
+            document.getElementById('gestion-telefono').value = user.telefono || '';
+            document.getElementById('gestion-correo').value = user.correo || '';
+            
+            document.getElementById('modal-gestionar-cliente').style.display = 'flex';
+        }
+
+        async function guardarDatosContacto() {
+            let id = document.getElementById('gestion-id').value;
+            let tel = document.getElementById('gestion-telefono').value.trim();
+            let cor = document.getElementById('gestion-correo').value.trim();
+            
+            await supabaseClient.from('usuarios_canva').update({ telefono: tel || null, correo: cor || null }).eq('id', id);
+            alert("Datos de contacto guardados correctamente.");
+            cargarUsuarios();
+        }
+
+        async function darDiasExtra() {
+            let id = document.getElementById('gestion-id').value;
+            let user = usuariosGlobal.find(u => u.id == id);
+            if (!user.fecha_fin) return alert("Este servicio es permanente, no necesita días extra.");
+            
+            let dias = prompt("¿Cuántos días extra quieres sumarle a su fecha de vencimiento?");
+            if (dias && !isNaN(dias)) {
+                let nuevaFecha = new Date(user.fecha_fin);
+                nuevaFecha.setDate(nuevaFecha.getDate() + parseInt(dias));
+                let finStr = nuevaFecha.toISOString().split('T')[0];
+                
+                await supabaseClient.from('usuarios_canva').update({ fecha_fin: finStr }).eq('id', id);
+                alert(`¡Listo! Se sumaron ${dias} días. Vence el ${finStr}`);
+                document.getElementById('modal-gestionar-cliente').style.display = 'none';
+                cargarUsuarios();
+            }
+        }
+
+        async function renovarServicio() {
+            let id = document.getElementById('gestion-id').value;
+            let user = usuariosGlobal.find(u => u.id == id);
+            if (user.meses == 0) return alert("Este servicio es de Pago Único (Permanente).");
+            
+            if (confirm(`¿Renovar ${user.servicio} por ${user.meses} ${user.unidad || 'meses'} más?`)) {
+                let nuevaFecha = new Date(user.fecha_fin || new Date());
+                let cantidad = parseInt(user.meses);
+                let unidad = user.unidad || 'meses';
+                
+                if(unidad === 'dias') nuevaFecha.setDate(nuevaFecha.getDate() + cantidad);
+                else if(unidad === 'años') nuevaFecha.setFullYear(nuevaFecha.getFullYear() + cantidad);
+                else nuevaFecha.setMonth(nuevaFecha.getMonth() + cantidad);
+                
+                let finStr = nuevaFecha.toISOString().split('T')[0];
+                
+                await supabaseClient.from('usuarios_canva').update({ fecha_fin: finStr }).eq('id', id);
+                alert(`¡Servicio renovado! Nueva fecha de vencimiento: ${finStr}`);
+                document.getElementById('modal-gestionar-cliente').style.display = 'none';
+                cargarUsuarios();
+            }
+        }
+
+        async function cambiarServicio() {
+            let id = document.getElementById('gestion-id').value;
+            let opcionesStr = catalogoOpciones.map((s, i) => `${i+1}. ${s.nombre}`).join('\n');
+            let eleccion = prompt(`Escribe el NÚMERO del nuevo servicio:\n\n${opcionesStr}`);
+            
+            if (eleccion && !isNaN(eleccion)) {
+                let index = parseInt(eleccion) - 1;
+                if (catalogoOpciones[index]) {
+                    let nuevoNombre = catalogoOpciones[index].nombre;
+                    await supabaseClient.from('usuarios_canva').update({ servicio: nuevoNombre }).eq('id', id);
+                    alert(`Servicio cambiado a: ${nuevoNombre}`);
+                    document.getElementById('modal-gestionar-cliente').style.display = 'none';
+                    cargarUsuarios();
+                }
+            }
+        }
+
+        async function cancelarServicio() {
+            let id = document.getElementById('gestion-id').value;
+            if (confirm("¿Estás seguro de cancelar este servicio? Se moverá a la Papelera.")) {
+                let ahoraStr = new Date().toISOString();
+                await supabaseClient.from('usuarios_canva').update({ estado: 'Cancelado', fecha_cancelacion: ahoraStr }).eq('id', id);
+                alert("Servicio enviado a la papelera.");
+                document.getElementById('modal-gestionar-cliente').style.display = 'none';
+                cargarUsuarios();
+            }
+        }
+
+        // ===== PAPELERA =====
+        async function cargarPapelera() {
+            const tabla = document.getElementById('tabla-papelera'); tabla.innerHTML = '<tr><td colspan="5" style="text-align:center;">Cargando...</td></tr>';
+            const { data } = await supabaseClient.from('usuarios_canva').select('*').eq('estado', 'Cancelado').order('fecha_cancelacion', { ascending: false });
+            
+            if(!data || data.length === 0) return tabla.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 20px;">La papelera está vacía.</td></tr>';
+
+            tabla.innerHTML = '';
+            data.forEach(user => {
+                let telShow = user.telefono ? `📱 ${user.telefono}` : '<span style="color:#DC2626; font-size:11px;">Sin número</span>';
+                let corShow = user.correo ? `✉️ ${user.correo}` : '<span style="color:#DC2626; font-size:11px;">Sin correo</span>';
+                let fechaCancel = user.fecha_cancelacion ? new Date(user.fecha_cancelacion).toLocaleString('es-PE') : '---';
+
+                tabla.innerHTML += `<tr>
+                    <td><div style="font-size: 13px; margin-bottom: 3px;"><strong>${telShow}</strong></div><div style="font-size: 12px; color: #6B7280;">${corShow}</div></td>
+                    <td><strong>${user.servicio || 'Servicio'}</strong></td>
+                    <td><span class="badge-cancelado">Cancelado</span></td>
+                    <td>${fechaCancel}</td>
+                    <td>
+                        <button class="btn-aprobar" onclick="restaurarDePapelera(${user.id})" title="Restaurar a Activos">♻️ Restaurar</button>
+                        <button class="btn-borrar" onclick="borrarUsuario(${user.id})" title="Borrar Definitivamente">🗑️ Borrar Ya</button>
                     </td>
                 </tr>`;
             });
         }
 
-        // NUEVA FUNCIÓN: Editar el correo/número del cliente
-        async function editarDatoUsuario(id, datoActual) {
-            let valorDefecto = datoActual === 'Extraer de WhatsApp' ? '' : datoActual;
-            let nuevoDato = prompt("Ingresa el número de WhatsApp o Correo del cliente:", valorDefecto);
-            
-            if (nuevoDato !== null && nuevoDato.trim() !== "") {
-                await supabaseClient.from('usuarios_canva').update({ correo: nuevoDato.trim() }).eq('id', id);
-                cargarUsuarios();
+        async function restaurarDePapelera(id) {
+            if(confirm("¿Restaurar este servicio a la lista de Activos?")) {
+                await supabaseClient.from('usuarios_canva').update({ estado: 'Activo', fecha_cancelacion: null }).eq('id', id);
+                cargarPapelera();
             }
         }
 
+        // ===== OTRAS FUNCIONES ORIGINALES (Aprobar, Manual, Catálogo...) =====
         async function aprobarPago(id) {
             let user = usuariosGlobal.find(u => u.id === id);
             let cantidad = parseInt(user.meses) || 0;
@@ -333,30 +535,28 @@
                     let fActual = new Date(user.fecha_fin);
                     if (fActual > new Date()) { fin = fActual; inicioStr = user.fecha_inicio; }
                 }
-                
                 if(unidad === 'dias') fin.setDate(fin.getDate() + cantidad);
                 else if(unidad === 'años') fin.setFullYear(fin.getFullYear() + cantidad);
                 else fin.setMonth(fin.getMonth() + cantidad); 
-                
                 finStr = fin.toISOString().split('T')[0];
             }
-
             await supabaseClient.from('usuarios_canva').update({ estado: 'Activo', fecha_inicio: inicioStr, fecha_fin: finStr }).eq('id', id);
             cargarUsuarios();
         }
 
-        async function borrarUsuario(id) { if(confirm("¿Borrar cliente permanentemente?")) { await supabaseClient.from('usuarios_canva').delete().eq('id', id); cargarUsuarios(); } }
+        async function borrarUsuario(id) { if(confirm("¿Borrar cliente permanentemente de la base de datos?")) { await supabaseClient.from('usuarios_canva').delete().eq('id', id); cargarUsuarios(); cargarPapelera(); } }
 
         async function registroManual() {
-            const correo = prompt("Ingresa el Correo o Número de WhatsApp del cliente:");
-            if (correo) {
+            const tel = prompt("Ingresa el Número de WhatsApp del cliente:");
+            if (tel) {
+                let cor = prompt("Ingresa el Correo (Opcional, deja vacío si no tiene):");
                 let serv = prompt("¿Qué servicio adquirió?") || "Canva Pro Edu";
                 let msInput = prompt("¿Cuántos meses? (Escribe 0 para Pago Único)", "1");
                 if (msInput !== null) {
                     let ms = parseInt(msInput) || 0;
                     let finStr = null; let inicioStr = new Date().toISOString().split('T')[0];
                     if (ms > 0) { let fin = new Date(); fin.setMonth(fin.getMonth() + ms); finStr = fin.toISOString().split('T')[0]; }
-                    await supabaseClient.from('usuarios_canva').insert([{ correo: correo, servicio: serv, meses: ms, unidad: 'meses', metodo_pago: 'Manual', estado: 'Activo', fecha_inicio: inicioStr, fecha_fin: finStr }]);
+                    await supabaseClient.from('usuarios_canva').insert([{ telefono: tel, correo: cor || null, servicio: serv, meses: ms, unidad: 'meses', metodo_pago: 'Manual', estado: 'Activo', fecha_inicio: inicioStr, fecha_fin: finStr }]);
                     cargarUsuarios();
                 }
             }
@@ -371,15 +571,12 @@
 
             data.forEach(serv => {
                 let planes = serv.planes && serv.planes.length > 0 ? serv.planes : [{ cantidad: serv.meses || 1, unidad: 'meses', precio: serv.precio, promo: serv.precio_promocional }];
-                
                 let txtPlanes = planes.map(p => {
                     let cant = p.cantidad !== undefined ? p.cantidad : (p.meses || 1);
                     let uni = p.unidad || (p.meses == 0 ? 'permanente' : 'meses');
-                    
                     let uText = uni;
                     if(cant == 1) { if(uni==='meses') uText='Mes'; if(uni==='dias') uText='Día'; if(uni==='años') uText='Año'; }
                     let t = cant == 0 ? 'Único' : `${cant} ${uText}`;
-                    
                     return `<span style="background:#E5E7EB; padding:4px 8px; border-radius:6px; font-size:12px; font-weight:bold; color:#374151; display:inline-block; margin-bottom:5px; margin-right:5px;">${t} (S/ ${p.promo || p.precio})</span>`;
                 }).join('');
                 
