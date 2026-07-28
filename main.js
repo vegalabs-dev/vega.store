@@ -177,7 +177,6 @@ function renderizarCatalogo(serviciosParaMostrar) {
             return `<div style="display:flex; align-items:baseline; gap:8px; flex-wrap:wrap;"><span style="font-size:26px; font-weight:800; color:var(--text-dark); line-height:1;">S/ ${pNorm.toFixed(2)}</span></div>`;
         };
 
-        // Mostrar botones de tiempo SIEMPRE (incluso si es 1 solo plan)
         let pills = planesOrdenados.map((p, i) => {
             let t = p.cantidad == 0 ? 'Único' : formatTiempo(p.cantidad, p.unidad);
             let activeStyle = i === 0 ? 'background:#111827; color:white; border:1px solid #111827;' : 'background:#F9FAFB; color:#6B7280; border:1px solid #E5E7EB;';
@@ -242,15 +241,12 @@ window.abrirModalDetalles = function(servicio) {
     };
 
     const box = document.getElementById('detalles-precio-box');
-    
-    // Mostrar botones de tiempo en el modal siempre
     let htmlPlanes = `<div style="font-size:13px; color:var(--text-light); margin-bottom:10px; font-weight:bold;">Elige tu plan:</div><div style="display:flex; gap:8px; justify-content:center; flex-wrap:wrap; margin-bottom:20px;">`;
     planes.forEach((p, i) => {
         let active = i === 0 ? 'background:#111827; color:white;' : 'background:#F9FAFB; color:#6B7280; border:1px solid #E5E7EB;';
         htmlPlanes += `<button class="btn-plan-selector" data-index="${i}" style="padding:8px 16px; border-radius:20px; font-size:13px; font-weight:bold; cursor:pointer; transition:0.2s; ${active}">${formatTiempo(p.cantidad, p.unidad)}</button>`;
     });
     htmlPlanes += `</div>`;
-    
     box.innerHTML = htmlPlanes + `<div id="precio-dinamico-modal">${renderPrecioModal(planes[0])}</div>`;
 
     const listaCaract = document.getElementById('detalles-caracteristicas');
@@ -281,7 +277,7 @@ window.abrirModalDetalles = function(servicio) {
 document.getElementById('cerrar-detalles').addEventListener('click', () => document.getElementById('modal-detalles').classList.add('oculto'));
 
 // =====================================
-// COMPRA DIRECTA (SIN MODAL DE YAPE)
+// COMPRA DIRECTA Y ANTI-SPAM
 // =====================================
 window.prepararCompra = async function(plan) {
     if (!userPhone) {
@@ -305,19 +301,17 @@ window.prepararCompra = async function(plan) {
         inputDatoCompra.style.display = "block"; inputDatoCompra.placeholder = "Escribe el correo a vincular"; inputDatoCompra.type = "email"; alertaDato.style.display = "none"; 
     }
 
-    // Adaptamos el modal para que solo tenga el botón de generar pedido
     document.getElementById('modal-compra').classList.remove('oculto');
     inputDatoCompra.value = ""; inputDatoCompra.style.borderColor = "#E5E7EB"; 
     
     // Ocultar elementos viejos de Yape
-    document.getElementById('txt-paso-yape').parentElement.style.display = "none";
-    document.querySelector('.qr-box').style.display = "none";
-    document.querySelector('.yape-name-box').style.display = "none";
-    document.getElementById('txt-paso-yape-2').parentElement.style.display = "none";
-    document.getElementById('otp-inputs').style.display = "none";
-    document.getElementById('btn-confirmar-yape').style.display = "none";
+    let pasoYape = document.getElementById('txt-paso-yape'); if(pasoYape && pasoYape.parentElement) pasoYape.parentElement.style.display = "none";
+    let qrBox = document.querySelector('.qr-box'); if(qrBox) qrBox.style.display = "none";
+    let yapeName = document.querySelector('.yape-name-box'); if(yapeName) yapeName.style.display = "none";
+    let pasoYape2 = document.getElementById('txt-paso-yape-2'); if(pasoYape2 && pasoYape2.parentElement) pasoYape2.parentElement.style.display = "none";
+    let otpInputs = document.getElementById('otp-inputs'); if(otpInputs) otpInputs.style.display = "none";
+    let btnConfirmarYape = document.getElementById('btn-confirmar-yape'); if(btnConfirmarYape) btnConfirmarYape.style.display = "none";
     
-    // Cambiar texto del botón final
     const btnFinal = document.getElementById('btn-otro-medio');
     btnFinal.innerText = `Generar Pedido y Pagar (S/ ${productoSeleccionado.precio.toFixed(2)})`;
     btnFinal.style.background = "var(--primary-gradient)";
@@ -325,7 +319,6 @@ window.prepararCompra = async function(plan) {
 };
 
 document.getElementById('btn-otro-medio').addEventListener('click', async () => {
-    // Validar correo si se pide
     let datoCliente = null;
     if (productoSeleccionado.tipo_ingreso === 'correo') {
         datoCliente = inputDatoCompra.value.trim();
@@ -337,15 +330,23 @@ document.getElementById('btn-otro-medio').addEventListener('click', async () => 
     const token = "TK-" + Math.random().toString(36).substr(2, 4).toUpperCase();
     const btn = document.getElementById('btn-otro-medio'); btn.innerText = "Generando..."; btn.disabled = true;
 
-    await supabaseClient.from('usuarios_canva').insert([{ 
+    const { error } = await supabaseClient.from('usuarios_canva').insert([{ 
         telefono: userPhone, correo: datoCliente,
         servicio: productoSeleccionado.nombre, meses: productoSeleccionado.cantidad, unidad: productoSeleccionado.unidad, 
         metodo_pago: 'WhatsApp', token: token, estado: 'Pendiente' 
     }]);
 
+    if (error) {
+        alert("Error al conectar con la base de datos: " + error.message);
+        btn.innerText = `Generar Pedido y Pagar (S/ ${productoSeleccionado.precio.toFixed(2)})`; btn.disabled = false;
+        return;
+    }
+
     let txtTiempo = formatTiempo(productoSeleccionado.cantidad, productoSeleccionado.unidad);
     let tipoDatoMsg = datoCliente ? `\n📧 *Correo a activar:* ${datoCliente}` : ``;
-    const mensaje = `Hola, quiero adquirir *${productoSeleccionado.nombre} (${txtTiempo})* por S/${productoSeleccionado.precio.toFixed(2)}.${tipoDatoMsg}\n🔑 Mi token es: *${token}*`;
+    
+    // MENSAJE LIMPIO (SIN EMOJIS RAROS)
+    const mensaje = `Hola, quiero adquirir *${productoSeleccionado.nombre} (${txtTiempo})* por S/${productoSeleccionado.precio.toFixed(2)}.${tipoDatoMsg}\n*Mi token es:* ${token}`;
     
     window.open(`https://wa.me/${numeroWhatsApp}?text=${encodeURIComponent(mensaje)}`, '_blank');
     document.getElementById('modal-compra').classList.add('oculto'); btn.disabled = false;
