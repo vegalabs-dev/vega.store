@@ -53,7 +53,7 @@
         
         .correo-box { display: flex; align-items: center; gap: 8px; }
         .btn-copiar { background: #F3F4F6; border: 1px solid #E5E7EB; border-radius: 6px; cursor: pointer; font-size: 14px; padding: 5px 8px; text-decoration: none; display: inline-block; transition: 0.2s;}
-        .btn-copiar:hover { background: #E5E7EB; transform: scale(1.1); }
+        .btn-copiar:hover { background: #E5E7EB; transform: scale(1.05); }
 
         .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); display: none; justify-content: center; align-items: center; z-index: 1000; overflow-y:auto; padding:20px;}
         .modal-content { background: white; padding: 30px; border-radius: 15px; width: 100%; max-width: 600px; position: relative; margin: auto;}
@@ -298,6 +298,22 @@
             else if(t === 'papelera') cargarPapelera();
         }
 
+        // ===== NUEVA FUNCIÓN: COPIAR AL PORTAPAPELES =====
+        window.copiarTexto = function(texto) {
+            navigator.clipboard.writeText(texto).then(() => {
+                alert("Copiado al portapapeles: " + texto);
+            }).catch(err => {
+                // Alternativa para navegadores antiguos
+                let tempInput = document.createElement("input");
+                tempInput.value = texto;
+                document.body.appendChild(tempInput);
+                tempInput.select();
+                document.execCommand("copy");
+                document.body.removeChild(tempInput);
+                alert("Copiado al portapapeles: " + texto);
+            });
+        }
+
         // ===== LIMPIEZA AUTOMÁTICA DE PAPELERA =====
         async function limpiarPapeleraAutomatica() {
             const { data } = await supabaseClient.from('usuarios_canva').select('id, fecha_cancelacion').eq('estado', 'Cancelado');
@@ -372,7 +388,7 @@
                 let tiempoTxt = user.meses == 0 ? "Pago Único" : `${user.meses || 1} ${user.unidad || 'Meses'}`;
                 let fechaFinShow = user.fecha_fin ? user.fecha_fin : (user.meses == 0 ? '<strong style="color:var(--primary)">Permanente</strong>' : '---');
 
-                // LÓGICA INTELIGENTE DE CONTACTO (Sin letras rojas)
+                // LÓGICA INTELIGENTE DE CONTACTO
                 let numWhatsApp = user.telefono;
                 let emailCliente = user.correo;
 
@@ -381,24 +397,38 @@
                     emailCliente = null; 
                 }
 
-                let telShow = numWhatsApp ? `📱 <strong>${numWhatsApp}</strong>` : '';
-                let corShow = emailCliente ? `✉️ <span style="color: #6B7280;">${emailCliente}</span>` : '';
-                
                 let msjContacto = encodeURIComponent(`Hola! Te escribo de VegaStore. Tu servicio de ${user.servicio || 'Canva'} está ${user.estado}.`);
-                let btnContacto = numWhatsApp 
-                    ? `<a href="https://wa.me/${numWhatsApp}?text=${msjContacto}" class="btn-copiar" target="_blank" title="Enviar WhatsApp">💬</a>`
-                    : '';
+                
+                // Construir fila de teléfono (Si existe)
+                let telRow = '';
+                if (numWhatsApp) {
+                    telRow = `
+                        <div style="font-size: 13px; margin-bottom: 3px; display: flex; align-items: center; gap: 8px;">
+                            📱 <strong>${numWhatsApp}</strong>
+                            <a href="https://wa.me/${numWhatsApp}?text=${msjContacto}" class="btn-copiar" target="_blank" title="Enviar WhatsApp">💬</a>
+                        </div>
+                    `;
+                }
 
-                if (!numWhatsApp && emailCliente) {
-                    btnContacto = `<a href="mailto:${emailCliente}?subject=Tu Suscripción en VegaStore&body=${msjContacto}" class="btn-copiar" target="_blank" title="Enviar Correo">✉️</a>`;
+                // Construir fila de correo (Si existe, con botón de COPIAR)
+                let corRow = '';
+                if (emailCliente) {
+                    corRow = `
+                        <div style="font-size: 12px; margin-top: 3px; display: flex; align-items: center; gap: 8px;">
+                            ✉️ <span style="color: #6B7280;">${emailCliente}</span>
+                            <button onclick="copiarTexto('${emailCliente}')" class="btn-copiar" style="padding: 2px 6px; font-size: 11px; border: 1px solid #E5E7EB; background: #F9FAFB; cursor: pointer;" title="Copiar Correo">📋 Copiar</button>
+                        </div>
+                    `;
+                }
+
+                if (!telRow && !corRow) {
+                    telRow = `<div style="font-size: 12px; color: #DC2626;">Sin datos de contacto</div>`;
                 }
 
                 tabla.innerHTML += `<tr>
                     <td>
-                        <div style="font-size: 13px; margin-bottom: 3px; display: flex; align-items: center; gap: 8px;">
-                            ${telShow} ${btnContacto}
-                        </div>
-                        ${corShow ? `<div style="font-size: 12px; margin-top: 3px;">${corShow}</div>` : ''}
+                        ${telRow}
+                        ${corRow}
                     </td>
                     <td><strong>${user.servicio || 'Canva Pro Edu'}</strong><br><span style="font-size:12px; color:#6B7280; font-weight:bold;">${tiempoTxt} • ${user.metodo_pago}</span></td>
                     <td>${user.num_operacion || user.token || '---'}</td>
@@ -417,7 +447,6 @@
             document.getElementById('gestion-id').value = user.id;
             document.getElementById('gestion-servicio-titulo').innerText = `${user.servicio} (${user.meses == 0 ? 'Permanente' : user.meses + ' ' + (user.unidad || 'meses')})`;
             
-            // Lógica inteligente para cargar los datos en el modal
             let numEdit = user.telefono || '';
             let corEdit = user.correo || '';
             if (!numEdit && corEdit && !corEdit.includes('@')) {
@@ -526,12 +555,15 @@
                     emailCliente = null; 
                 }
 
-                let telShow = numWhatsApp ? `📱 <strong>${numWhatsApp}</strong>` : '';
-                let corShow = emailCliente ? `✉️ <span style="color: #6B7280;">${emailCliente}</span>` : '';
+                let telRow = numWhatsApp ? `<div style="font-size: 13px; margin-bottom: 3px;">📱 <strong>${numWhatsApp}</strong></div>` : '';
+                let corRow = emailCliente ? `<div style="font-size: 12px; margin-top: 3px; display: flex; align-items: center; gap: 8px;">✉️ <span style="color: #6B7280;">${emailCliente}</span> <button onclick="copiarTexto('${emailCliente}')" class="btn-copiar" style="padding: 2px 6px; font-size: 11px; border: 1px solid #E5E7EB; background: #F9FAFB; cursor: pointer;" title="Copiar Correo">📋 Copiar</button></div>` : '';
                 let fechaCancel = user.fecha_cancelacion ? new Date(user.fecha_cancelacion).toLocaleString('es-PE') : '---';
 
                 tabla.innerHTML += `<tr>
-                    <td><div style="font-size: 13px; margin-bottom: 3px;">${telShow}</div><div style="font-size: 12px; color: #6B7280;">${corShow}</div></td>
+                    <td>
+                        ${telRow}
+                        ${corRow}
+                    </td>
                     <td><strong>${user.servicio || 'Servicio'}</strong></td>
                     <td><span class="badge-cancelado">Cancelado</span></td>
                     <td>${fechaCancel}</td>
