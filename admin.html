@@ -14,7 +14,7 @@
         h1 { color: var(--primary); margin: 0; display: flex; align-items: center; gap: 10px;}
         
         .tabs { display: flex; gap: 10px; margin-bottom: 30px; border-bottom: 2px solid #E5E7EB; padding-bottom: 15px; flex-wrap: wrap;}
-        .tab-btn { padding: 10px 20px; border: none; background: #F3F4F6; color: #6B7280; font-weight: bold; border-radius: 8px; cursor: pointer; transition: 0.3s; font-size: 15px;}
+        .tab-btn { padding: 10px 20px; border: none; background: #F3F4F6; color: #6B7280; font-weight: bold; border-radius: 8px; cursor: pointer; transition: 0.3s; font-size: 14px;}
         .tab-btn.active { background: var(--primary); color: white; }
         .tab-content { display: none; }
         .tab-content.active { display: block; }
@@ -41,6 +41,7 @@
         .badge-pendiente { background: #FEF3C7; color: #D97706; padding: 6px 12px; border-radius: 20px; font-weight: bold; font-size: 12px; }
         .badge-activo { background: #D1FAE5; color: #059669; padding: 6px 12px; border-radius: 20px; font-weight: bold; font-size: 12px; }
         .badge-vencido { background: #FEE2E2; color: #DC2626; padding: 6px 12px; border-radius: 20px; font-weight: bold; font-size: 12px; }
+        .badge-cancelado { background: #F3F4F6; color: #4B5563; padding: 6px 12px; border-radius: 20px; font-weight: bold; font-size: 12px; }
         
         .btn-primary { background: var(--primary); color: white; border: none; padding: 12px 18px; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.3s;}
         .btn-aprobar { background: #10B981; color: white; border: none; padding: 8px 12px; border-radius: 8px; cursor: pointer; font-weight: bold; }
@@ -86,34 +87,46 @@
             </div>
 
             <div class="tabs">
-                <button id="btn-tab-ventas" class="tab-btn active" onclick="switchTab('ventas')">💰 Ventas y Clientes</button>
-                <button id="btn-tab-catalogo" class="tab-btn" onclick="switchTab('catalogo')">📦 Catálogo de Servicios</button>
+                <button id="btn-tab-ventas" class="tab-btn active" onclick="switchTab('ventas')">💰 Clientes Activos</button>
+                <button id="btn-tab-solicitudes" class="tab-btn" onclick="switchTab('solicitudes')" style="color: #D97706;">🔔 Solicitudes</button>
+                <button id="btn-tab-catalogo" class="tab-btn" onclick="switchTab('catalogo')">📦 Catálogo</button>
                 <button id="btn-tab-papelera" class="tab-btn" onclick="switchTab('papelera')" style="color: #DC2626;">🗑️ Papelera</button>
             </div>
 
+            <div class="stats-container">
+                <div class="stat-box"><h3 id="stat-activos">0</h3><p>CLIENTES ACTIVOS</p></div>
+                <div class="stat-box"><h3 id="stat-pendientes">0</h3><p>SOLICITUDES PENDIENTES</p></div>
+            </div>
+
+            <!-- PESTAÑA CLIENTES ACTIVOS -->
             <div id="tab-ventas" class="tab-content active">
-                <div class="stats-container">
-                    <div class="stat-box"><h3 id="stat-activos">0</h3><p>CLIENTES ACTIVOS</p></div>
-                    <div class="stat-box"><h3 id="stat-pendientes">0</h3><p>PAGOS POR REVISAR</p></div>
-                </div>
-
                 <div class="filtros-admin">
-                    <input type="text" id="buscador" class="search-box" placeholder="Buscar teléfono, correo o token..." oninput="filtrarTabla()">
-                    <select id="filtro-servicio" class="filtro-select" onchange="filtrarTabla()"><option value="ALL">Todos los Servicios</option></select>
-                    <select id="filtro-orden" class="filtro-select" onchange="filtrarTabla()">
-                        <option value="RECIENTES">Más Recientes</option>
-                        <option value="VENCIMIENTO">Por Vencer Primero</option>
-                    </select>
+                    <input type="text" id="buscador-clientes" class="search-box" placeholder="Buscar teléfono o correo..." oninput="filtrarClientes()">
+                    <select id="filtro-servicio" class="filtro-select" onchange="filtrarClientes()"><option value="ALL">Todos los Servicios</option></select>
+                    <button class="btn-manual" onclick="registroManual()">+ Añadir Cliente Manual</button>
                 </div>
-
                 <div style="overflow-x: auto;">
                     <table>
-                        <thead><tr><th>Datos de Contacto</th><th>Servicio y Tiempo</th><th>N° Op / Token</th><th>Estado</th><th>Vencimiento</th><th>Acciones</th></tr></thead>
-                        <tbody id="tabla-usuarios"><tr><td colspan="6" style="text-align:center;">Cargando datos...</td></tr></tbody>
+                        <thead><tr><th>Contacto</th><th>Servicio y Plan</th><th>Estado</th><th>Vencimiento</th><th>Acciones</th></tr></thead>
+                        <tbody id="tabla-clientes"><tr><td colspan="5" style="text-align:center;">Cargando clientes...</td></tr></tbody>
                     </table>
                 </div>
             </div>
 
+            <!-- PESTAÑA SOLICITUDES (NUEVA) -->
+            <div id="tab-solicitudes" class="tab-content">
+                <div style="background: #FFFBEB; border: 1px solid #FDE68A; padding: 15px; border-radius: 12px; margin-bottom: 20px;">
+                    <p style="margin: 0; color: #92400E; font-size: 14px;"><strong>Información:</strong> Aquí llegan los pedidos nuevos. Si no apruebas un pedido en 24 horas, el sistema lo borrará automáticamente para no saturar tu base de datos.</p>
+                </div>
+                <div style="overflow-x: auto;">
+                    <table>
+                        <thead><tr><th>Contacto</th><th>Servicio Solicitado</th><th>Token / N° Op</th><th>Fecha de Solicitud</th><th>Acciones</th></tr></thead>
+                        <tbody id="tabla-solicitudes"><tr><td colspan="5" style="text-align:center;">Cargando solicitudes...</td></tr></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- PESTAÑA CATÁLOGO -->
             <div id="tab-catalogo" class="tab-content">
                 <div class="filtros-admin" style="justify-content: space-between; align-items: center; margin-bottom: 25px; background: transparent; border: none; padding: 0;">
                     <h2 style="margin: 0; font-size: 22px; color: #374151;">Servicios en Tienda</h2>
@@ -127,13 +140,14 @@
                 </div>
             </div>
 
+            <!-- PESTAÑA PAPELERA -->
             <div id="tab-papelera" class="tab-content">
                 <div style="background: #FEF2F2; border: 1px solid #FCA5A5; padding: 15px; border-radius: 12px; margin-bottom: 20px;">
                     <p style="margin: 0; color: #991B1B; font-size: 14px;"><strong>Información:</strong> Los servicios cancelados permanecerán aquí por 24 horas antes de borrarse permanentemente.</p>
                 </div>
                 <div style="overflow-x: auto;">
                     <table>
-                        <thead><tr><th>Datos de Contacto</th><th>Servicio</th><th>Estado</th><th>Fecha de Cancelación</th><th>Acciones</th></tr></thead>
+                        <thead><tr><th>Contacto</th><th>Servicio</th><th>Estado</th><th>Fecha de Cancelación</th><th>Acciones</th></tr></thead>
                         <tbody id="tabla-papelera"><tr><td colspan="5" style="text-align:center;">Cargando papelera...</td></tr></tbody>
                     </table>
                 </div>
@@ -153,7 +167,7 @@
                 <h3 style="font-size: 15px; margin-top: 0; margin-bottom: 15px; color: #374151;">📞 Datos de Contacto</h3>
                 <div style="display: flex; gap: 15px;">
                     <div style="flex: 1;">
-                        <label style="font-size: 12px; font-weight: bold; color: #6B7280;">N° WhatsApp (Con código país)</label>
+                        <label style="font-size: 12px; font-weight: bold; color: #6B7280;">N° WhatsApp</label>
                         <input type="text" id="gestion-telefono" style="width: 100%; padding: 10px; border: 1px solid #D1D5DB; border-radius: 8px; margin-top: 5px;" placeholder="Ej: +51987654321">
                     </div>
                     <div style="flex: 1;">
@@ -206,9 +220,7 @@
                 <div style="flex: 1;">
                     <label>Categoría</label>
                     <input type="text" id="serv-categoria" class="filtro-select" style="width: 100%; box-sizing: border-box;" placeholder="Ej: Streaming, Juegos..." list="opciones-categoria">
-                    <datalist id="opciones-categoria">
-                        <option value="Streaming"></option><option value="Seguros"></option><option value="Software"></option>
-                    </datalist>
+                    <datalist id="opciones-categoria"><option value="Streaming"></option><option value="Seguros"></option><option value="Software"></option></datalist>
                 </div>
                 <div style="flex: 1;">
                     <label>¿Qué pedir al cliente?</label>
@@ -248,26 +260,20 @@
 
     <script>
         const supabaseClient = window.supabase.createClient('https://rhuhuvevynovfekwhlhb.supabase.co', 'sb_publishable_-8XCScnvNf6QXMsnbyJK9Q_XhrOr9j5');
-        let usuariosGlobal = [];
+        const URL_TIENDA = "https://vegalabs-dev.github.io/vega.store/";
+        
+        let clientesGlobal = [];
+        let solicitudesGlobal = [];
         let catalogoOpciones = [];
 
-        // URL de tu web para enviarla en los mensajes de WhatsApp
-        const URL_TIENDA = "https://vegalabs-dev.github.io/vega.store/";
-
         supabaseClient.auth.getSession().then(({ data: { session } }) => { if (session) mostrarPanel(); });
-
-        function obtenerInfoDispositivo() {
-            const ua = navigator.userAgent;
-            let dispositivo = /Mobile|Android|iP(hone|od|ad)/.test(ua) ? "📱 Celular" : "💻 Computadora";
-            return { dispositivo, navegador: "Navegador Web" };
-        }
 
         async function iniciarSesion() {
             const email = document.getElementById('login-email').value;
             const password = document.getElementById('login-password').value;
             const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
             if (error) { document.getElementById('login-error').style.display = 'block'; } 
-            else { await supabaseClient.from('admin_accesos').insert([obtenerInfoDispositivo()]); mostrarPanel(); }
+            else { mostrarPanel(); }
         }
 
         async function cerrarSesion() { await supabaseClient.auth.signOut(); window.location.reload(); }
@@ -275,136 +281,179 @@
         function mostrarPanel() {
             document.getElementById('login-section').style.display = 'none';
             document.getElementById('admin-section').style.display = 'block';
-            limpiarPapeleraAutomatica(); 
-            cargarUsuarios();
+            limpiarRegistrosAntiguos(); 
+            cargarDatosPrincipales();
         }
 
         function switchTab(t) {
             document.querySelectorAll('.tab-content, .tab-btn').forEach(e => e.classList.remove('active'));
             document.getElementById('tab-' + t).classList.add('active'); document.getElementById('btn-tab-' + t).classList.add('active');
-            if(t === 'ventas') cargarUsuarios(); 
+            if(t === 'ventas' || t === 'solicitudes') cargarDatosPrincipales(); 
             else if(t === 'catalogo') cargarServicios();
             else if(t === 'papelera') cargarPapelera();
         }
 
-        window.copiarTexto = function(texto) {
-            navigator.clipboard.writeText(texto).then(() => alert("Copiado: " + texto)).catch(() => alert("Error al copiar"));
-        }
+        window.copiarTexto = function(texto) { navigator.clipboard.writeText(texto).then(() => alert("Copiado: " + texto)).catch(() => alert("Error al copiar")); }
 
-        async function limpiarPapeleraAutomatica() {
-            const { data } = await supabaseClient.from('usuarios_canva').select('id, fecha_cancelacion').eq('estado', 'Cancelado');
-            if (data && data.length > 0) {
-                const ahora = new Date();
-                const idsParaBorrar = data.filter(item => item.fecha_cancelacion && ((ahora - new Date(item.fecha_cancelacion)) / 3600000) >= 24).map(i => i.id);
-                if (idsParaBorrar.length > 0) await supabaseClient.from('usuarios_canva').delete().in('id', idsParaBorrar);
+        // ===== LIMPIEZA AUTOMÁTICA DE BASURA (Papelera y Solicitudes Viejas) =====
+        async function limpiarRegistrosAntiguos() {
+            const ahora = new Date();
+            
+            // 1. Limpiar Papelera > 24h
+            const { data: cancelados } = await supabaseClient.from('usuarios_canva').select('id, fecha_cancelacion').eq('estado', 'Cancelado');
+            if (cancelados) {
+                const idsCancelados = cancelados.filter(item => item.fecha_cancelacion && ((ahora - new Date(item.fecha_cancelacion)) / 3600000) >= 24).map(i => i.id);
+                if (idsCancelados.length > 0) await supabaseClient.from('usuarios_canva').delete().in('id', idsCancelados);
+            }
+
+            // 2. Limpiar Solicitudes Pendientes > 24h (Anti-saturación)
+            const { data: pendientes } = await supabaseClient.from('usuarios_canva').select('id, creado_en').eq('estado', 'Pendiente');
+            if (pendientes) {
+                const idsPendientes = pendientes.filter(item => item.creado_en && ((ahora - new Date(item.creado_en)) / 3600000) >= 24).map(i => i.id);
+                if (idsPendientes.length > 0) await supabaseClient.from('usuarios_canva').delete().in('id', idsPendientes);
             }
         }
 
-        // ===== USUARIOS Y VENTAS =====
-        async function cargarUsuarios() {
-            const { data: usuarios } = await supabaseClient.from('usuarios_canva').select('*').neq('estado', 'Cancelado').order('creado_en', { ascending: false });
-            usuariosGlobal = usuarios || [];
+        // ===== CARGAR CLIENTES Y SOLICITUDES =====
+        async function cargarDatosPrincipales() {
+            const { data: todos } = await supabaseClient.from('usuarios_canva').select('*').neq('estado', 'Cancelado').order('creado_en', { ascending: false });
+            let todosLosRegistros = todos || [];
+            
+            // Separamos en Clientes Activos/Vencidos y Solicitudes Pendientes
+            clientesGlobal = todosLosRegistros.filter(u => u.estado === 'Activo');
+            solicitudesGlobal = todosLosRegistros.filter(u => u.estado === 'Pendiente');
+            
+            document.getElementById('stat-activos').innerText = clientesGlobal.length;
+            document.getElementById('stat-pendientes').innerText = solicitudesGlobal.length;
             
             const { data: catalogo } = await supabaseClient.from('servicios').select('nombre').order('nombre', { ascending: true });
             catalogoOpciones = catalogo || [];
             
-            filtrarTabla(); 
+            const selectServicios = document.getElementById('filtro-servicio');
+            selectServicios.innerHTML = '<option value="ALL">Todos los Servicios</option>';
+            if (catalogo) { catalogo.forEach(s => selectServicios.innerHTML += `<option value="${s.nombre}">${s.nombre}</option>`); }
+            
+            filtrarClientes();
+            renderizarSolicitudes();
         }
 
-        function filtrarTabla() {
-            let txt = document.getElementById('buscador').value.toLowerCase();
+        function filtrarClientes() {
+            let txt = document.getElementById('buscador-clientes').value.toLowerCase();
+            let servFiltro = document.getElementById('filtro-servicio').value;
             let orden = document.getElementById('filtro-orden').value;
 
-            let filtrados = usuariosGlobal.filter(u => {
-                return (u.correo && u.correo.toLowerCase().includes(txt)) || (u.telefono && u.telefono.toLowerCase().includes(txt)) || (u.num_operacion && u.num_operacion.toLowerCase().includes(txt));
+            let filtrados = clientesGlobal.filter(u => {
+                let coincideTxt = (u.correo && u.correo.toLowerCase().includes(txt)) || (u.telefono && u.telefono.toLowerCase().includes(txt));
+                return coincideTxt && (servFiltro === "ALL" || u.servicio === servFiltro);
             });
 
             if (orden === 'VENCIMIENTO') {
                 filtrados.sort((a, b) => (a.fecha_fin ? new Date(a.fecha_fin).getTime() : 9999999999999) - (b.fecha_fin ? new Date(b.fecha_fin).getTime() : 9999999999999));
-            } else {
-                filtrados.sort((a, b) => new Date(b.creado_en) - new Date(a.creado_en));
             }
-            renderizarTabla(filtrados);
+            renderizarTablaClientes(filtrados);
         }
 
-        function renderizarTabla(usuarios) {
-            const tabla = document.getElementById('tabla-usuarios'); tabla.innerHTML = ''; 
-            if(usuarios.length === 0) return tabla.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 20px;">No hay registros.</td></tr>';
+        function renderizarTablaClientes(clientes) {
+            const tabla = document.getElementById('tabla-clientes'); tabla.innerHTML = ''; 
+            if(clientes.length === 0) return tabla.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 20px;">No hay clientes activos.</td></tr>';
 
-            let activos = 0; let pendientes = 0;
-
-            usuarios.forEach(user => {
-                // Cálculo de días restantes y estado Vencido
+            clientes.forEach(user => {
                 let diasRestantes = 0;
-                let estadoReal = user.estado;
+                let estadoReal = 'Activo';
                 
-                if (user.estado === 'Activo' && user.fecha_fin) {
+                if (user.fecha_fin) {
                     let hoy = new Date(); let fin = new Date(user.fecha_fin);
                     diasRestantes = Math.ceil((fin.getTime() - hoy.getTime()) / (1000 * 3600 * 24));
                     if (diasRestantes <= 0) estadoReal = 'Vencido';
                 }
 
-                if(estadoReal === 'Activo') activos++;
-                if(estadoReal === 'Pendiente') pendientes++;
-
-                let badge = estadoReal === 'Pendiente' ? 'badge-pendiente' : (estadoReal === 'Vencido' ? 'badge-vencido' : 'badge-activo');
-                let btnAccion = estadoReal === 'Pendiente' 
-                    ? `<button class="btn-aprobar" onclick="aprobarPago(${user.id})">Aprobar</button>` 
-                    : `<button class="btn-gestionar" onclick="abrirGestionCliente(${user.id})">⚙️ Gestionar</button>`;
-                
+                let badge = estadoReal === 'Vencido' ? 'badge-vencido' : 'badge-activo';
                 let tiempoTxt = user.meses == 0 ? "Pago Único" : `${user.meses || 1} ${user.unidad || 'Meses'}`;
                 let fechaFinShow = user.fecha_fin ? user.fecha_fin : (user.meses == 0 ? '<strong style="color:var(--primary)">Permanente</strong>' : '---');
 
-                // Lógica de limpieza de número
+                // Contacto Limpio
                 let numWhatsApp = user.telefono ? user.telefono.replace(/\s+/g, '') : null;
                 let emailCliente = user.correo;
-
                 if (!numWhatsApp && emailCliente && !emailCliente.includes('@') && emailCliente.replace(/\D/g,'').length >= 9) {
-                    numWhatsApp = emailCliente.replace(/\D/g,'');
-                    emailCliente = null; 
+                    numWhatsApp = emailCliente.replace(/\D/g,''); emailCliente = null; 
                 }
 
-                // PLANTILLA INTELIGENTE DE MENSAJE DE WHATSAPP
+                // Plantilla WhatsApp Inteligente
                 let msjContacto = "";
                 let nombreServicio = user.servicio || 'Servicio';
-                
                 if (estadoReal === 'Vencido') {
                     msjContacto = `Hola! Tu servicio de *${nombreServicio}* ha vencido. 😔\n\nSi deseas renovar o cambiar de plan, escríbeme por aquí o hazlo directo desde tu panel en la web:\n${URL_TIENDA}`;
-                } else if (estadoReal === 'Activo' && user.meses == 0) {
+                } else if (user.meses == 0) {
                     msjContacto = `Hola! Te escribo de VegaStore. Tu servicio de *${nombreServicio}* está Activo y es Permanente. Gracias por la confianza! ✨\n\nPuedes ver tu cuenta aquí:\n${URL_TIENDA}`;
-                } else if (estadoReal === 'Activo') {
-                    if (diasRestantes > 1) {
-                        msjContacto = `Hola! Te escribo de VegaStore. Tu servicio de *${nombreServicio}* está Activo. Te quedan *${diasRestantes} días* de suscripción. \n\nRecuerda que puedes ver tu cuenta y renovar desde tu panel en la web:\n${URL_TIENDA}`;
-                    } else {
-                        // Mensaje especial para el último día (sin emojis raros)
-                        msjContacto = `Hola! Te escribo de VegaStore. Tu servicio de *${nombreServicio}* vence HOY. Disfruta tu último día, muchas gracias por la confianza. 😁\n\nSi deseas renovar escríbenos por este medio o hazlo desde tu panel:\n${URL_TIENDA}`;
-                    }
                 } else {
-                    msjContacto = `Hola! Te escribo de VegaStore sobre tu pedido de *${nombreServicio}*.`;
+                    if (diasRestantes > 1) msjContacto = `Hola! Te escribo de VegaStore. Tu servicio de *${nombreServicio}* está Activo. Te quedan *${diasRestantes} días* de suscripción. \n\nRecuerda que puedes ver tu cuenta y renovar desde tu panel en la web:\n${URL_TIENDA}`;
+                    else msjContacto = `Hola! Te escribo de VegaStore. Tu servicio de *${nombreServicio}* vence HOY. Disfruta tu último día, muchas gracias por la confianza. 😁\n\nSi deseas renovar escríbenos por este medio o hazlo desde tu panel:\n${URL_TIENDA}`;
                 }
 
                 let msjCodificado = encodeURIComponent(msjContacto);
-                
                 let telRow = numWhatsApp ? `<div style="font-size: 13px; margin-bottom: 3px; display: flex; align-items: center; gap: 8px;">📱 <strong>${numWhatsApp}</strong> <a href="https://wa.me/${numWhatsApp}?text=${msjCodificado}" class="btn-copiar" target="_blank" title="Enviar WhatsApp">💬</a></div>` : '';
                 let corRow = emailCliente ? `<div style="font-size: 12px; margin-top: 3px; display: flex; align-items: center; gap: 8px;">✉️ <span style="color: #6B7280;">${emailCliente}</span> <button onclick="copiarTexto('${emailCliente}')" class="btn-copiar" style="padding: 2px 6px; font-size: 11px; border: 1px solid #E5E7EB; background: #F9FAFB;">📋 Copiar</button></div>` : '';
 
                 tabla.innerHTML += `<tr>
                     <td>${telRow} ${corRow}</td>
-                    <td><strong>${user.servicio || 'Servicio'}</strong><br><span style="font-size:12px; color:#6B7280; font-weight:bold;">${tiempoTxt} • ${user.metodo_pago}</span></td>
-                    <td>${user.num_operacion || user.token || '---'}</td>
+                    <td><strong>${user.servicio}</strong><br><span style="font-size:12px; color:#6B7280; font-weight:bold;">${tiempoTxt}</span></td>
                     <td><span class="${badge}">${estadoReal}</span></td>
                     <td>${fechaFinShow}</td>
-                    <td>${btnAccion}</td>
+                    <td><button class="btn-gestionar" onclick="abrirGestionCliente(${user.id})">⚙️ Gestionar</button></td>
                 </tr>`;
             });
+        }
 
-            document.getElementById('stat-activos').innerText = activos;
-            document.getElementById('stat-pendientes').innerText = pendientes;
+        // ===== TABLA DE SOLICITUDES (PENDIENTES) =====
+        function renderizarSolicitudes() {
+            const tabla = document.getElementById('tabla-solicitudes'); tabla.innerHTML = ''; 
+            if(solicitudesGlobal.length === 0) return tabla.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 20px;">No hay solicitudes nuevas.</td></tr>';
+
+            solicitudesGlobal.forEach(user => {
+                let numWhatsApp = user.telefono ? user.telefono.replace(/\s+/g, '') : null;
+                let emailCliente = user.correo;
+                if (!numWhatsApp && emailCliente && !emailCliente.includes('@') && emailCliente.replace(/\D/g,'').length >= 9) {
+                    numWhatsApp = emailCliente.replace(/\D/g,''); emailCliente = null; 
+                }
+                let telRow = numWhatsApp ? `<div style="font-size: 13px; margin-bottom: 3px;">📱 <strong>${numWhatsApp}</strong></div>` : '';
+                let corRow = emailCliente ? `<div style="font-size: 12px; margin-top: 3px;">✉️ <span style="color: #6B7280;">${emailCliente}</span></div>` : '';
+                let tiempoTxt = user.meses == 0 ? "Pago Único" : `${user.meses || 1} ${user.unidad || 'Meses'}`;
+
+                tabla.innerHTML += `<tr>
+                    <td>${telRow} ${corRow}</td>
+                    <td><strong>${user.servicio}</strong><br><span style="font-size:12px; color:#6B7280; font-weight:bold;">${tiempoTxt}</span></td>
+                    <td><strong style="color: #92400E;">${user.token || user.num_operacion || '---'}</strong></td>
+                    <td>${new Date(user.creado_en).toLocaleString('es-PE')}</td>
+                    <td style="display:flex; gap:8px;">
+                        <button class="btn-aprobar" onclick="aprobarPago(${user.id})">✅ Aprobar</button>
+                        <button class="btn-borrar" onclick="rechazarSolicitud(${user.id})">❌ Rechazar</button>
+                    </td>
+                </tr>`;
+            });
+        }
+
+        async function aprobarPago(id) {
+            let user = solicitudesGlobal.find(u => u.id === id);
+            let cantidad = parseInt(user.meses) || 0; let unidad = user.unidad || 'meses';
+            let inicioStr = new Date().toISOString().split('T')[0]; let finStr = null; 
+            if (cantidad > 0) {
+                let fin = new Date(); if(unidad === 'dias') fin.setDate(fin.getDate() + cantidad); else if(unidad === 'años') fin.setFullYear(fin.getFullYear() + cantidad); else fin.setMonth(fin.getMonth() + cantidad); 
+                finStr = fin.toISOString().split('T')[0];
+            }
+            await supabaseClient.from('usuarios_canva').update({ estado: 'Activo', fecha_inicio: inicioStr, fecha_fin: finStr }).eq('id', id); 
+            cargarDatosPrincipales();
+        }
+
+        async function rechazarSolicitud(id) {
+            if(confirm("¿Rechazar y eliminar esta solicitud?")) {
+                await supabaseClient.from('usuarios_canva').delete().eq('id', id);
+                cargarDatosPrincipales();
+            }
         }
 
         // ===== SÚPER MODAL DE GESTIÓN =====
         function abrirGestionCliente(id) {
-            let user = usuariosGlobal.find(u => u.id === id);
+            let user = clientesGlobal.find(u => u.id === id);
             if (!user) return;
             document.getElementById('gestion-id').value = user.id;
             document.getElementById('gestion-servicio-titulo').innerText = `${user.servicio} (${user.meses == 0 ? 'Permanente' : user.meses + ' ' + (user.unidad || 'meses')})`;
@@ -420,34 +469,34 @@
 
         async function guardarDatosContacto() {
             let id = document.getElementById('gestion-id').value;
-            let tel = document.getElementById('gestion-telefono').value.replace(/\s+/g, ''); // Quitar espacios al guardar
+            let tel = document.getElementById('gestion-telefono').value.replace(/\s+/g, ''); 
             let cor = document.getElementById('gestion-correo').value.trim();
             await supabaseClient.from('usuarios_canva').update({ telefono: tel || null, correo: cor || null }).eq('id', id);
-            alert("Contacto guardado."); cargarUsuarios();
+            alert("Contacto guardado."); cargarDatosPrincipales();
         }
 
         async function darDiasExtra() {
             let id = document.getElementById('gestion-id').value;
-            let user = usuariosGlobal.find(u => u.id == id);
+            let user = clientesGlobal.find(u => u.id == id);
             if (!user.fecha_fin) return alert("Es permanente.");
             let dias = prompt("¿Cuántos días extra sumar?");
             if (dias && !isNaN(dias)) {
                 let nuevaFecha = new Date(user.fecha_fin); nuevaFecha.setDate(nuevaFecha.getDate() + parseInt(dias));
                 await supabaseClient.from('usuarios_canva').update({ fecha_fin: nuevaFecha.toISOString().split('T')[0] }).eq('id', id);
-                alert("Días sumados."); document.getElementById('modal-gestionar-cliente').style.display = 'none'; cargarUsuarios();
+                alert("Días sumados."); document.getElementById('modal-gestionar-cliente').style.display = 'none'; cargarDatosPrincipales();
             }
         }
 
         async function renovarServicio() {
             let id = document.getElementById('gestion-id').value;
-            let user = usuariosGlobal.find(u => u.id == id);
+            let user = clientesGlobal.find(u => u.id == id);
             if (user.meses == 0) return alert("Es Permanente.");
             if (confirm(`¿Renovar ${user.servicio} por ${user.meses} ${user.unidad || 'meses'} más?`)) {
                 let nuevaFecha = new Date(user.fecha_fin || new Date());
                 let c = parseInt(user.meses); let u = user.unidad || 'meses';
                 if(u === 'dias') nuevaFecha.setDate(nuevaFecha.getDate() + c); else if(u === 'años') nuevaFecha.setFullYear(nuevaFecha.getFullYear() + c); else nuevaFecha.setMonth(nuevaFecha.getMonth() + c);
                 await supabaseClient.from('usuarios_canva').update({ estado: 'Activo', fecha_fin: nuevaFecha.toISOString().split('T')[0] }).eq('id', id);
-                alert("Renovado."); document.getElementById('modal-gestionar-cliente').style.display = 'none'; cargarUsuarios();
+                alert("Renovado."); document.getElementById('modal-gestionar-cliente').style.display = 'none'; cargarDatosPrincipales();
             }
         }
 
@@ -457,7 +506,7 @@
             let eleccion = prompt(`NÚMERO del nuevo servicio:\n\n${opcionesStr}`);
             if (eleccion && !isNaN(eleccion) && catalogoOpciones[parseInt(eleccion) - 1]) {
                 await supabaseClient.from('usuarios_canva').update({ servicio: catalogoOpciones[parseInt(eleccion) - 1].nombre }).eq('id', id);
-                alert("Cambiado."); document.getElementById('modal-gestionar-cliente').style.display = 'none'; cargarUsuarios();
+                alert("Cambiado."); document.getElementById('modal-gestionar-cliente').style.display = 'none'; cargarDatosPrincipales();
             }
         }
 
@@ -465,7 +514,7 @@
             let id = document.getElementById('gestion-id').value;
             if (confirm("¿Mover a Papelera?")) {
                 await supabaseClient.from('usuarios_canva').update({ estado: 'Cancelado', fecha_cancelacion: new Date().toISOString() }).eq('id', id);
-                document.getElementById('modal-gestionar-cliente').style.display = 'none'; cargarUsuarios();
+                document.getElementById('modal-gestionar-cliente').style.display = 'none'; cargarDatosPrincipales();
             }
         }
 
@@ -595,18 +644,38 @@
             cerrarModalServicio(); cargarServicios();
         }
 
+        async function borrarUsuario(id) { if(confirm("¿Borrar cliente permanentemente?")) { await supabaseClient.from('usuarios_canva').delete().eq('id', id); cargarDatosPrincipales(); cargarPapelera(); } }
         async function borrarServicio(id) { if (confirm("¿Borrar servicio?")) { await supabaseClient.from('servicios').delete().eq('id', id); cargarServicios(); } }
 
-        async function aprobarPago(id) {
-            let user = usuariosGlobal.find(u => u.id === id);
-            let cantidad = parseInt(user.meses) || 0; let unidad = user.unidad || 'meses';
-            let inicioStr = new Date().toISOString().split('T')[0]; let finStr = null; 
-            if (cantidad > 0) {
-                let fin = new Date(); if(unidad === 'dias') fin.setDate(fin.getDate() + cantidad); else if(unidad === 'años') fin.setFullYear(fin.getFullYear() + cantidad); else fin.setMonth(fin.getMonth() + cantidad); 
-                finStr = fin.toISOString().split('T')[0];
+        async function registroManual() {
+            const tel = prompt("Ingresa el Número de WhatsApp del cliente:");
+            if (tel) {
+                let cor = prompt("Ingresa el Correo (Opcional):");
+                let serv = prompt("¿Qué servicio adquirió?") || "Canva Pro Edu";
+                let msInput = prompt("¿Cuántos meses? (Escribe 0 para Pago Único)", "1");
+                if (msInput !== null) {
+                    let ms = parseInt(msInput) || 0;
+                    let finStr = null; let inicioStr = new Date().toISOString().split('T')[0];
+                    if (ms > 0) { let fin = new Date(); fin.setMonth(fin.getMonth() + ms); finStr = fin.toISOString().split('T')[0]; }
+                    await supabaseClient.from('usuarios_canva').insert([{ telefono: tel.replace(/\s+/g, ''), correo: cor || null, servicio: serv, meses: ms, unidad: 'meses', metodo_pago: 'Manual', estado: 'Activo', fecha_inicio: inicioStr, fecha_fin: finStr }]);
+                    cargarDatosPrincipales();
+                }
             }
-            await supabaseClient.from('usuarios_canva').update({ estado: 'Activo', fecha_inicio: inicioStr, fecha_fin: finStr }).eq('id', id); cargarUsuarios();
         }
+
+        async function abrirSeguridad() {
+            document.getElementById('modal-seguridad').style.display = 'flex';
+            const cont = document.getElementById('lista-dispositivos'); cont.innerHTML = 'Cargando accesos...';
+            const { data, error } = await supabaseClient.from('admin_accesos').select('*').order('fecha', { ascending: false }).limit(10);
+            if (error || !data) { cont.innerHTML = '<p>Error al cargar el historial.</p>'; return; }
+            cont.innerHTML = '';
+            data.forEach((acc, index) => {
+                let f = new Date(acc.fecha).toLocaleString('es-PE', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' });
+                let etiqueta = index === 0 ? '<span style="background:#10B981; color:white; padding:2px 8px; border-radius:12px; font-size:11px; margin-left:8px;">Actual</span>' : '';
+                cont.innerHTML += `<div style="padding:15px; border-bottom:1px solid #E5E7EB;"><h4 style="margin:0 0 5px 0;">${acc.dispositivo} ${etiqueta}</h4><p style="margin:0;font-size:13px;color:#6b7280">${acc.navegador} • ${f}</p></div>`;
+            });
+        }
+        function cerrarSeguridad() { document.getElementById('modal-seguridad').style.display = 'none'; }
     </script>
 </body>
 </html>
