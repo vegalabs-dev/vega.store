@@ -9,14 +9,12 @@ const numeroWhatsApp = "51928293163";
 
 // SISTEMA DE SESIÓN Y GEO
 let userPhone = localStorage.getItem('vega_user_phone') || null;
-let paisCliente = 'PE'; // Por defecto Perú
+let paisCliente = 'PE'; 
 
 const modalCompra = document.getElementById('modal-compra');
 const inputDatoCompra = document.getElementById('correo-compra');
 const alertaDato = document.getElementById('alerta-correo');
-const otpBoxes = document.querySelectorAll('.otp-box');
 
-// Inicializar el input de teléfono con banderitas
 const inputTel = document.querySelector("#login-telefono");
 const iti = window.intlTelInput(inputTel, {
     initialCountry: "pe",
@@ -25,18 +23,16 @@ const iti = window.intlTelInput(inputTel, {
 });
 
 // =====================================
-// INICIO, GEO Y SESIÓN
+// INICIO Y GEO
 // =====================================
 document.addEventListener('DOMContentLoaded', async () => {
     actualizarBotonHeader();
-    
-    // Detectar IP del cliente silenciosamente
     try {
         const respuesta = await fetch('https://ipapi.co/json/');
         const datos = await respuesta.json();
         if (datos.country_code) {
             paisCliente = datos.country_code;
-            iti.setCountry(paisCliente.toLowerCase()); // Cambiar banderita automáticamente
+            iti.setCountry(paisCliente.toLowerCase()); 
         }
     } catch (e) { console.log("No se pudo detectar IP, usando defecto."); }
 
@@ -46,11 +42,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 function actualizarBotonHeader() {
     const btn = document.getElementById('btn-header-cuenta');
     if (userPhone) {
-        btn.innerText = "👤 Mi Panel";
-        btn.style.background = "var(--primary-gradient)"; btn.style.color = "white"; btn.style.border = "none";
+        btn.innerText = "👤 Mi Panel"; btn.style.background = "var(--primary-gradient)"; btn.style.color = "white"; btn.style.border = "none";
     } else {
-        btn.innerText = "Ingresar";
-        btn.style.background = "#F3F4F6"; btn.style.color = "#1F2937";
+        btn.innerText = "Ingresar"; btn.style.background = "#F3F4F6"; btn.style.color = "#1F2937";
     }
 }
 
@@ -65,14 +59,9 @@ function abrirMiCuenta() {
 }
 
 function procesarLogin() {
-    if (!iti.isValidNumber()) {
-        return alert("⚠️ Por favor, ingresa un número de WhatsApp válido para este país.");
-    }
-    
-    // Obtener el número completo con el código de país (Ej: +51987654321)
+    if (!iti.isValidNumber()) return alert("⚠️ Por favor, ingresa un número de WhatsApp válido para este país.");
     userPhone = iti.getNumber();
     localStorage.setItem('vega_user_phone', userPhone);
-    
     document.getElementById('modal-login').classList.add('oculto');
     actualizarBotonHeader();
     alert("✅ Sesión iniciada correctamente.");
@@ -100,12 +89,9 @@ window.switchPanelTab = function(tab) {
 async function cargarMisServicios() {
     const contenedor = document.getElementById('lista-mis-servicios');
     contenedor.innerHTML = '<p style="text-align: center; color: #6b7280;">Buscando tus servicios...</p>';
-    
     const { data, error } = await supabaseClient.from('usuarios_canva').select('*').eq('telefono', userPhone).order('creado_en', { ascending: false });
     
-    if (error || !data || data.length === 0) {
-        contenedor.innerHTML = '<p style="text-align: center; color: #6b7280;">No tienes servicios registrados aún.</p>'; return;
-    }
+    if (error || !data || data.length === 0) { contenedor.innerHTML = '<p style="text-align: center; color: #6b7280;">No tienes servicios registrados aún.</p>'; return; }
 
     contenedor.innerHTML = '';
     data.forEach(item => {
@@ -113,49 +99,31 @@ async function cargarMisServicios() {
         let infoTiempo = '';
         
         if (item.estado === 'Activo') {
-            if (item.meses == 0 || !item.fecha_fin) {
-                infoTiempo = '<span style="color:var(--primary); font-weight:bold; font-size:13px;">Acceso Permanente</span>';
-            } else {
+            if (item.meses == 0 || !item.fecha_fin) { infoTiempo = '<span style="color:var(--primary); font-weight:bold; font-size:13px;">Acceso Permanente</span>'; } 
+            else {
                 let hoy = new Date(); let fin = new Date(item.fecha_fin);
                 let dias = Math.ceil((fin.getTime() - hoy.getTime()) / (1000 * 3600 * 24));
                 if (dias > 0) infoTiempo = `<span style="color:#10B981; font-weight:bold; font-size:13px;">Quedan ${dias} días</span>`;
                 else infoTiempo = `<span style="color:#DC2626; font-weight:bold; font-size:13px;">Vencido</span>`;
             }
         }
-
-        contenedor.innerHTML += `
-            <div class="item-servicio-cliente">
-                <div><h4 style="margin: 0 0 5px 0; font-size: 15px;">${item.servicio}</h4><p style="margin: 0; font-size: 12px; color: #6B7280;">Contratado: ${new Date(item.creado_en).toLocaleDateString()}</p></div>
-                <div style="text-align: right;">${estadoBadge}<br><div style="margin-top: 5px;">${infoTiempo}</div></div>
-            </div>
-        `;
+        contenedor.innerHTML += `<div class="item-servicio-cliente"><div><h4 style="margin: 0 0 5px 0; font-size: 15px;">${item.servicio}</h4><p style="margin: 0; font-size: 12px; color: #6B7280;">Contratado: ${new Date(item.creado_en).toLocaleDateString()}</p></div><div style="text-align: right;">${estadoBadge}<br><div style="margin-top: 5px;">${infoTiempo}</div></div></div>`;
     });
 }
 
 async function cargarPromociones() {
     const contenedor = document.getElementById('lista-promociones');
     contenedor.innerHTML = '<p style="text-align: center; color: #6b7280;">Buscando promociones...</p>';
-    
     const { data: compras } = await supabaseClient.from('usuarios_canva').select('id').eq('telefono', userPhone).eq('estado', 'Activo');
     let tieneCompras = compras && compras.length > 0;
-
     const { data, error } = await supabaseClient.from('promociones').select('*').eq('activo', true);
     if (error || !data || data.length === 0) { contenedor.innerHTML = '<p style="text-align: center; color: #6b7280;">No hay promociones disponibles.</p>'; return; }
 
     contenedor.innerHTML = '';
     data.forEach(promo => {
         let bloqueado = promo.requisito_compra && !tieneCompras;
-        let btnHtml = bloqueado 
-            ? `<button style="background:#D1D5DB; color:white; border:none; padding:8px 12px; border-radius:8px; font-size:12px; font-weight:bold; cursor:not-allowed;">Requiere compra previa</button>`
-            : `<a href="https://wa.me/${numeroWhatsApp}?text=Hola, quiero reclamar la promo: *${promo.titulo}* por S/${promo.precio_promo}" target="_blank" style="background:var(--primary); color:white; text-decoration:none; padding:8px 12px; border-radius:8px; font-size:12px; font-weight:bold; display:inline-block;">Reclamar Promo</a>`;
-
-        contenedor.innerHTML += `
-            <div class="item-promo">
-                <h4 style="margin: 0 0 5px 0; font-size: 16px; color:#92400E;">🎁 ${promo.titulo}</h4>
-                <p style="margin: 0 0 10px 0; font-size: 13px; color: #B45309;">${promo.descripcion}</p>
-                <div style="display: flex; justify-content: space-between; align-items: center;"><span style="font-size: 18px; font-weight: 900; color: #B45309;">S/ ${promo.precio_promo}</span>${btnHtml}</div>
-            </div>
-        `;
+        let btnHtml = bloqueado ? `<button style="background:#D1D5DB; color:white; border:none; padding:8px 12px; border-radius:8px; font-size:12px; font-weight:bold; cursor:not-allowed;">Requiere compra previa</button>` : `<a href="https://wa.me/${numeroWhatsApp}?text=Hola, quiero reclamar la promo: *${promo.titulo}* por S/${promo.precio_promo}" target="_blank" style="background:var(--primary); color:white; text-decoration:none; padding:8px 12px; border-radius:8px; font-size:12px; font-weight:bold; display:inline-block;">Reclamar Promo</a>`;
+        contenedor.innerHTML += `<div class="item-promo"><h4 style="margin: 0 0 5px 0; font-size: 16px; color:#92400E;">🎁 ${promo.titulo}</h4><p style="margin: 0 0 10px 0; font-size: 13px; color: #B45309;">${promo.descripcion}</p><div style="display: flex; justify-content: space-between; align-items: center;"><span style="font-size: 18px; font-weight: 900; color: #B45309;">S/ ${promo.precio_promo}</span>${btnHtml}</div></div>`;
     });
 }
 
@@ -165,7 +133,6 @@ async function cargarPromociones() {
 async function cargarCatalogo() {
     const { data: servicios } = await supabaseClient.from('servicios').select('*').order('id', { ascending: true });
     
-    // FILTRO GEOGRÁFICO INTELIGENTE
     catalogoGlobal = (servicios || []).filter(s => {
         if (!s.geo_tipo || s.geo_tipo === 'todos') return true;
         let listaPaises = s.geo_paises ? s.geo_paises.split(',').map(p => p.trim().toUpperCase()) : [];
@@ -210,15 +177,13 @@ function renderizarCatalogo(serviciosParaMostrar) {
             return `<div style="display:flex; align-items:baseline; gap:8px; flex-wrap:wrap;"><span style="font-size:26px; font-weight:800; color:var(--text-dark); line-height:1;">S/ ${pNorm.toFixed(2)}</span></div>`;
         };
 
-        let htmlPlanesInteractivos = '';
-        if (planesOrdenados.length > 1) {
-            let pills = planesOrdenados.map((p, i) => {
-                let t = p.cantidad == 0 ? 'Único' : formatTiempo(p.cantidad, p.unidad);
-                let activeStyle = i === 0 ? 'background:#111827; color:white; border:1px solid #111827;' : 'background:#F9FAFB; color:#6B7280; border:1px solid #E5E7EB;';
-                return `<button class="btn-plan-tarjeta" data-servicio="${indexServicio}" data-plan="${i}" style="padding:4px 10px; border-radius:6px; font-size:11px; font-weight:bold; cursor:pointer; transition:0.2s; ${activeStyle}">${t}</button>`;
-            }).join('');
-            htmlPlanesInteractivos = `<div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:15px;">${pills}</div>`;
-        }
+        // Mostrar botones de tiempo SIEMPRE (incluso si es 1 solo plan)
+        let pills = planesOrdenados.map((p, i) => {
+            let t = p.cantidad == 0 ? 'Único' : formatTiempo(p.cantidad, p.unidad);
+            let activeStyle = i === 0 ? 'background:#111827; color:white; border:1px solid #111827;' : 'background:#F9FAFB; color:#6B7280; border:1px solid #E5E7EB;';
+            return `<button class="btn-plan-tarjeta" data-servicio="${indexServicio}" data-plan="${i}" style="padding:4px 10px; border-radius:6px; font-size:11px; font-weight:bold; cursor:pointer; transition:0.2s; ${activeStyle}">${t}</button>`;
+        }).join('');
+        let htmlPlanesInteractivos = `<div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:15px;" id="contenedor-planes-${indexServicio}">${pills}</div>`;
 
         const sJSON = JSON.stringify(servicio).replace(/'/g, "&apos;");
         const imgHtml = servicio.imagen_url ? `<img src="${servicio.imagen_url}" class="card-img-top" onclick='abrirModalDetalles(${sJSON})'>` : `<div class="card-img-top" style="display:flex; align-items:center; justify-content:center; color:#64748b; font-size:12px;" onclick='abrirModalDetalles(${sJSON})'>Sin imagen</div>`;
@@ -277,15 +242,15 @@ window.abrirModalDetalles = function(servicio) {
     };
 
     const box = document.getElementById('detalles-precio-box');
-    let htmlPlanes = '';
-    if (planes.length > 1) {
-        htmlPlanes = `<div style="font-size:13px; color:var(--text-light); margin-bottom:10px; font-weight:bold;">Elige tu plan:</div><div style="display:flex; gap:8px; justify-content:center; flex-wrap:wrap; margin-bottom:20px;">`;
-        planes.forEach((p, i) => {
-            let active = i === 0 ? 'background:#111827; color:white;' : 'background:#F9FAFB; color:#6B7280; border:1px solid #E5E7EB;';
-            htmlPlanes += `<button class="btn-plan-selector" data-index="${i}" style="padding:8px 16px; border-radius:20px; font-size:13px; font-weight:bold; cursor:pointer; transition:0.2s; ${active}">${formatTiempo(p.cantidad, p.unidad)}</button>`;
-        });
-        htmlPlanes += `</div>`;
-    }
+    
+    // Mostrar botones de tiempo en el modal siempre
+    let htmlPlanes = `<div style="font-size:13px; color:var(--text-light); margin-bottom:10px; font-weight:bold;">Elige tu plan:</div><div style="display:flex; gap:8px; justify-content:center; flex-wrap:wrap; margin-bottom:20px;">`;
+    planes.forEach((p, i) => {
+        let active = i === 0 ? 'background:#111827; color:white;' : 'background:#F9FAFB; color:#6B7280; border:1px solid #E5E7EB;';
+        htmlPlanes += `<button class="btn-plan-selector" data-index="${i}" style="padding:8px 16px; border-radius:20px; font-size:13px; font-weight:bold; cursor:pointer; transition:0.2s; ${active}">${formatTiempo(p.cantidad, p.unidad)}</button>`;
+    });
+    htmlPlanes += `</div>`;
+    
     box.innerHTML = htmlPlanes + `<div id="precio-dinamico-modal">${renderPrecioModal(planes[0])}</div>`;
 
     const listaCaract = document.getElementById('detalles-caracteristicas');
@@ -316,7 +281,7 @@ window.abrirModalDetalles = function(servicio) {
 document.getElementById('cerrar-detalles').addEventListener('click', () => document.getElementById('modal-detalles').classList.add('oculto'));
 
 // =====================================
-// PREPARAR COMPRA Y ANTI-SPAM
+// COMPRA DIRECTA (SIN MODAL DE YAPE)
 // =====================================
 window.prepararCompra = async function(plan) {
     if (!userPhone) {
@@ -325,28 +290,66 @@ window.prepararCompra = async function(plan) {
         return;
     }
 
-    // Anti-Spam: Solo 3 compras pendientes por persona
     const { data: pendientes } = await supabaseClient.from('usuarios_canva').select('id').eq('telefono', userPhone).eq('estado', 'Pendiente');
     if (pendientes && pendientes.length >= 3) {
-        return alert("🛑 SISTEMA ANTI-SPAM: Tienes solicitudes de pago pendientes. Por favor, espera a que validemos tus pagos o contáctanos.");
+        return alert("🛑 Tienes demasiadas solicitudes pendientes. Espera a que validemos tus pagos o contáctanos.");
     }
 
     productoSeleccionado = { nombre: plan.nombre, precio: parseFloat(plan.precio), cantidad: plan.cantidad, unidad: plan.unidad, tipo_ingreso: plan.tipo_ingreso || 'numero' };
-    let txtTiempo = formatTiempo(productoSeleccionado.cantidad, productoSeleccionado.unidad);
     
-    document.getElementById('titulo-producto-modal').innerText = `Comprando: ${productoSeleccionado.nombre} (${txtTiempo})`;
-    document.getElementById('texto-precio-yape').innerText = `S/ ${productoSeleccionado.precio.toFixed(2)}`;
+    document.getElementById('titulo-producto-modal').innerText = `Comprando: ${productoSeleccionado.nombre}`;
     
-    const textoYape = document.getElementById('texto-precio-yape').parentElement;
     if (productoSeleccionado.tipo_ingreso === 'numero') {
-        inputDatoCompra.style.display = "none"; alertaDato.style.display = "none"; document.getElementById('txt-paso-yape').style.display = "none"; document.getElementById('txt-paso-yape-2').textContent = "1. ";
+        inputDatoCompra.style.display = "none"; alertaDato.style.display = "none";
     } else {
-        inputDatoCompra.style.display = "block"; inputDatoCompra.placeholder = "1. Escribe el correo a vincular"; inputDatoCompra.type = "email"; alertaDato.style.display = "none"; document.getElementById('txt-paso-yape').style.display = "inline"; document.getElementById('txt-paso-yape-2').textContent = "3. ";
+        inputDatoCompra.style.display = "block"; inputDatoCompra.placeholder = "Escribe el correo a vincular"; inputDatoCompra.type = "email"; alertaDato.style.display = "none"; 
     }
 
-    modalCompra.classList.remove('oculto');
-    inputDatoCompra.value = ""; inputDatoCompra.style.borderColor = "#E5E7EB"; otpBoxes.forEach(box => box.value = ''); 
+    // Adaptamos el modal para que solo tenga el botón de generar pedido
+    document.getElementById('modal-compra').classList.remove('oculto');
+    inputDatoCompra.value = ""; inputDatoCompra.style.borderColor = "#E5E7EB"; 
+    
+    // Ocultar elementos viejos de Yape
+    document.getElementById('txt-paso-yape').parentElement.style.display = "none";
+    document.querySelector('.qr-box').style.display = "none";
+    document.querySelector('.yape-name-box').style.display = "none";
+    document.getElementById('txt-paso-yape-2').parentElement.style.display = "none";
+    document.getElementById('otp-inputs').style.display = "none";
+    document.getElementById('btn-confirmar-yape').style.display = "none";
+    
+    // Cambiar texto del botón final
+    const btnFinal = document.getElementById('btn-otro-medio');
+    btnFinal.innerText = `Generar Pedido y Pagar (S/ ${productoSeleccionado.precio.toFixed(2)})`;
+    btnFinal.style.background = "var(--primary-gradient)";
+    btnFinal.style.color = "white";
 };
+
+document.getElementById('btn-otro-medio').addEventListener('click', async () => {
+    // Validar correo si se pide
+    let datoCliente = null;
+    if (productoSeleccionado.tipo_ingreso === 'correo') {
+        datoCliente = inputDatoCompra.value.trim();
+        if(datoCliente === "" || !datoCliente.includes("@")) { 
+            inputDatoCompra.style.borderColor = "#DC2626"; alertaDato.style.display = "block"; return; 
+        }
+    }
+
+    const token = "TK-" + Math.random().toString(36).substr(2, 4).toUpperCase();
+    const btn = document.getElementById('btn-otro-medio'); btn.innerText = "Generando..."; btn.disabled = true;
+
+    await supabaseClient.from('usuarios_canva').insert([{ 
+        telefono: userPhone, correo: datoCliente,
+        servicio: productoSeleccionado.nombre, meses: productoSeleccionado.cantidad, unidad: productoSeleccionado.unidad, 
+        metodo_pago: 'WhatsApp', token: token, estado: 'Pendiente' 
+    }]);
+
+    let txtTiempo = formatTiempo(productoSeleccionado.cantidad, productoSeleccionado.unidad);
+    let tipoDatoMsg = datoCliente ? `\n📧 *Correo a activar:* ${datoCliente}` : ``;
+    const mensaje = `Hola, quiero adquirir *${productoSeleccionado.nombre} (${txtTiempo})* por S/${productoSeleccionado.precio.toFixed(2)}.${tipoDatoMsg}\n🔑 Mi token es: *${token}*`;
+    
+    window.open(`https://wa.me/${numeroWhatsApp}?text=${encodeURIComponent(mensaje)}`, '_blank');
+    document.getElementById('modal-compra').classList.add('oculto'); btn.disabled = false;
+});
 
 // =====================================
 // FILTROS Y BÚSQUEDA
@@ -361,59 +364,4 @@ document.addEventListener('DOMContentLoaded', () => {
     if(b) b.addEventListener('input', (e) => { renderizarCatalogo(catalogoGlobal.filter(s => s.nombre.toLowerCase().includes(e.target.value.toLowerCase()))); document.querySelectorAll('.category-filters .pill').forEach(btn => btn.classList.remove('active')); });
 });
 
-document.getElementById('cerrar-compra').addEventListener('click', () => modalCompra.classList.add('oculto'));
-
-otpBoxes.forEach((box, index) => {
-    box.addEventListener('input', (e) => { e.target.value = e.target.value.replace(/[^0-9]/g, ''); if(e.target.value && index < otpBoxes.length - 1) otpBoxes[index + 1].focus(); });
-    box.addEventListener('keydown', (e) => { if(e.key === 'Backspace' && !e.target.value && index > 0) otpBoxes[index - 1].focus(); });
-});
-
-function validarDatoCompra() {
-    if (productoSeleccionado.tipo_ingreso === 'numero') return "No requerido";
-    const dato = inputDatoCompra.value.trim();
-    if(dato === "" || !dato.includes("@")) { inputDatoCompra.style.borderColor = "#DC2626"; alertaDato.style.display = "block"; return false; }
-    inputDatoCompra.style.borderColor = "#E5E7EB"; alertaDato.style.display = "none"; return dato;
-}
-
-// =====================================
-// PROCESAR PAGOS
-// =====================================
-document.getElementById('btn-confirmar-yape').addEventListener('click', async () => {
-    const datoCliente = validarDatoCompra(); if(!datoCliente) return alert('Ingresa el correo solicitado.');
-    const operacion = Array.from(otpBoxes).map(box => box.value).join('');
-    if(operacion.length < 7) return alert("Ingresa los 7 números de operación.");
-
-    const btn = document.getElementById('btn-confirmar-yape'); btn.innerText = "Procesando..."; btn.disabled = true;
-
-    await supabaseClient.from('usuarios_canva').insert([{ 
-        telefono: userPhone, correo: datoCliente === "No requerido" ? null : datoCliente,
-        servicio: productoSeleccionado.nombre, meses: productoSeleccionado.cantidad, unidad: productoSeleccionado.unidad, 
-        metodo_pago: 'Yape', num_operacion: operacion, estado: 'Pendiente' 
-    }]);
-
-    let txtTiempo = formatTiempo(productoSeleccionado.cantidad, productoSeleccionado.unidad);
-    let tipoDatoMsg = productoSeleccionado.tipo_ingreso === 'numero' ? '' : `\n📧 *Correo a activar:* ${datoCliente}`;
-    const mensaje = `Hola, acabo de pagar *S/ ${productoSeleccionado.precio.toFixed(2)}* por *${productoSeleccionado.nombre} (${txtTiempo})* vía Yape.${tipoDatoMsg}\n🧾 *N° de Operación:* ${operacion}`;
-    
-    window.open(`https://wa.me/${numeroWhatsApp}?text=${encodeURIComponent(mensaje)}`, '_blank');
-    modalCompra.classList.add('oculto'); btn.innerText = "Confirmar Pago"; btn.disabled = false;
-});
-
-document.getElementById('btn-otro-medio').addEventListener('click', async () => {
-    const datoCliente = validarDatoCompra(); if(!datoCliente) return alert('Ingresa el correo solicitado.');
-    const token = "TK-" + Math.random().toString(36).substr(2, 4).toUpperCase();
-    const btn = document.getElementById('btn-otro-medio'); btn.innerText = "Generando..."; btn.disabled = true;
-
-    await supabaseClient.from('usuarios_canva').insert([{ 
-        telefono: userPhone, correo: datoCliente === "No requerido" ? null : datoCliente,
-        servicio: productoSeleccionado.nombre, meses: productoSeleccionado.cantidad, unidad: productoSeleccionado.unidad, 
-        metodo_pago: 'Otro (Plin/BCP)', token: token, estado: 'Pendiente' 
-    }]);
-
-    let txtTiempo = formatTiempo(productoSeleccionado.cantidad, productoSeleccionado.unidad);
-    let tipoDatoMsg = productoSeleccionado.tipo_ingreso === 'numero' ? '' : ` Mi correo es: *${datoCliente}*.`;
-    const mensaje = `Hola, quiero adquirir *${productoSeleccionado.nombre} (${txtTiempo})* por S/${productoSeleccionado.precio.toFixed(2)}.${tipoDatoMsg}\n🔑 Mi token es: *${token}*`;
-    
-    window.open(`https://wa.me/${numeroWhatsApp}?text=${encodeURIComponent(mensaje)}`, '_blank');
-    modalCompra.classList.add('oculto'); btn.innerText = "Pagar con Plin / BCP / BBVA"; btn.disabled = false;
-});
+document.getElementById('cerrar-compra').addEventListener('click', () => document.getElementById('modal-compra').classList.add('oculto'));
