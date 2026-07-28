@@ -7,19 +7,39 @@ const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
 let productoSeleccionado = { nombre: '', precio: 0, cantidad: 1, unidad: 'meses', tipo_ingreso: 'numero' };
 const numeroWhatsApp = "51928293163"; 
 
-// SISTEMA DE SESIÓN DEL CLIENTE
+// SISTEMA DE SESIÓN Y GEO
 let userPhone = localStorage.getItem('vega_user_phone') || null;
+let paisCliente = 'PE'; // Por defecto Perú
 
 const modalCompra = document.getElementById('modal-compra');
 const inputDatoCompra = document.getElementById('correo-compra');
 const alertaDato = document.getElementById('alerta-correo');
 const otpBoxes = document.querySelectorAll('.otp-box');
 
+// Inicializar el input de teléfono con banderitas
+const inputTel = document.querySelector("#login-telefono");
+const iti = window.intlTelInput(inputTel, {
+    initialCountry: "pe",
+    preferredCountries: ["pe", "mx", "co", "ar", "es", "us"],
+    utilsScript: "https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/17.0.8/js/utils.js",
+});
+
 // =====================================
-// INICIO Y SESIÓN
+// INICIO, GEO Y SESIÓN
 // =====================================
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     actualizarBotonHeader();
+    
+    // Detectar IP del cliente silenciosamente
+    try {
+        const respuesta = await fetch('https://ipapi.co/json/');
+        const datos = await respuesta.json();
+        if (datos.country_code) {
+            paisCliente = datos.country_code;
+            iti.setCountry(paisCliente.toLowerCase()); // Cambiar banderita automáticamente
+        }
+    } catch (e) { console.log("No se pudo detectar IP, usando defecto."); }
+
     cargarCatalogo();
 });
 
@@ -27,13 +47,10 @@ function actualizarBotonHeader() {
     const btn = document.getElementById('btn-header-cuenta');
     if (userPhone) {
         btn.innerText = "👤 Mi Panel";
-        btn.style.background = "var(--primary-gradient)";
-        btn.style.color = "white";
-        btn.style.border = "none";
+        btn.style.background = "var(--primary-gradient)"; btn.style.color = "white"; btn.style.border = "none";
     } else {
         btn.innerText = "Ingresar";
-        btn.style.background = "#F3F4F6";
-        btn.style.color = "#1F2937";
+        btn.style.background = "#F3F4F6"; btn.style.color = "#1F2937";
     }
 }
 
@@ -48,34 +65,34 @@ function abrirMiCuenta() {
 }
 
 function procesarLogin() {
-    let input = document.getElementById('login-telefono').value.replace(/\D/g,'');
-    if(input.length < 9) return mostrarNotificacion("⚠️ Por favor ingresa un número de WhatsApp válido.");
+    if (!iti.isValidNumber()) {
+        return alert("⚠️ Por favor, ingresa un número de WhatsApp válido para este país.");
+    }
     
-    userPhone = input;
+    // Obtener el número completo con el código de país (Ej: +51987654321)
+    userPhone = iti.getNumber();
     localStorage.setItem('vega_user_phone', userPhone);
+    
     document.getElementById('modal-login').classList.add('oculto');
     actualizarBotonHeader();
-    mostrarNotificacion("✅ Sesión iniciada correctamente.");
+    alert("✅ Sesión iniciada correctamente.");
     abrirMiCuenta();
 }
 
 function cerrarSesionCliente() {
-    localStorage.removeItem('vega_user_phone');
-    userPhone = null;
+    localStorage.removeItem('vega_user_phone'); userPhone = null;
     document.getElementById('modal-panel-cliente').classList.add('oculto');
     actualizarBotonHeader();
 }
 
 // =====================================
-// PANEL DEL CLIENTE (Servicios y Promos)
+// PANEL DEL CLIENTE
 // =====================================
 window.switchPanelTab = function(tab) {
     document.querySelectorAll('.panel-tabs .tab-btn').forEach(btn => btn.classList.remove('active'));
     document.querySelectorAll('.panel-tab-content').forEach(content => content.style.display = 'none');
-    
     document.getElementById(`btn-tab-${tab}`).classList.add('active');
     document.getElementById(`panel-tab-${tab}`).style.display = 'block';
-    
     if(tab === 'servicios') cargarMisServicios();
     if(tab === 'promos') cargarPromociones();
 }
@@ -87,15 +104,14 @@ async function cargarMisServicios() {
     const { data, error } = await supabaseClient.from('usuarios_canva').select('*').eq('telefono', userPhone).order('creado_en', { ascending: false });
     
     if (error || !data || data.length === 0) {
-        contenedor.innerHTML = '<p style="text-align: center; color: #6b7280;">No tienes servicios registrados aún.</p>';
-        return;
+        contenedor.innerHTML = '<p style="text-align: center; color: #6b7280;">No tienes servicios registrados aún.</p>'; return;
     }
 
     contenedor.innerHTML = '';
     data.forEach(item => {
         let estadoBadge = item.estado === 'Activo' ? '<span style="background:#D1FAE5; color:#059669; padding:4px 8px; border-radius:6px; font-size:11px; font-weight:bold;">✔️ Activo</span>' : '<span style="background:#FEF3C7; color:#D97706; padding:4px 8px; border-radius:6px; font-size:11px; font-weight:bold;">⏳ Pendiente</span>';
-        
         let infoTiempo = '';
+        
         if (item.estado === 'Activo') {
             if (item.meses == 0 || !item.fecha_fin) {
                 infoTiempo = '<span style="color:var(--primary); font-weight:bold; font-size:13px;">Acceso Permanente</span>';
@@ -109,14 +125,8 @@ async function cargarMisServicios() {
 
         contenedor.innerHTML += `
             <div class="item-servicio-cliente">
-                <div>
-                    <h4 style="margin: 0 0 5px 0; font-size: 15px;">${item.servicio}</h4>
-                    <p style="margin: 0; font-size: 12px; color: #6B7280;">Contratado: ${new Date(item.creado_en).toLocaleDateString()}</p>
-                </div>
-                <div style="text-align: right;">
-                    ${estadoBadge}<br>
-                    <div style="margin-top: 5px;">${infoTiempo}</div>
-                </div>
+                <div><h4 style="margin: 0 0 5px 0; font-size: 15px;">${item.servicio}</h4><p style="margin: 0; font-size: 12px; color: #6B7280;">Contratado: ${new Date(item.creado_en).toLocaleDateString()}</p></div>
+                <div style="text-align: right;">${estadoBadge}<br><div style="margin-top: 5px;">${infoTiempo}</div></div>
             </div>
         `;
     });
@@ -126,16 +136,11 @@ async function cargarPromociones() {
     const contenedor = document.getElementById('lista-promociones');
     contenedor.innerHTML = '<p style="text-align: center; color: #6b7280;">Buscando promociones...</p>';
     
-    // Verificamos si el usuario tiene compras activas para los requisitos
     const { data: compras } = await supabaseClient.from('usuarios_canva').select('id').eq('telefono', userPhone).eq('estado', 'Activo');
     let tieneCompras = compras && compras.length > 0;
 
     const { data, error } = await supabaseClient.from('promociones').select('*').eq('activo', true);
-    
-    if (error || !data || data.length === 0) {
-        contenedor.innerHTML = '<p style="text-align: center; color: #6b7280;">No hay promociones disponibles en este momento.</p>';
-        return;
-    }
+    if (error || !data || data.length === 0) { contenedor.innerHTML = '<p style="text-align: center; color: #6b7280;">No hay promociones disponibles.</p>'; return; }
 
     contenedor.innerHTML = '';
     data.forEach(promo => {
@@ -148,10 +153,7 @@ async function cargarPromociones() {
             <div class="item-promo">
                 <h4 style="margin: 0 0 5px 0; font-size: 16px; color:#92400E;">🎁 ${promo.titulo}</h4>
                 <p style="margin: 0 0 10px 0; font-size: 13px; color: #B45309;">${promo.descripcion}</p>
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <span style="font-size: 18px; font-weight: 900; color: #B45309;">S/ ${promo.precio_promo}</span>
-                    ${btnHtml}
-                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center;"><span style="font-size: 18px; font-weight: 900; color: #B45309;">S/ ${promo.precio_promo}</span>${btnHtml}</div>
             </div>
         `;
     });
@@ -162,7 +164,16 @@ async function cargarPromociones() {
 // =====================================
 async function cargarCatalogo() {
     const { data: servicios } = await supabaseClient.from('servicios').select('*').order('id', { ascending: true });
-    catalogoGlobal = servicios || [];
+    
+    // FILTRO GEOGRÁFICO INTELIGENTE
+    catalogoGlobal = (servicios || []).filter(s => {
+        if (!s.geo_tipo || s.geo_tipo === 'todos') return true;
+        let listaPaises = s.geo_paises ? s.geo_paises.split(',').map(p => p.trim().toUpperCase()) : [];
+        if (s.geo_tipo === 'solo') return listaPaises.includes(paisCliente);
+        if (s.geo_tipo === 'excepto') return !listaPaises.includes(paisCliente);
+        return true;
+    });
+
     generarBotonesCategorias(catalogoGlobal);
     renderizarCatalogo(catalogoGlobal);
 }
@@ -187,7 +198,7 @@ function generarBotonesCategorias(servicios) {
 function renderizarCatalogo(serviciosParaMostrar) {
     const contenedor = document.getElementById('contenedor-servicios');
     contenedor.innerHTML = ''; 
-    if (serviciosParaMostrar.length === 0) { contenedor.innerHTML = '<p style="text-align: center; grid-column: 1/-1;">No hay servicios aquí.</p>'; return; }
+    if (serviciosParaMostrar.length === 0) { contenedor.innerHTML = '<p style="text-align: center; grid-column: 1/-1;">No hay servicios disponibles en tu región.</p>'; return; }
 
     serviciosParaMostrar.forEach((servicio, indexServicio) => {
         let planes = servicio.planes || [{ cantidad: servicio.meses || 1, unidad: 'meses', precio: servicio.precio, promo: servicio.precio_promocional }];
@@ -305,20 +316,19 @@ window.abrirModalDetalles = function(servicio) {
 document.getElementById('cerrar-detalles').addEventListener('click', () => document.getElementById('modal-detalles').classList.add('oculto'));
 
 // =====================================
-// SISTEMA ANTI-SPAM Y PREPARAR COMPRA
+// PREPARAR COMPRA Y ANTI-SPAM
 // =====================================
 window.prepararCompra = async function(plan) {
     if (!userPhone) {
-        mostrarNotificacion("⚠️ Por favor, inicia sesión con tu número antes de comprar.");
+        alert("⚠️ Por favor, inicia sesión con tu número de WhatsApp antes de comprar.");
         document.getElementById('modal-login').classList.remove('oculto');
         return;
     }
 
-    // VERIFICACIÓN ANTI-SPAM (Máximo 3 compras pendientes)
+    // Anti-Spam: Solo 3 compras pendientes por persona
     const { data: pendientes } = await supabaseClient.from('usuarios_canva').select('id').eq('telefono', userPhone).eq('estado', 'Pendiente');
     if (pendientes && pendientes.length >= 3) {
-        alert("🛑 SISTEMA ANTI-SPAM: Tienes 3 o más solicitudes de pago pendientes. Por favor, espera a que validemos tus pagos anteriores o contáctanos por soporte.");
-        return;
+        return alert("🛑 SISTEMA ANTI-SPAM: Tienes solicitudes de pago pendientes. Por favor, espera a que validemos tus pagos o contáctanos.");
     }
 
     productoSeleccionado = { nombre: plan.nombre, precio: parseFloat(plan.precio), cantidad: plan.cantidad, unidad: plan.unidad, tipo_ingreso: plan.tipo_ingreso || 'numero' };
@@ -369,13 +379,12 @@ function validarDatoCompra() {
 // PROCESAR PAGOS
 // =====================================
 document.getElementById('btn-confirmar-yape').addEventListener('click', async () => {
-    const datoCliente = validarDatoCompra(); if(!datoCliente) return mostrarNotificacion('Ingresa el correo solicitado.');
+    const datoCliente = validarDatoCompra(); if(!datoCliente) return alert('Ingresa el correo solicitado.');
     const operacion = Array.from(otpBoxes).map(box => box.value).join('');
-    if(operacion.length < 7) return mostrarNotificacion("Ingresa los 7 números de operación.");
+    if(operacion.length < 7) return alert("Ingresa los 7 números de operación.");
 
     const btn = document.getElementById('btn-confirmar-yape'); btn.innerText = "Procesando..."; btn.disabled = true;
 
-    // GUARDAMOS TELÉFONO Y CORREO POR SEPARADO
     await supabaseClient.from('usuarios_canva').insert([{ 
         telefono: userPhone, correo: datoCliente === "No requerido" ? null : datoCliente,
         servicio: productoSeleccionado.nombre, meses: productoSeleccionado.cantidad, unidad: productoSeleccionado.unidad, 
@@ -391,7 +400,7 @@ document.getElementById('btn-confirmar-yape').addEventListener('click', async ()
 });
 
 document.getElementById('btn-otro-medio').addEventListener('click', async () => {
-    const datoCliente = validarDatoCompra(); if(!datoCliente) return mostrarNotificacion('Ingresa el correo solicitado.');
+    const datoCliente = validarDatoCompra(); if(!datoCliente) return alert('Ingresa el correo solicitado.');
     const token = "TK-" + Math.random().toString(36).substr(2, 4).toUpperCase();
     const btn = document.getElementById('btn-otro-medio'); btn.innerText = "Generando..."; btn.disabled = true;
 
@@ -402,11 +411,9 @@ document.getElementById('btn-otro-medio').addEventListener('click', async () => 
     }]);
 
     let txtTiempo = formatTiempo(productoSeleccionado.cantidad, productoSeleccionado.unidad);
-    let tipoDatoMsg = productoSeleccionado.tipo_ingreso === 'numero' ? '' : `\n📧 *Correo a activar:* ${datoCliente}`;
+    let tipoDatoMsg = productoSeleccionado.tipo_ingreso === 'numero' ? '' : ` Mi correo es: *${datoCliente}*.`;
     const mensaje = `Hola, quiero adquirir *${productoSeleccionado.nombre} (${txtTiempo})* por S/${productoSeleccionado.precio.toFixed(2)}.${tipoDatoMsg}\n🔑 Mi token es: *${token}*`;
     
     window.open(`https://wa.me/${numeroWhatsApp}?text=${encodeURIComponent(mensaje)}`, '_blank');
     modalCompra.classList.add('oculto'); btn.innerText = "Pagar con Plin / BCP / BBVA"; btn.disabled = false;
 });
-
-function mostrarNotificacion(mensaje) { alert(mensaje); }
