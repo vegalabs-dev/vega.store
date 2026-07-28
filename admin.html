@@ -206,7 +206,9 @@
                 <div style="flex: 1;">
                     <label>Categoría</label>
                     <input type="text" id="serv-categoria" class="filtro-select" style="width: 100%; box-sizing: border-box;" placeholder="Ej: Streaming, Juegos..." list="opciones-categoria">
-                    <datalist id="opciones-categoria"><option value="Streaming"></option><option value="Seguros"></option><option value="Software"></option></datalist>
+                    <datalist id="opciones-categoria">
+                        <option value="Streaming"></option><option value="Seguros"></option><option value="Software"></option>
+                    </datalist>
                 </div>
                 <div style="flex: 1;">
                     <label>¿Qué pedir al cliente?</label>
@@ -217,7 +219,6 @@
                 </div>
             </div>
 
-            <!-- NUEVO: RESTRICCIONES POR PAÍS -->
             <div class="input-group" style="background: #FFFBEB; padding: 15px; border-radius: 8px; border: 1px solid #FDE68A;">
                 <label style="color: #92400E;">🌍 Disponibilidad por País</label>
                 <select id="serv-geo-tipo" class="filtro-select" style="width: 100%; margin-bottom: 10px;" onchange="toggleGeoInput()">
@@ -249,6 +250,9 @@
         const supabaseClient = window.supabase.createClient('https://rhuhuvevynovfekwhlhb.supabase.co', 'sb_publishable_-8XCScnvNf6QXMsnbyJK9Q_XhrOr9j5');
         let usuariosGlobal = [];
         let catalogoOpciones = [];
+
+        // URL de tu web para enviarla en los mensajes de WhatsApp
+        const URL_TIENDA = "https://vegalabs-dev.github.io/vega.store/";
 
         supabaseClient.auth.getSession().then(({ data: { session } }) => { if (session) mostrarPanel(); });
 
@@ -360,11 +364,28 @@
                     emailCliente = null; 
                 }
 
-                // Plantilla exacta de mensaje solicitada
-                let msgDias = diasRestantes > 0 ? diasRestantes : 0;
-                let msjContacto = encodeURIComponent(`Hola! Te escribo de VegaStore. Tu servicio de ${user.servicio || 'Canva'} está ${estadoReal}. Te quedan ${msgDias} días de suscripción, disfruta tu último día, muchas gracias por la confianza. 😁\n\nSi desea renovar escribanos por este medio y nos pondremos en contacto`);
+                // PLANTILLA INTELIGENTE DE MENSAJE DE WHATSAPP
+                let msjContacto = "";
+                let nombreServicio = user.servicio || 'Servicio';
                 
-                let telRow = numWhatsApp ? `<div style="font-size: 13px; margin-bottom: 3px; display: flex; align-items: center; gap: 8px;">📱 <strong>${numWhatsApp}</strong> <a href="https://wa.me/${numWhatsApp}?text=${msjContacto}" class="btn-copiar" target="_blank" title="Enviar WhatsApp">💬</a></div>` : '';
+                if (estadoReal === 'Vencido') {
+                    msjContacto = `Hola! Tu servicio de *${nombreServicio}* ha vencido. 😔\n\nSi deseas renovar o cambiar de plan, escríbeme por aquí o hazlo directo desde tu panel en la web:\n${URL_TIENDA}`;
+                } else if (estadoReal === 'Activo' && user.meses == 0) {
+                    msjContacto = `Hola! Te escribo de VegaStore. Tu servicio de *${nombreServicio}* está Activo y es Permanente. Gracias por la confianza! ✨\n\nPuedes ver tu cuenta aquí:\n${URL_TIENDA}`;
+                } else if (estadoReal === 'Activo') {
+                    if (diasRestantes > 1) {
+                        msjContacto = `Hola! Te escribo de VegaStore. Tu servicio de *${nombreServicio}* está Activo. Te quedan *${diasRestantes} días* de suscripción. \n\nRecuerda que puedes ver tu cuenta y renovar desde tu panel en la web:\n${URL_TIENDA}`;
+                    } else {
+                        // Mensaje especial para el último día (sin emojis raros)
+                        msjContacto = `Hola! Te escribo de VegaStore. Tu servicio de *${nombreServicio}* vence HOY. Disfruta tu último día, muchas gracias por la confianza. 😁\n\nSi deseas renovar escríbenos por este medio o hazlo desde tu panel:\n${URL_TIENDA}`;
+                    }
+                } else {
+                    msjContacto = `Hola! Te escribo de VegaStore sobre tu pedido de *${nombreServicio}*.`;
+                }
+
+                let msjCodificado = encodeURIComponent(msjContacto);
+                
+                let telRow = numWhatsApp ? `<div style="font-size: 13px; margin-bottom: 3px; display: flex; align-items: center; gap: 8px;">📱 <strong>${numWhatsApp}</strong> <a href="https://wa.me/${numWhatsApp}?text=${msjCodificado}" class="btn-copiar" target="_blank" title="Enviar WhatsApp">💬</a></div>` : '';
                 let corRow = emailCliente ? `<div style="font-size: 12px; margin-top: 3px; display: flex; align-items: center; gap: 8px;">✉️ <span style="color: #6B7280;">${emailCliente}</span> <button onclick="copiarTexto('${emailCliente}')" class="btn-copiar" style="padding: 2px 6px; font-size: 11px; border: 1px solid #E5E7EB; background: #F9FAFB;">📋 Copiar</button></div>` : '';
 
                 tabla.innerHTML += `<tr>
