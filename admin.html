@@ -3,158 +3,309 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Panel Admin | VegaStore</title>
+    <title>Panel Admin | VegaStore Premium</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        :root { --primary: #8B3DFF; --bg: #F3F4F6; --text: #1F2937; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); padding: 30px; margin: 0; display: flex; justify-content: center; min-height: 100vh;}
+        /* =========================================
+           VARIABLES Y DISEÑO BASE (MODERNIZADO)
+           ========================================= */
+        :root { 
+            --primary: #8B3DFF; 
+            --primary-hover: #7029D9;
+            --primary-gradient: linear-gradient(135deg, #8B3DFF, #6366F1);
+            --bg: #F4F7F6; 
+            --text-main: #1F2937;
+            --text-muted: #6B7280;
+            --surface: #FFFFFF;
+            --border: #E5E7EB;
+        }
         
-        .panel-container { background: white; padding: 35px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); width: 100%; max-width: 1100px;}
-        .header-panel { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; flex-wrap: wrap; gap: 15px;}
-        h1 { color: var(--primary); margin: 0; display: flex; align-items: center; gap: 10px;}
+        body { 
+            font-family: 'Inter', 'Segoe UI', system-ui, sans-serif; 
+            background: var(--bg); 
+            background-image: radial-gradient(at top left, rgba(139, 61, 255, 0.05) 0%, transparent 50%), radial-gradient(at bottom right, rgba(99, 102, 241, 0.05) 0%, transparent 50%);
+            color: var(--text-main); 
+            padding: 30px 15px; 
+            margin: 0; 
+            display: flex; 
+            justify-content: center; 
+            min-height: 100vh;
+        }
         
-        .tabs { display: flex; gap: 10px; margin-bottom: 30px; border-bottom: 2px solid #E5E7EB; padding-bottom: 15px; flex-wrap: wrap;}
-        .tab-btn { padding: 10px 20px; border: none; background: #F3F4F6; color: #6B7280; font-weight: bold; border-radius: 8px; cursor: pointer; transition: 0.3s; font-size: 14px;}
-        .tab-btn.active { background: var(--primary); color: white; }
-        .tab-content { display: none; }
+        .panel-container { 
+            background: var(--surface); 
+            padding: 40px; 
+            border-radius: 24px; 
+            box-shadow: 0 20px 40px -10px rgba(0,0,0,0.05), 0 1px 3px rgba(0,0,0,0.05); 
+            width: 100%; 
+            max-width: 1150px;
+            border: 1px solid rgba(255,255,255,0.5);
+        }
+
+        .header-panel { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; flex-wrap: wrap; gap: 15px;}
+        h1 { color: var(--text-main); margin: 0; display: flex; align-items: center; gap: 12px; font-size: 28px; font-weight: 800;}
+        h1 span { background: var(--primary-gradient); -webkit-background-clip: text; color: transparent; }
+
+        /* =========================================
+           PESTAÑAS ESTILO APP (PILLS)
+           ========================================= */
+        .tabs { 
+            background: #F3F4F6; 
+            display: inline-flex; 
+            padding: 6px; 
+            border-radius: 16px; 
+            margin-bottom: 35px; 
+            gap: 5px;
+            flex-wrap: wrap;
+        }
+        .tab-btn { 
+            padding: 10px 20px; 
+            border: none; 
+            background: transparent; 
+            color: var(--text-muted); 
+            font-weight: 600; 
+            border-radius: 12px; 
+            cursor: pointer; 
+            transition: all 0.3s ease; 
+            font-size: 14px;
+        }
+        .tab-btn:hover { color: var(--text-main); }
+        .tab-btn.active { 
+            background: var(--surface); 
+            color: var(--primary); 
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05); 
+        }
+        .tab-content { display: none; animation: fadeIn 0.4s ease; }
         .tab-content.active { display: block; }
 
-        .stats-container { display: flex; gap: 20px; margin-bottom: 30px; flex-wrap: wrap;}
-        .stat-box { background: #F9FAFB; border: 1px solid #E5E7EB; padding: 20px; border-radius: 12px; flex: 1; text-align: center; min-width: 150px;}
-        .stat-box h3 { margin: 0 0 5px 0; font-size: 28px; color: var(--primary); }
-        .stat-box p { margin: 0; font-size: 13px; color: #6B7280; font-weight: bold; letter-spacing: 0.5px;}
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
 
-        .filtros-admin { display: flex; gap: 15px; margin-bottom: 30px; flex-wrap: wrap; align-items: center; background: #F9FAFB; padding: 15px; border-radius: 12px; border: 1px solid #E5E7EB;}
-        .search-box { flex: 1; min-width: 250px; padding: 12px 15px; border: 2px solid #E5E7EB; border-radius: 8px; outline: none; transition: 0.3s;}
+        /* =========================================
+           TARJETAS DE ESTADÍSTICAS
+           ========================================= */
+        .stats-container { display: flex; gap: 20px; margin-bottom: 35px; flex-wrap: wrap;}
+        .stat-box { 
+            background: linear-gradient(145deg, #ffffff, #f9fafb); 
+            border: 1px solid var(--border); 
+            padding: 25px; 
+            border-radius: 20px; 
+            flex: 1; 
+            min-width: 200px;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02);
+            position: relative;
+            overflow: hidden;
+        }
+        .stat-box::before { content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: var(--primary-gradient); }
+        .stat-box h3 { margin: 0 0 5px 0; font-size: 36px; font-weight: 800; color: var(--text-main); }
+        .stat-box p { margin: 0; font-size: 12px; color: var(--text-muted); font-weight: 700; text-transform: uppercase; letter-spacing: 1px;}
+
+        /* =========================================
+           FILTROS Y BUSCADOR
+           ========================================= */
+        .filtros-admin { 
+            display: flex; gap: 15px; margin-bottom: 25px; flex-wrap: wrap; align-items: center; 
+            background: var(--surface); padding: 15px; border-radius: 16px; border: 1px solid var(--border);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.02);
+        }
+        .search-box, .filtro-select { 
+            padding: 12px 18px; border: 2px solid #E5E7EB; border-radius: 12px; outline: none; 
+            transition: all 0.3s; font-size: 14px; color: var(--text-main); font-weight: 500;
+        }
+        .search-box { flex: 1; min-width: 250px; background: #F9FAFB; }
+        .search-box:focus, .filtro-select:focus { border-color: var(--primary); background: var(--surface); box-shadow: 0 0 0 4px rgba(139, 61, 255, 0.1); }
         
         .filtro-select { 
-            padding: 12px 35px 12px 15px; border: 2px solid #E5E7EB; border-radius: 8px; outline: none; font-weight: 600; color: #374151; background-color: white; cursor: pointer; transition: 0.3s; appearance: none;
+            cursor: pointer; appearance: none; padding-right: 35px;
             background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236B7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
             background-repeat: no-repeat; background-position: right 12px center; background-size: 16px;
         }
-        input.filtro-select { background-image: none; padding-right: 15px; }
 
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px; }
-        th, td { padding: 15px 12px; text-align: left; border-bottom: 1px solid #eee; }
-        th { background-color: #f8f9fa; color: #6b7280; font-weight: 600;}
+        /* =========================================
+           TABLAS MODERNAS
+           ========================================= */
+        .table-wrapper {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            overflow-x: auto;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02);
+        }
+        table { width: 100%; border-collapse: collapse; font-size: 14px; }
+        th, td { padding: 16px 20px; text-align: left; border-bottom: 1px solid #F3F4F6; }
+        th { background-color: #F9FAFB; color: var(--text-muted); font-weight: 700; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px; }
+        tr { transition: background-color 0.2s; }
+        tr:hover { background-color: #F9FAFB; }
+        tr:last-child td { border-bottom: none; }
         
-        .badge-pendiente { background: #FEF3C7; color: #D97706; padding: 6px 12px; border-radius: 20px; font-weight: bold; font-size: 12px; }
-        .badge-activo { background: #D1FAE5; color: #059669; padding: 6px 12px; border-radius: 20px; font-weight: bold; font-size: 12px; }
-        .badge-vencido { background: #FEE2E2; color: #DC2626; padding: 6px 12px; border-radius: 20px; font-weight: bold; font-size: 12px; }
-        .badge-cancelado { background: #F3F4F6; color: #4B5563; padding: 6px 12px; border-radius: 20px; font-weight: bold; font-size: 12px; }
+        .badge-pendiente { background: #FEF3C7; color: #D97706; padding: 6px 12px; border-radius: 20px; font-weight: 700; font-size: 12px; }
+        .badge-activo { background: #D1FAE5; color: #059669; padding: 6px 12px; border-radius: 20px; font-weight: 700; font-size: 12px; }
+        .badge-vencido { background: #FEE2E2; color: #DC2626; padding: 6px 12px; border-radius: 20px; font-weight: 700; font-size: 12px; }
+        .badge-cancelado { background: #F3F4F6; color: #4B5563; padding: 6px 12px; border-radius: 20px; font-weight: 700; font-size: 12px; }
         
-        .btn-primary { background: var(--primary); color: white; border: none; padding: 12px 18px; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.3s;}
-        .btn-aprobar { background: #10B981; color: white; border: none; padding: 8px 12px; border-radius: 8px; cursor: pointer; font-weight: bold; }
-        .btn-borrar { background: #FEE2E2; color: #DC2626; border: none; padding: 8px 12px; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.2s;}
-        .btn-manual { background: var(--primary); color: white; border: none; padding: 12px 18px; border-radius: 8px; cursor: pointer; font-weight: bold; }
-        .btn-gestionar { background: #3B82F6; color: white; border: none; padding: 8px 12px; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.2s; }
+        /* =========================================
+           BOTONES
+           ========================================= */
+        .btn-primary { background: var(--primary-gradient); color: white; border: none; padding: 12px 20px; border-radius: 12px; cursor: pointer; font-weight: 600; transition: all 0.3s; font-size: 14px; box-shadow: 0 4px 12px rgba(139, 61, 255, 0.2);}
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(139, 61, 255, 0.3); }
         
-        .btn-copiar { background: #F3F4F6; border: 1px solid #E5E7EB; border-radius: 6px; cursor: pointer; font-size: 14px; padding: 5px 8px; text-decoration: none; display: inline-block; transition: 0.2s;}
-        .btn-copiar:hover { background: #E5E7EB; transform: scale(1.05); }
+        .btn-aprobar { background: #10B981; color: white; border: none; padding: 8px 14px; border-radius: 8px; cursor: pointer; font-weight: 600; transition: 0.2s; }
+        .btn-aprobar:hover { background: #059669; transform: translateY(-1px); }
+        
+        .btn-borrar { background: #FEE2E2; color: #DC2626; border: none; padding: 8px 12px; border-radius: 8px; cursor: pointer; font-weight: 600; transition: 0.2s;}
+        .btn-borrar:hover { background: #FECACA; transform: translateY(-1px); }
+        
+        .btn-gestionar { background: #EFF6FF; color: #2563EB; border: 1px solid #BFDBFE; padding: 8px 14px; border-radius: 8px; cursor: pointer; font-weight: 600; transition: 0.2s; }
+        .btn-gestionar:hover { background: #DBEAFE; transform: translateY(-1px); }
+        
+        .btn-copiar { background: #F3F4F6; border: 1px solid #E5E7EB; border-radius: 8px; cursor: pointer; font-size: 13px; padding: 6px 10px; text-decoration: none; display: inline-block; transition: 0.2s; color: var(--text-main); font-weight: 500;}
+        .btn-copiar:hover { background: #E5E7EB; transform: translateY(-1px); }
 
-        .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); display: none; justify-content: center; align-items: center; z-index: 1000; overflow-y:auto; padding:20px;}
-        .modal-content { background: white; padding: 30px; border-radius: 15px; width: 100%; max-width: 600px; position: relative; margin: auto;}
-        .cerrar-modal { position: absolute; top: 15px; right: 20px; font-size: 28px; cursor: pointer; color: #6B7280; transition: 0.2s;}
-        .input-group { margin-bottom: 15px; text-align: left;}
-        .input-group label { display: block; font-size: 13px; font-weight: bold; color: #374151; margin-bottom: 5px;}
-        .input-group input, .input-group textarea, .input-group select { width: 100%; padding: 12px; border: 1px solid #D1D5DB; border-radius: 8px; box-sizing: border-box; outline: none; font-family: inherit;}
+        /* =========================================
+           MODALES (EFECTO CRISTAL Y ANIMACIÓN)
+           ========================================= */
+        .modal { 
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+            background: rgba(17, 24, 39, 0.6); backdrop-filter: blur(8px); /* Efecto cristal */
+            display: none; justify-content: center; align-items: center; z-index: 1000; overflow-y:auto; padding:20px;
+            opacity: 0; transition: opacity 0.3s;
+        }
+        .modal.show { opacity: 1; }
+        .modal-content { 
+            background: var(--surface); padding: 35px; border-radius: 24px; width: 100%; max-width: 600px; 
+            position: relative; margin: auto; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);
+            transform: scale(0.95); transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .modal.show .modal-content { transform: scale(1); }
         
-        .upload-box { border: 2px dashed #D1D5DB; border-radius: 8px; padding: 15px; text-align: center; background: #F9FAFB; position: relative; }
+        .cerrar-modal { position: absolute; top: 20px; right: 25px; font-size: 28px; cursor: pointer; color: var(--text-muted); transition: 0.2s; line-height: 1; border-radius: 50%; width: 35px; height: 35px; display: flex; align-items: center; justify-content: center; background: #F3F4F6;}
+        .cerrar-modal:hover { color: var(--text-main); background: #E5E7EB; transform: rotate(90deg); }
+        
+        .input-group { margin-bottom: 20px; text-align: left;}
+        .input-group label { display: block; font-size: 13px; font-weight: 700; color: var(--text-main); margin-bottom: 8px;}
+        .input-group input, .input-group textarea, .input-group select { width: 100%; padding: 14px; border: 2px solid #E5E7EB; border-radius: 12px; box-sizing: border-box; outline: none; font-family: inherit; transition: 0.3s; background: #F9FAFB;}
+        .input-group input:focus, .input-group textarea:focus, .input-group select:focus { border-color: var(--primary); background: var(--surface); box-shadow: 0 0 0 4px rgba(139, 61, 255, 0.1); }
+        
+        .upload-box { border: 2px dashed #D1D5DB; border-radius: 16px; padding: 25px; text-align: center; background: #F9FAFB; position: relative; transition: 0.3s; cursor: pointer;}
+        .upload-box:hover { border-color: var(--primary); background: #F5F3FF; }
         .upload-box input[type="file"] { position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
-        .upload-preview { width: 100px; height: 100px; object-fit: cover; border-radius: 8px; margin-top: 10px; display: none; border: 2px solid #E5E7EB; }
+        .upload-preview { width: 120px; height: 120px; object-fit: cover; border-radius: 12px; margin-top: 15px; display: none; border: 2px solid #E5E7EB; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
 
-        .btn-accion-gestion { flex: 1; padding: 10px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; transition: 0.2s; font-size: 12px;}
+        .btn-accion-gestion { flex: 1; padding: 15px 10px; border: none; border-radius: 16px; font-weight: 700; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; transition: 0.2s; font-size: 13px;}
+        .btn-accion-gestion:hover { transform: translateY(-3px); box-shadow: 0 6px 12px rgba(0,0,0,0.08); }
+        
+        /* Cajas de info */
+        .info-box { background: #EFF6FF; border-left: 4px solid #3B82F6; padding: 15px 20px; border-radius: 0 12px 12px 0; margin-bottom: 20px; }
+        .info-box p { margin: 0; color: #1E3A8A; font-size: 14px; line-height: 1.5; }
     </style>
 </head>
 <body>
 
-    <!-- LOGIN -->
-    <div id="login-section" style="background: white; padding: 40px; border-radius: 15px; width: 100%; max-width: 400px; margin: auto; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.1);">
-        <h2>🔒 Acceso Restringido</h2>
-        <input type="email" id="login-email" placeholder="Correo de Admin" style="width: 100%; padding: 14px; margin: 10px 0; border: 2px solid #E5E7EB; border-radius: 8px; outline: none;">
-        <input type="password" id="login-password" placeholder="Contraseña" style="width: 100%; padding: 14px; margin: 10px 0; border: 2px solid #E5E7EB; border-radius: 8px; outline: none;">
-        <button class="btn-primary" style="width: 100%; margin-top: 10px;" onclick="iniciarSesion()">Ingresar al Panel</button>
-        <p id="login-error" style="color: red; font-size: 13px; display: none;">Credenciales incorrectas.</p>
+    <!-- LOGIN PREMIUM -->
+    <div id="login-section" style="background: var(--surface); padding: 50px 40px; border-radius: 24px; width: 100%; max-width: 420px; margin: auto; text-align: center; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.15); border: 1px solid var(--border);">
+        <div style="width: 70px; height: 70px; background: var(--primary-gradient); border-radius: 20px; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; box-shadow: 0 10px 20px rgba(139,61,255,0.3);">
+            <span style="font-size: 30px; color: white;">👑</span>
+        </div>
+        <h2 style="margin-top: 0; margin-bottom: 5px; font-weight: 800;">Acceso Restringido</h2>
+        <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 25px;">Ingresa tus credenciales de administrador</p>
+        
+        <div class="input-group">
+            <input type="email" id="login-email" placeholder="Correo electrónico">
+        </div>
+        <div class="input-group">
+            <input type="password" id="login-password" placeholder="Contraseña">
+        </div>
+        
+        <button class="btn-primary" style="width: 100%; padding: 14px; font-size: 16px;" onclick="iniciarSesion()">Ingresar al Panel</button>
+        <p id="login-error" style="color: #DC2626; font-size: 13px; font-weight: bold; display: none; margin-top: 15px; background: #FEF2F2; padding: 10px; border-radius: 8px;">⚠️ Credenciales incorrectas.</p>
     </div>
 
     <!-- PANEL ADMIN -->
-    <div id="admin-section" style="display:none; width:100%; max-width:1100px;">
+    <div id="admin-section" style="display:none; width:100%; max-width:1150px;">
         <div class="panel-container">
             <div class="header-panel">
-                <div><h1>👑 Panel de VegaStore</h1><p style="margin-top: 5px; color: #6b7280; font-size: 14px;">Administración General</p></div>
-                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                    <button class="btn-primary" style="background:#F59E0B;" onclick="abrirSeguridad()">🛡️ Accesos</button>
-                    <button class="btn-primary" style="background:#374151;" onclick="cerrarSesion()">Salir</button>
+                <div>
+                    <h1>👑 <span>VegaStore</span> Admin</h1>
+                    <p style="margin-top: 5px; color: var(--text-muted); font-size: 14px;">Gestión y Control de Ventas</p>
+                </div>
+                <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+                    <button class="btn-gestionar" style="background:#FFFBEB; color:#D97706; border-color:#FDE68A;" onclick="abrirSeguridad()">🛡️ Accesos</button>
+                    <button class="btn-borrar" style="background:#F3F4F6; color:#4B5563; border: 1px solid #E5E7EB;" onclick="cerrarSesion()">Cerrar Sesión</button>
                 </div>
             </div>
 
             <div class="tabs">
                 <button id="btn-tab-ventas" class="tab-btn active" onclick="switchTab('ventas')">💰 Clientes Activos</button>
-                <button id="btn-tab-solicitudes" class="tab-btn" onclick="switchTab('solicitudes')" style="color: #D97706;">🔔 Solicitudes</button>
+                <button id="btn-tab-solicitudes" class="tab-btn" onclick="switchTab('solicitudes')">🔔 Solicitudes</button>
                 <button id="btn-tab-catalogo" class="tab-btn" onclick="switchTab('catalogo')">📦 Catálogo</button>
-                <button id="btn-tab-papelera" class="tab-btn" onclick="switchTab('papelera')" style="color: #DC2626;">🗑️ Papelera</button>
+                <button id="btn-tab-papelera" class="tab-btn" onclick="switchTab('papelera')">🗑️ Papelera</button>
             </div>
 
             <div class="stats-container">
-                <div class="stat-box"><h3 id="stat-activos">0</h3><p>CLIENTES ACTIVOS</p></div>
-                <div class="stat-box"><h3 id="stat-pendientes">0</h3><p>SOLICITUDES PENDIENTES</p></div>
+                <div class="stat-box">
+                    <h3 id="stat-activos">0</h3>
+                    <p>Clientes Activos</p>
+                </div>
+                <div class="stat-box" style="background: linear-gradient(145deg, #FFFBEB, #FEF3C7); border-color: #FDE68A;">
+                    <h3 id="stat-pendientes" style="color: #D97706;">0</h3>
+                    <p style="color: #B45309;">Solicitudes Nuevas</p>
+                </div>
             </div>
 
             <!-- PESTAÑA CLIENTES ACTIVOS -->
             <div id="tab-ventas" class="tab-content active">
                 <div class="filtros-admin">
-                    <input type="text" id="buscador-clientes" class="search-box" placeholder="Buscar teléfono o correo..." oninput="filtrarClientes()">
+                    <input type="text" id="buscador-clientes" class="search-box" placeholder="🔍 Buscar teléfono o correo..." oninput="filtrarClientes()">
                     <select id="filtro-servicio" class="filtro-select" onchange="filtrarClientes()"><option value="ALL">Todos los Servicios</option></select>
                     <select id="filtro-orden" class="filtro-select" onchange="filtrarClientes()">
                         <option value="RECIENTES">Más Recientes</option>
                         <option value="VENCIMIENTO">Por Vencer Primero</option>
                     </select>
-                    <button class="btn-manual" onclick="registroManual()">+ Añadir Cliente Manual</button>
+                    <button class="btn-primary" onclick="registroManual()">+ Añadir Cliente Manual</button>
                 </div>
-                <div style="overflow-x: auto;">
+                <div class="table-wrapper">
                     <table>
-                        <thead><tr><th>Contacto</th><th>Servicio y Plan</th><th>Estado</th><th>Vencimiento</th><th>Acciones</th></tr></thead>
-                        <tbody id="tabla-clientes"><tr><td colspan="5" style="text-align:center;">Cargando clientes...</td></tr></tbody>
+                        <thead><tr><th>Contacto del Cliente</th><th>Servicio y Plan</th><th>Estado</th><th>Vencimiento</th><th>Acciones</th></tr></thead>
+                        <tbody id="tabla-clientes"><tr><td colspan="5" style="text-align:center; padding: 40px; color: var(--text-muted);">Cargando clientes...</td></tr></tbody>
                     </table>
                 </div>
             </div>
 
             <!-- PESTAÑA SOLICITUDES -->
             <div id="tab-solicitudes" class="tab-content">
-                <div style="background: #FFFBEB; border: 1px solid #FDE68A; padding: 15px; border-radius: 12px; margin-bottom: 20px;">
-                    <p style="margin: 0; color: #92400E; font-size: 14px;"><strong>Información:</strong> Aquí llegan los pedidos nuevos. Si no apruebas un pedido en 24 horas, el sistema lo borrará automáticamente para no saturar tu base de datos.</p>
+                <div class="info-box">
+                    <p><strong>🔔 Pedidos Nuevos:</strong> Aquí llegan las compras recientes. Si no apruebas un pedido en 24 horas, el sistema lo borrará automáticamente para no saturar tu base de datos.</p>
                 </div>
-                <div style="overflow-x: auto;">
+                <div class="table-wrapper">
                     <table>
-                        <thead><tr><th>Contacto</th><th>Servicio Solicitado</th><th>Token / N° Op</th><th>Fecha de Solicitud</th><th>Acciones</th></tr></thead>
-                        <tbody id="tabla-solicitudes"><tr><td colspan="5" style="text-align:center;">Cargando solicitudes...</td></tr></tbody>
+                        <thead><tr><th>Contacto del Cliente</th><th>Servicio Solicitado</th><th>Token / N° Op</th><th>Fecha de Solicitud</th><th>Acciones</th></tr></thead>
+                        <tbody id="tabla-solicitudes"><tr><td colspan="5" style="text-align:center; padding: 40px; color: var(--text-muted);">Cargando solicitudes...</td></tr></tbody>
                     </table>
                 </div>
             </div>
 
             <!-- PESTAÑA CATÁLOGO -->
             <div id="tab-catalogo" class="tab-content">
-                <div class="filtros-admin" style="justify-content: space-between; align-items: center; margin-bottom: 25px; background: transparent; border: none; padding: 0;">
-                    <h2 style="margin: 0; font-size: 22px; color: #374151;">Servicios en Tienda</h2>
+                <div class="filtros-admin" style="justify-content: space-between; align-items: center; margin-bottom: 25px; background: transparent; border: none; padding: 0; box-shadow: none;">
+                    <h2 style="margin: 0; font-size: 20px; color: var(--text-main);">Servicios Disponibles</h2>
                     <button class="btn-primary" onclick="abrirModalServicio()">+ Crear Nuevo Servicio</button>
                 </div>
-                <div style="overflow-x: auto;">
+                <div class="table-wrapper">
                     <table>
                         <thead><tr><th>Servicio</th><th>Categoría</th><th>Disponibilidad</th><th>Planes Creados</th><th>Acciones</th></tr></thead>
-                        <tbody id="tabla-servicios"><tr><td colspan="5" style="text-align:center;">Cargando catálogo...</td></tr></tbody>
+                        <tbody id="tabla-servicios"><tr><td colspan="5" style="text-align:center; padding: 40px; color: var(--text-muted);">Cargando catálogo...</td></tr></tbody>
                     </table>
                 </div>
             </div>
 
             <!-- PESTAÑA PAPELERA -->
             <div id="tab-papelera" class="tab-content">
-                <div style="background: #FEF2F2; border: 1px solid #FCA5A5; padding: 15px; border-radius: 12px; margin-bottom: 20px;">
-                    <p style="margin: 0; color: #991B1B; font-size: 14px;"><strong>Información:</strong> Los servicios cancelados permanecerán aquí por 24 horas antes de borrarse permanentemente.</p>
+                <div class="info-box" style="background: #FEF2F2; border-color: #EF4444;">
+                    <p style="color: #B91C1C;"><strong>🗑️ Papelera de Reciclaje:</strong> Los servicios cancelados permanecerán aquí por 24 horas antes de borrarse permanentemente de forma automática.</p>
                 </div>
-                <div style="overflow-x: auto;">
+                <div class="table-wrapper">
                     <table>
-                        <thead><tr><th>Contacto</th><th>Servicio</th><th>Estado</th><th>Fecha de Cancelación</th><th>Acciones</th></tr></thead>
-                        <tbody id="tabla-papelera"><tr><td colspan="5" style="text-align:center;">Cargando papelera...</td></tr></tbody>
+                        <thead><tr><th>Contacto del Cliente</th><th>Servicio</th><th>Estado</th><th>Fecha de Cancelación</th><th>Acciones</th></tr></thead>
+                        <tbody id="tabla-papelera"><tr><td colspan="5" style="text-align:center; padding: 40px; color: var(--text-muted);">Cargando papelera...</td></tr></tbody>
                     </table>
                 </div>
             </div>
@@ -164,39 +315,39 @@
     <!-- MODAL GESTIONAR CLIENTE -->
     <div id="modal-gestionar-cliente" class="modal">
         <div class="modal-content" style="max-width: 500px;">
-            <span class="cerrar-modal" onclick="document.getElementById('modal-gestionar-cliente').style.display='none'">&times;</span>
-            <h2 style="margin-top:0; color: var(--primary); margin-bottom: 5px;">⚙️ Gestionar Cliente</h2>
-            <p id="gestion-servicio-titulo" style="color: #6B7280; font-weight: bold; margin-bottom: 20px;">Servicio</p>
+            <span class="cerrar-modal" onclick="cerrarModal('modal-gestionar-cliente')">&times;</span>
+            <h2 style="margin-top:0; color: var(--text-main); margin-bottom: 5px; font-size: 24px;">⚙️ Gestionar Cliente</h2>
+            <p id="gestion-servicio-titulo" style="color: var(--primary); font-weight: bold; margin-bottom: 25px; font-size: 15px; background: #F5F3FF; display: inline-block; padding: 6px 12px; border-radius: 8px;">Servicio</p>
             <input type="hidden" id="gestion-id">
 
-            <div style="background: #F9FAFB; padding: 20px; border-radius: 12px; border: 1px solid #E5E7EB; margin-bottom: 20px;">
-                <h3 style="font-size: 15px; margin-top: 0; margin-bottom: 15px; color: #374151;">📞 Datos de Contacto</h3>
+            <div style="background: #F9FAFB; padding: 20px; border-radius: 16px; border: 1px solid var(--border); margin-bottom: 25px;">
+                <h3 style="font-size: 14px; margin-top: 0; margin-bottom: 15px; color: var(--text-main); text-transform: uppercase; letter-spacing: 0.5px;">📞 Datos de Contacto</h3>
                 <div style="display: flex; gap: 15px;">
                     <div style="flex: 1;">
-                        <label style="font-size: 12px; font-weight: bold; color: #6B7280;">N° WhatsApp</label>
-                        <input type="text" id="gestion-telefono" style="width: 100%; padding: 10px; border: 1px solid #D1D5DB; border-radius: 8px; margin-top: 5px;" placeholder="Ej: +51987654321">
+                        <label style="font-size: 12px; font-weight: bold; color: var(--text-muted);">N° WhatsApp (Con código país)</label>
+                        <input type="text" id="gestion-telefono" style="width: 100%; padding: 12px; border: 2px solid var(--border); border-radius: 10px; margin-top: 5px; outline: none; transition: 0.3s;" placeholder="Ej: +51987654321" onfocus="this.style.borderColor='var(--primary)'" onblur="this.style.borderColor='var(--border)'">
                     </div>
                     <div style="flex: 1;">
-                        <label style="font-size: 12px; font-weight: bold; color: #6B7280;">Correo Electrónico</label>
-                        <input type="email" id="gestion-correo" style="width: 100%; padding: 10px; border: 1px solid #D1D5DB; border-radius: 8px; margin-top: 5px;" placeholder="correo@ejemplo.com">
+                        <label style="font-size: 12px; font-weight: bold; color: var(--text-muted);">Correo Electrónico</label>
+                        <input type="email" id="gestion-correo" style="width: 100%; padding: 12px; border: 2px solid var(--border); border-radius: 10px; margin-top: 5px; outline: none; transition: 0.3s;" placeholder="correo@ejemplo.com" onfocus="this.style.borderColor='var(--primary)'" onblur="this.style.borderColor='var(--border)'">
                     </div>
                 </div>
-                <button class="btn-primary" style="width: 100%; margin-top: 15px; padding: 10px; font-size: 14px;" onclick="guardarDatosContacto()">Guardar Contacto</button>
+                <button class="btn-gestionar" style="width: 100%; margin-top: 15px; padding: 12px; font-size: 14px;" onclick="guardarDatosContacto()">Guardar Contacto</button>
             </div>
 
-            <h3 style="font-size: 15px; margin-top: 0; margin-bottom: 10px; color: #374151;">⚡ Acciones Rápidas</h3>
-            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                <button class="btn-accion-gestion" style="background: #ECFDF5; color: #059669;" onclick="darDiasExtra()">
-                    <span style="font-size: 20px;">🎁</span> Dar Días Extra
+            <h3 style="font-size: 14px; margin-top: 0; margin-bottom: 15px; color: var(--text-main); text-transform: uppercase; letter-spacing: 0.5px;">⚡ Acciones Rápidas</h3>
+            <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+                <button class="btn-accion-gestion" style="background: #ECFDF5; color: #059669; border: 1px solid #A7F3D0;" onclick="darDiasExtra()">
+                    <span style="font-size: 24px;">🎁</span> Dar Días Extra
                 </button>
-                <button class="btn-accion-gestion" style="background: #EFF6FF; color: #2563EB;" onclick="renovarServicio()">
-                    <span style="font-size: 20px;">🔄</span> Renovar
+                <button class="btn-accion-gestion" style="background: #EFF6FF; color: #2563EB; border: 1px solid #BFDBFE;" onclick="renovarServicio()">
+                    <span style="font-size: 24px;">🔄</span> Renovar
                 </button>
-                <button class="btn-accion-gestion" style="background: #F3F4F6; color: #4B5563;" onclick="cambiarServicio()">
-                    <span style="font-size: 20px;">🔀</span> Cambiar Plan
+                <button class="btn-accion-gestion" style="background: #F5F3FF; color: #7C3AED; border: 1px solid #DDD6FE;" onclick="cambiarServicio()">
+                    <span style="font-size: 24px;">🔀</span> Cambiar Plan
                 </button>
-                <button class="btn-accion-gestion" style="background: #FEF2F2; color: #DC2626;" onclick="cancelarServicio()">
-                    <span style="font-size: 20px;">🚫</span> Cancelar
+                <button class="btn-accion-gestion" style="background: #FEF2F2; color: #DC2626; border: 1px solid #FECACA;" onclick="cancelarServicio()">
+                    <span style="font-size: 24px;">🚫</span> Cancelar
                 </button>
             </div>
         </div>
@@ -205,16 +356,16 @@
     <!-- MODAL GESTIONAR SERVICIO (CATÁLOGO) -->
     <div id="modal-servicio" class="modal">
         <div class="modal-content">
-            <span class="cerrar-modal" onclick="cerrarModalServicio()">&times;</span>
-            <h2 id="titulo-modal-servicio" style="margin-top:0; margin-bottom:20px; color: var(--primary);">Servicio</h2>
+            <span class="cerrar-modal" onclick="cerrarModal('modal-servicio')">&times;</span>
+            <h2 id="titulo-modal-servicio" style="margin-top:0; margin-bottom:25px; color: var(--text-main); font-size: 24px;">📦 Crear Servicio</h2>
             <input type="hidden" id="serv-id">
             
             <div class="input-group">
                 <label>Imagen del Producto (Opcional)</label>
                 <div class="upload-box">
-                    <span id="upload-text">📁 Haz clic o arrastra una imagen aquí</span>
+                    <span id="upload-text" style="color: var(--text-muted); font-weight: 500;">📁 Haz clic o arrastra una imagen aquí</span>
                     <input type="file" id="serv-imagen-file" accept="image/*" onchange="subirImagen(this)">
-                    <p id="upload-status" style="font-size: 12px; color: #10B981; margin-top: 5px; display: none;">Subiendo imagen...</p>
+                    <p id="upload-status" style="font-size: 13px; font-weight: bold; margin-top: 10px; display: none;"></p>
                 </div>
                 <input type="hidden" id="serv-imagen-url">
                 <div style="text-align: center;"><img id="serv-imagen-preview" class="upload-preview" src=""></div>
@@ -226,9 +377,7 @@
                 <div style="flex: 1;">
                     <label>Categoría</label>
                     <input type="text" id="serv-categoria" class="filtro-select" style="width: 100%; box-sizing: border-box;" placeholder="Ej: Streaming, Juegos..." list="opciones-categoria">
-                    <datalist id="opciones-categoria">
-                        <!-- Se llenará dinámicamente -->
-                    </datalist>
+                    <datalist id="opciones-categoria"></datalist>
                 </div>
                 <div style="flex: 1;">
                     <label>¿Qué pedir al cliente?</label>
@@ -239,31 +388,38 @@
                 </div>
             </div>
 
-            <div class="input-group" style="background: #FFFBEB; padding: 15px; border-radius: 8px; border: 1px solid #FDE68A;">
-                <label style="color: #92400E;">🌍 Disponibilidad por País</label>
-                <select id="serv-geo-tipo" class="filtro-select" style="width: 100%; margin-bottom: 10px;" onchange="toggleGeoInput()">
+            <div class="input-group" style="background: #FFFBEB; padding: 20px; border-radius: 12px; border: 1px solid #FDE68A;">
+                <label style="color: #92400E; font-size: 14px;">🌍 Disponibilidad por País</label>
+                <select id="serv-geo-tipo" class="filtro-select" style="width: 100%; margin-bottom: 10px; background: white;" onchange="toggleGeoInput()">
                     <option value="todos">Disponible para TODOS los países</option>
                     <option value="solo">Disponible SOLO para estos países...</option>
                     <option value="excepto">Disponible para todos EXCEPTO...</option>
                 </select>
-                <input type="text" id="serv-geo-paises" placeholder="Ej: PE, MX, CO, US, ES (Separados por coma)" style="display: none; border-color: #FCD34D;">
+                <input type="text" id="serv-geo-paises" placeholder="Ej: PE, MX, CO, US, ES (Separados por coma)" style="display: none; border-color: #FCD34D; background: white;">
             </div>
 
             <div class="input-group"><label>Etiqueta Promocional (Opcional)</label><input type="text" id="serv-etiqueta" placeholder="Ej: Plan Estrella, 50% Dcto"></div>
             <div class="input-group"><label>Características (Separadas por coma)</label><textarea id="serv-caracteristicas" rows="3" placeholder="Ej: Plantillas Premium, Diseños 3D..."></textarea></div>
 
-            <hr style="margin:25px 0; border:0; border-top:1px solid #E5E7EB;">
-            <h3 style="font-size:16px; margin-bottom:10px; color: #374151;">⏳ Opciones de Tiempo (Planes)</h3>
+            <hr style="margin:30px 0; border:0; border-top:1px solid var(--border);">
+            <h3 style="font-size:16px; margin-bottom:5px; color: var(--text-main);">⏳ Opciones de Tiempo (Planes)</h3>
+            <p style="font-size:13px; color:var(--text-muted); margin-bottom:20px;">Pon <b>0</b> en Tiempo si es un servicio de <b>Pago Único (Permanente)</b>.</p>
+            
             <div id="contenedor-planes"></div>
-            <button style="background: #F9FAFB; border: 2px dashed #D1D5DB; padding: 12px; width: 100%; border-radius: 8px; cursor: pointer; font-weight: bold; color: #6B7280; margin-bottom: 25px;" onclick="agregarFilaPlan()">+ Añadir otra opción de tiempo</button>
+            <button style="background: #F9FAFB; border: 2px dashed #D1D5DB; padding: 12px; width: 100%; border-radius: 12px; cursor: pointer; font-weight: bold; color: var(--text-muted); margin-bottom: 25px; transition: 0.3s;" onclick="agregarFilaPlan()" onmouseover="this.style.background='#F3F4F6'" onmouseout="this.style.background='#F9FAFB'">+ Añadir otra opción de tiempo</button>
 
-            <button class="btn-primary w-100" id="btn-guardar-servicio" onclick="guardarServicio()" style="width: 100%;">Guardar Servicio</button>
+            <button class="btn-primary w-100" id="btn-guardar-servicio" onclick="guardarServicio()" style="width: 100%; padding: 16px; font-size: 16px;">Guardar Servicio</button>
         </div>
     </div>
 
     <!-- MODAL SEGURIDAD -->
     <div id="modal-seguridad" class="modal">
-        <div class="modal-content"><span class="cerrar-modal" onclick="cerrarSeguridad()">&times;</span><h2 style="margin-top:0; color: #F59E0B;">🛡️ Accesos Recientes</h2><div id="lista-dispositivos"></div></div>
+        <div class="modal-content" style="max-width: 450px;">
+            <span class="cerrar-modal" onclick="cerrarModal('modal-seguridad')">&times;</span>
+            <h2 style="margin-top:0; color: var(--text-main); font-size: 22px;">🛡️ Accesos Recientes</h2>
+            <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 20px;">Registro de dispositivos que entraron al panel.</p>
+            <div id="lista-dispositivos" style="max-height: 300px; overflow-y: auto;"></div>
+        </div>
     </div>
 
     <script>
@@ -276,6 +432,20 @@
 
         supabaseClient.auth.getSession().then(({ data: { session } }) => { if (session) mostrarPanel(); });
 
+        // Función para abrir modales con animación
+        function abrirModal(id) {
+            const modal = document.getElementById(id);
+            modal.style.display = 'flex';
+            setTimeout(() => modal.classList.add('show'), 10);
+        }
+
+        // Función para cerrar modales con animación
+        function cerrarModal(id) {
+            const modal = document.getElementById(id);
+            modal.classList.remove('show');
+            setTimeout(() => modal.style.display = 'none', 300);
+        }
+
         function obtenerInfoDispositivo() {
             const ua = navigator.userAgent;
             let dispositivo = /Mobile|Android|iP(hone|od|ad)/.test(ua) ? "📱 Celular" : "💻 Computadora";
@@ -285,9 +455,17 @@
         async function iniciarSesion() {
             const email = document.getElementById('login-email').value;
             const password = document.getElementById('login-password').value;
+            const btn = document.querySelector('#login-section .btn-primary');
+            btn.innerText = "Verificando..."; btn.disabled = true;
+
             const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
-            if (error) { document.getElementById('login-error').style.display = 'block'; } 
-            else { await supabaseClient.from('admin_accesos').insert([obtenerInfoDispositivo()]); mostrarPanel(); }
+            if (error) { 
+                document.getElementById('login-error').style.display = 'block'; 
+                btn.innerText = "Ingresar al Panel"; btn.disabled = false;
+            } else { 
+                await supabaseClient.from('admin_accesos').insert([obtenerInfoDispositivo()]); 
+                mostrarPanel(); 
+            }
         }
 
         async function cerrarSesion() { await supabaseClient.auth.signOut(); window.location.reload(); }
@@ -312,18 +490,14 @@
             navigator.clipboard.writeText(texto).then(() => alert("Copiado: " + texto)).catch(() => alert("Error al copiar"));
         }
 
-        // ===== LIMPIEZA AUTOMÁTICA DE BASURA =====
+        // ===== LIMPIEZA AUTOMÁTICA =====
         async function limpiarRegistrosAntiguos() {
             const ahora = new Date();
-            
-            // 1. Papelera > 24h
             const { data: cancelados } = await supabaseClient.from('usuarios_canva').select('id, fecha_cancelacion').eq('estado', 'Cancelado');
             if (cancelados) {
                 const idsCancelados = cancelados.filter(item => item.fecha_cancelacion && ((ahora - new Date(item.fecha_cancelacion)) / 3600000) >= 24).map(i => i.id);
                 if (idsCancelados.length > 0) await supabaseClient.from('usuarios_canva').delete().in('id', idsCancelados);
             }
-
-            // 2. Solicitudes > 24h
             const { data: pendientes } = await supabaseClient.from('usuarios_canva').select('id, creado_en').eq('estado', 'Pendiente');
             if (pendientes) {
                 const idsPendientes = pendientes.filter(item => item.creado_en && ((ahora - new Date(item.creado_en)) / 3600000) >= 24).map(i => i.id);
@@ -371,12 +545,10 @@
 
         function renderizarTablaClientes(clientes) {
             const tabla = document.getElementById('tabla-clientes'); tabla.innerHTML = ''; 
-            if(clientes.length === 0) return tabla.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 20px;">No hay clientes activos.</td></tr>';
+            if(clientes.length === 0) return tabla.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 40px; color: var(--text-muted);">No hay clientes activos.</td></tr>';
 
             clientes.forEach(user => {
-                let diasRestantes = 0;
-                let estadoReal = 'Activo';
-                
+                let diasRestantes = 0; let estadoReal = 'Activo';
                 if (user.fecha_fin) {
                     let hoy = new Date(); let fin = new Date(user.fecha_fin);
                     diasRestantes = Math.ceil((fin.getTime() - hoy.getTime()) / (1000 * 3600 * 24));
@@ -393,54 +565,47 @@
                     numWhatsApp = emailCliente.replace(/\D/g,''); emailCliente = null; 
                 }
 
-                // PLANTILLA WHATSAPP CORREGIDA
-                let msjContacto = "";
-                let nombreServicio = user.servicio || 'Servicio';
-                
-                if (estadoReal === 'Vencido') {
-                    msjContacto = `Hola! Tu servicio de *${nombreServicio}* ha vencido. 😔\n\nSi deseas renovar o cambiar de plan, escríbeme por aquí o hazlo directo desde tu panel en la web:\n${URL_TIENDA}`;
-                } else if (user.meses == 0) {
-                    msjContacto = `Hola! Te escribo de VegaStore. Tu servicio de *${nombreServicio}* está Activo y es Permanente. Gracias por la confianza! ✨\n\nPuedes ver tu cuenta aquí:\n${URL_TIENDA}`;
-                } else {
+                let msjContacto = ""; let nombreServicio = user.servicio || 'Servicio';
+                if (estadoReal === 'Vencido') msjContacto = `Hola! Tu servicio de *${nombreServicio}* ha vencido. 😔\n\nSi deseas renovar o cambiar de plan, escríbeme por aquí o hazlo directo desde tu panel en la web:\n${URL_TIENDA}`;
+                else if (user.meses == 0) msjContacto = `Hola! Te escribo de VegaStore. Tu servicio de *${nombreServicio}* está Activo y es Permanente. Gracias por la confianza! ✨\n\nPuedes ver tu cuenta aquí:\n${URL_TIENDA}`;
+                else {
                     if (diasRestantes > 1) msjContacto = `Hola! Te escribo de VegaStore. Tu servicio de *${nombreServicio}* está Activo. Te quedan *${diasRestantes} días* de suscripción. \n\nRecuerda que puedes ver tu cuenta y renovar desde tu panel en la web:\n${URL_TIENDA}`;
                     else msjContacto = `Hola! Te escribo de VegaStore. Tu servicio de *${nombreServicio}* vence HOY. Disfruta tu último día, muchas gracias por la confianza. 😁\n\nSi deseas renovar escríbenos por este medio o hazlo desde tu panel:\n${URL_TIENDA}`;
                 }
 
                 let msjCodificado = encodeURIComponent(msjContacto);
-                let telRow = numWhatsApp ? `<div style="font-size: 13px; margin-bottom: 3px; display: flex; align-items: center; gap: 8px;">📱 <strong>${numWhatsApp}</strong> <a href="https://wa.me/${numWhatsApp}?text=${msjCodificado}" class="btn-copiar" target="_blank" title="Enviar WhatsApp">💬</a></div>` : '';
-                let corRow = emailCliente ? `<div style="font-size: 12px; margin-top: 3px; display: flex; align-items: center; gap: 8px;">✉️ <span style="color: #6B7280;">${emailCliente}</span> <button onclick="copiarTexto('${emailCliente}')" class="btn-copiar" style="padding: 2px 6px; font-size: 11px; border: 1px solid #E5E7EB; background: #F9FAFB;">📋 Copiar</button></div>` : '';
+                let telRow = numWhatsApp ? `<div style="font-size: 13px; margin-bottom: 4px; display: flex; align-items: center; gap: 8px;">📱 <strong style="color:var(--text-main);">${numWhatsApp}</strong> <a href="https://wa.me/${numWhatsApp}?text=${msjCodificado}" class="btn-copiar" target="_blank" title="Enviar WhatsApp" style="background:#D1FAE5; color:#059669; border-color:#A7F3D0;">💬</a></div>` : '';
+                let corRow = emailCliente ? `<div style="font-size: 12px; margin-top: 4px; display: flex; align-items: center; gap: 8px;">✉️ <span style="color: var(--text-muted);">${emailCliente}</span> <button onclick="copiarTexto('${emailCliente}')" class="btn-copiar" style="padding: 2px 8px; font-size: 11px;">📋 Copiar</button></div>` : '';
 
                 tabla.innerHTML += `<tr>
                     <td>${telRow} ${corRow}</td>
-                    <td><strong>${user.servicio}</strong><br><span style="font-size:12px; color:#6B7280; font-weight:bold;">${tiempoTxt}</span></td>
+                    <td><strong style="color:var(--text-main); font-size:15px;">${user.servicio}</strong><br><span style="font-size:12px; color:var(--text-muted); font-weight:600;">${tiempoTxt}</span></td>
                     <td><span class="${badge}">${estadoReal}</span></td>
-                    <td>${fechaFinShow}</td>
+                    <td><span style="color:var(--text-main); font-weight:500;">${fechaFinShow}</span></td>
                     <td><button class="btn-gestionar" onclick="abrirGestionCliente(${user.id})">⚙️ Gestionar</button></td>
                 </tr>`;
             });
         }
 
-        // ===== TABLA DE SOLICITUDES (PENDIENTES) =====
+        // ===== TABLA DE SOLICITUDES =====
         function renderizarSolicitudes() {
             const tabla = document.getElementById('tabla-solicitudes'); tabla.innerHTML = ''; 
-            if(solicitudesGlobal.length === 0) return tabla.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 20px;">No hay solicitudes nuevas.</td></tr>';
+            if(solicitudesGlobal.length === 0) return tabla.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 40px; color: var(--text-muted);">No hay solicitudes nuevas.</td></tr>';
 
             solicitudesGlobal.forEach(user => {
                 let numWhatsApp = user.telefono ? user.telefono.replace(/\s+/g, '') : null;
                 let emailCliente = user.correo;
-                if (!numWhatsApp && emailCliente && !emailCliente.includes('@') && emailCliente.replace(/\D/g,'').length >= 9) {
-                    numWhatsApp = emailCliente.replace(/\D/g,''); emailCliente = null; 
-                }
+                if (!numWhatsApp && emailCliente && !emailCliente.includes('@') && emailCliente.replace(/\D/g,'').length >= 9) { numWhatsApp = emailCliente.replace(/\D/g,''); emailCliente = null; }
                 
-                let telRow = numWhatsApp ? `<div style="font-size: 13px; margin-bottom: 3px;">📱 <strong>${numWhatsApp}</strong></div>` : '';
-                let corRow = emailCliente ? `<div style="font-size: 12px; margin-top: 3px; display: flex; align-items: center; gap: 8px;">✉️ <span style="color: #6B7280;">${emailCliente}</span> <button onclick="copiarTexto('${emailCliente}')" class="btn-copiar" style="padding: 2px 6px; font-size: 11px; border: 1px solid #E5E7EB; background: #F9FAFB;">📋 Copiar</button></div>` : '';
+                let telRow = numWhatsApp ? `<div style="font-size: 13px; margin-bottom: 4px; color:var(--text-main);">📱 <strong>${numWhatsApp}</strong></div>` : '';
+                let corRow = emailCliente ? `<div style="font-size: 12px; margin-top: 4px; display: flex; align-items: center; gap: 8px;">✉️ <span style="color: var(--text-muted);">${emailCliente}</span> <button onclick="copiarTexto('${emailCliente}')" class="btn-copiar" style="padding: 2px 8px; font-size: 11px;">📋 Copiar</button></div>` : '';
                 let tiempoTxt = user.meses == 0 ? "Pago Único" : `${user.meses || 1} ${user.unidad || 'Meses'}`;
 
                 tabla.innerHTML += `<tr>
                     <td>${telRow} ${corRow}</td>
-                    <td><strong>${user.servicio}</strong><br><span style="font-size:12px; color:#6B7280; font-weight:bold;">${tiempoTxt}</span></td>
-                    <td><strong style="color: #92400E;">${user.token || user.num_operacion || '---'}</strong></td>
-                    <td>${new Date(user.creado_en).toLocaleString('es-PE')}</td>
+                    <td><strong style="color:var(--text-main); font-size:15px;">${user.servicio}</strong><br><span style="font-size:12px; color:var(--text-muted); font-weight:600;">${tiempoTxt}</span></td>
+                    <td><strong style="color: var(--primary); background:#F5F3FF; padding:4px 8px; border-radius:6px;">${user.token || user.num_operacion || '---'}</strong></td>
+                    <td><span style="color:var(--text-muted); font-size:13px;">${new Date(user.creado_en).toLocaleString('es-PE')}</span></td>
                     <td style="display:flex; gap:8px;">
                         <button class="btn-aprobar" onclick="aprobarPago(${user.id})">✅ Aprobar</button>
                         <button class="btn-borrar" onclick="rechazarSolicitud(${user.id})">❌ Rechazar</button>
@@ -463,8 +628,7 @@
 
         async function rechazarSolicitud(id) {
             if(confirm("¿Rechazar y eliminar esta solicitud?")) {
-                await supabaseClient.from('usuarios_canva').delete().eq('id', id);
-                cargarDatosPrincipales();
+                await supabaseClient.from('usuarios_canva').delete().eq('id', id); cargarDatosPrincipales();
             }
         }
 
@@ -481,7 +645,7 @@
 
             document.getElementById('gestion-telefono').value = numEdit;
             document.getElementById('gestion-correo').value = corEdit;
-            document.getElementById('modal-gestionar-cliente').style.display = 'flex';
+            abrirModal('modal-gestionar-cliente');
         }
 
         async function guardarDatosContacto() {
@@ -500,7 +664,7 @@
             if (dias && !isNaN(dias)) {
                 let nuevaFecha = new Date(user.fecha_fin); nuevaFecha.setDate(nuevaFecha.getDate() + parseInt(dias));
                 await supabaseClient.from('usuarios_canva').update({ fecha_fin: nuevaFecha.toISOString().split('T')[0] }).eq('id', id);
-                alert("Días sumados."); document.getElementById('modal-gestionar-cliente').style.display = 'none'; cargarDatosPrincipales();
+                alert("Días sumados."); cerrarModal('modal-gestionar-cliente'); cargarDatosPrincipales();
             }
         }
 
@@ -513,7 +677,7 @@
                 let c = parseInt(user.meses); let u = user.unidad || 'meses';
                 if(u === 'dias') nuevaFecha.setDate(nuevaFecha.getDate() + c); else if(u === 'años') nuevaFecha.setFullYear(nuevaFecha.getFullYear() + c); else nuevaFecha.setMonth(nuevaFecha.getMonth() + c);
                 await supabaseClient.from('usuarios_canva').update({ estado: 'Activo', fecha_fin: nuevaFecha.toISOString().split('T')[0] }).eq('id', id);
-                alert("Renovado."); document.getElementById('modal-gestionar-cliente').style.display = 'none'; cargarDatosPrincipales();
+                alert("Renovado."); cerrarModal('modal-gestionar-cliente'); cargarDatosPrincipales();
             }
         }
 
@@ -523,7 +687,7 @@
             let eleccion = prompt(`NÚMERO del nuevo servicio:\n\n${opcionesStr}`);
             if (eleccion && !isNaN(eleccion) && catalogoOpciones[parseInt(eleccion) - 1]) {
                 await supabaseClient.from('usuarios_canva').update({ servicio: catalogoOpciones[parseInt(eleccion) - 1].nombre }).eq('id', id);
-                alert("Cambiado."); document.getElementById('modal-gestionar-cliente').style.display = 'none'; cargarDatosPrincipales();
+                alert("Cambiado."); cerrarModal('modal-gestionar-cliente'); cargarDatosPrincipales();
             }
         }
 
@@ -531,23 +695,23 @@
             let id = document.getElementById('gestion-id').value;
             if (confirm("¿Mover a Papelera?")) {
                 await supabaseClient.from('usuarios_canva').update({ estado: 'Cancelado', fecha_cancelacion: new Date().toISOString() }).eq('id', id);
-                document.getElementById('modal-gestionar-cliente').style.display = 'none'; cargarDatosPrincipales();
+                cerrarModal('modal-gestionar-cliente'); cargarDatosPrincipales();
             }
         }
 
         // ===== PAPELERA =====
         async function cargarPapelera() {
-            const tabla = document.getElementById('tabla-papelera'); tabla.innerHTML = '<tr><td colspan="5" style="text-align:center;">Cargando...</td></tr>';
+            const tabla = document.getElementById('tabla-papelera'); tabla.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 40px; color: var(--text-muted);">Cargando...</td></tr>';
             const { data } = await supabaseClient.from('usuarios_canva').select('*').eq('estado', 'Cancelado').order('fecha_cancelacion', { ascending: false });
-            if(!data || data.length === 0) return tabla.innerHTML = '<tr><td colspan="5" style="text-align:center;">Papelera vacía.</td></tr>';
+            if(!data || data.length === 0) return tabla.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 40px; color: var(--text-muted);">Papelera vacía.</td></tr>';
             tabla.innerHTML = '';
             data.forEach(user => {
                 let fechaCancel = user.fecha_cancelacion ? new Date(user.fecha_cancelacion).toLocaleString('es-PE') : '---';
                 tabla.innerHTML += `<tr>
-                    <td>${user.telefono || ''} ${user.correo || ''}</td>
-                    <td><strong>${user.servicio}</strong></td>
+                    <td><div style="font-size:13px; color:var(--text-main); font-weight:600;">${user.telefono || ''}</div><div style="font-size:12px; color:var(--text-muted);">${user.correo || ''}</div></td>
+                    <td><strong style="color:var(--text-main);">${user.servicio}</strong></td>
                     <td><span class="badge-cancelado">Cancelado</span></td>
-                    <td>${fechaCancel}</td>
+                    <td><span style="font-size:13px; color:var(--text-muted);">${fechaCancel}</span></td>
                     <td><button class="btn-aprobar" onclick="restaurarDePapelera(${user.id})">♻️ Restaurar</button></td>
                 </tr>`;
             });
@@ -565,35 +729,30 @@
         async function cargarServicios() {
             const { data } = await supabaseClient.from('servicios').select('*').order('id', { ascending: true });
             const tabla = document.getElementById('tabla-servicios'); tabla.innerHTML = '';
-            if(!data || data.length===0) return tabla.innerHTML = '<tr><td colspan="5" style="text-align:center;">No hay servicios.</td></tr>';
+            if(!data || data.length===0) return tabla.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 40px; color: var(--text-muted);">No hay servicios.</td></tr>';
 
-            // Actualizar datalist de categorías
-            const datalist = document.getElementById('opciones-categoria');
-            datalist.innerHTML = '';
+            const datalist = document.getElementById('opciones-categoria'); datalist.innerHTML = '';
             const categoriasUnicas = [...new Set(data.map(s => s.categoria).filter(Boolean))];
-            categoriasUnicas.forEach(cat => {
-                datalist.innerHTML += `<option value="${cat}"></option>`;
-            });
+            categoriasUnicas.forEach(cat => { datalist.innerHTML += `<option value="${cat}"></option>`; });
 
             data.forEach(serv => {
-                let geoText = '🌍 Todos';
-                if(serv.geo_tipo === 'solo') geoText = `✅ Solo: ${serv.geo_paises}`;
-                if(serv.geo_tipo === 'excepto') geoText = `❌ Excepto: ${serv.geo_paises}`;
+                let geoText = '<span style="color:#059669; font-weight:600;">🌍 Todos</span>';
+                if(serv.geo_tipo === 'solo') geoText = `<span style="color:#2563EB; font-weight:600;">✅ Solo:</span> ${serv.geo_paises}`;
+                if(serv.geo_tipo === 'excepto') geoText = `<span style="color:#DC2626; font-weight:600;">❌ Excepto:</span> ${serv.geo_paises}`;
 
                 let planes = serv.planes && serv.planes.length > 0 ? serv.planes : [{ cantidad: serv.meses || 1, unidad: 'meses', precio: serv.precio, promo: serv.precio_promocional }];
                 let txtPlanes = planes.map(p => {
-                    let cant = p.cantidad !== undefined ? p.cantidad : (p.meses || 1);
-                    let uni = p.unidad || 'meses';
+                    let cant = p.cantidad !== undefined ? p.cantidad : (p.meses || 1); let uni = p.unidad || 'meses';
                     let t = cant == 0 ? 'Único' : `${cant} ${uni.charAt(0).toUpperCase()}`;
-                    return `<span style="background:#E5E7EB; padding:4px 8px; border-radius:6px; font-size:12px; font-weight:bold; color:#374151; display:inline-block; margin-bottom:5px; margin-right:5px;">${t} (S/ ${p.promo || p.precio})</span>`;
+                    return `<span style="background:#F3F4F6; padding:4px 8px; border-radius:6px; font-size:12px; font-weight:700; color:var(--text-main); display:inline-block; margin-bottom:5px; margin-right:5px; border: 1px solid var(--border);">${t} (S/ ${p.promo || p.precio})</span>`;
                 }).join('');
                 
                 tabla.innerHTML += `<tr>
-                    <td><strong>${serv.imagen_url ? '🖼️ ' : ''}${serv.nombre}</strong></td>
-                    <td><span style="background:#DBEAFE; color:#1E3A8A; padding:4px 8px; border-radius:6px; font-size:12px; font-weight:bold;">${serv.categoria || '---'}</span></td>
-                    <td style="font-size: 12px; color: #92400E;">${geoText}</td>
+                    <td><div style="display:flex; align-items:center; gap:10px;">${serv.imagen_url ? `<img src="${serv.imagen_url}" style="width:40px; height:40px; border-radius:8px; object-fit:cover;">` : '📦'} <strong style="color:var(--text-main); font-size:15px;">${serv.nombre}</strong></div></td>
+                    <td><span style="background:#EFF6FF; color:#1E3A8A; padding:4px 8px; border-radius:6px; font-size:12px; font-weight:700;">${serv.categoria || '---'}</span></td>
+                    <td style="font-size: 12px; color: var(--text-muted);">${geoText}</td>
                     <td>${txtPlanes}</td>
-                    <td style="display:flex; gap:8px;"><button class="btn-primary" style="padding:6px 12px; font-size:13px;" onclick='editarServicio(${JSON.stringify(serv).replace(/'/g, "&apos;")})'>✏️ Editar</button><button class="btn-borrar" onclick="borrarServicio(${serv.id})">🗑️</button></td>
+                    <td style="display:flex; gap:8px;"><button class="btn-gestionar" onclick='editarServicio(${JSON.stringify(serv).replace(/'/g, "&apos;")})'>✏️ Editar</button><button class="btn-borrar" onclick="borrarServicio(${serv.id})">🗑️</button></td>
                 </tr>`;
             });
         }
@@ -601,31 +760,56 @@
         function agregarFilaPlan(c = 1, u = 'meses', p = '', pr = '') {
             const idFila = 'plan-' + Math.random().toString(36).substr(2, 5);
             document.getElementById('contenedor-planes').insertAdjacentHTML('beforeend', `
-                <div class="plan-row" id="${idFila}" style="display:flex; gap:10px; margin-bottom:15px; background:#F9FAFB; padding:15px; border-radius:8px; border:1px solid #E5E7EB; flex-wrap: wrap;">
-                    <div style="flex:1; min-width: 80px;"><label style="font-size:12px;">Tiempo (0=Único)</label><input type="number" class="plan-cantidad" value="${c}" min="0" style="padding:8px; width:100%; border:1px solid #ccc; border-radius:6px;"></div>
-                    <div style="flex:1; min-width: 100px;"><label style="font-size:12px;">Unidad</label>
-                        <select class="plan-unidad" style="padding:8px; width:100%; border:1px solid #ccc; border-radius:6px; font-size:14px; background:white;">
-                            <option value="dias" ${u==='dias'?'selected':''}>Días</option>
-                            <option value="meses" ${u==='meses'?'selected':''}>Meses</option>
-                            <option value="años" ${u==='años'?'selected':''}>Años</option>
+                <div class="plan-row" id="${idFila}" style="display:flex; gap:10px; margin-bottom:15px; background:#FFFFFF; padding:15px; border-radius:12px; border:1px solid var(--border); flex-wrap: wrap; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+                    <div style="flex:1; min-width: 80px;"><label style="font-size:12px; color:var(--text-muted);">Tiempo (0=Único)</label><input type="number" class="plan-cantidad" value="${c}" min="0" style="padding:10px; width:100%; border:2px solid var(--border); border-radius:8px; outline:none; transition:0.3s;" onfocus="this.style.borderColor='var(--primary)'" onblur="this.style.borderColor='var(--border)'"></div>
+                    <div style="flex:1; min-width: 100px;"><label style="font-size:12px; color:var(--text-muted);">Unidad</label>
+                        <select class="plan-unidad" style="padding:10px; width:100%; border:2px solid var(--border); border-radius:8px; font-size:14px; background:white; outline:none; transition:0.3s;" onfocus="this.style.borderColor='var(--primary)'" onblur="this.style.borderColor='var(--border)'">
+                            <option value="dias" ${u==='dias'?'selected':''}>Días</option><option value="meses" ${u==='meses'?'selected':''}>Meses</option><option value="años" ${u==='años'?'selected':''}>Años</option>
                         </select>
                     </div>
-                    <div style="flex:1; min-width: 90px;"><label style="font-size:12px;">Precio Normal</label><input type="number" class="plan-precio" value="${p}" step="0.10" style="padding:8px; width:100%; border:1px solid #ccc; border-radius:6px;"></div>
-                    <div style="flex:1; min-width: 90px;"><label style="font-size:12px;">Precio Oferta</label><input type="number" class="plan-promo" value="${pr}" step="0.10" style="padding:8px; width:100%; border:1px solid #ccc; border-radius:6px;"></div>
-                    <button style="background:#FEE2E2; color:#DC2626; border:none; border-radius:6px; cursor:pointer; padding:0 15px; font-weight:bold; margin-top:20px;" onclick="document.getElementById('${idFila}').remove()">X</button>
+                    <div style="flex:1; min-width: 90px;"><label style="font-size:12px; color:var(--text-muted);">Precio Normal</label><input type="number" class="plan-precio" value="${p}" step="0.10" style="padding:10px; width:100%; border:2px solid var(--border); border-radius:8px; outline:none; transition:0.3s;" onfocus="this.style.borderColor='var(--primary)'" onblur="this.style.borderColor='var(--border)'"></div>
+                    <div style="flex:1; min-width: 90px;"><label style="font-size:12px; color:var(--text-muted);">Precio Oferta</label><input type="number" class="plan-promo" value="${pr}" step="0.10" style="padding:10px; width:100%; border:2px solid var(--border); border-radius:8px; outline:none; transition:0.3s;" onfocus="this.style.borderColor='var(--primary)'" onblur="this.style.borderColor='var(--border)'"></div>
+                    <button style="background:#FEE2E2; color:#DC2626; border:none; border-radius:8px; cursor:pointer; padding:0 15px; font-weight:bold; margin-top:22px; transition:0.2s;" onclick="document.getElementById('${idFila}').remove()" onmouseover="this.style.background='#FECACA'" onmouseout="this.style.background='#FEE2E2'">X</button>
                 </div>
             `);
         }
 
+        // ====== SOLUCIÓN AL PROBLEMA DE LA IMAGEN ======
         async function subirImagen(input) {
-            const file = input.files[0]; if (!file) return;
-            const statusText = document.getElementById('upload-status'); const btnGuardar = document.getElementById('btn-guardar-servicio');
-            statusText.style.display = 'block'; statusText.innerText = "Subiendo..."; btnGuardar.disabled = true; 
-            const { error } = await supabaseClient.storage.from('imagenes_servicios').upload(`${Math.random()}.${file.name.split('.').pop()}`, file);
-            if (error) { statusText.innerText = "Error"; btnGuardar.disabled = false; return; }
-            const { data } = supabaseClient.storage.from('imagenes_servicios').getPublicUrl(`${Math.random()}.${file.name.split('.').pop()}`);
-            document.getElementById('serv-imagen-url').value = data.publicUrl; document.getElementById('serv-imagen-preview').src = data.publicUrl; document.getElementById('serv-imagen-preview').style.display = 'inline-block';
-            statusText.innerText = "¡Éxito!"; btnGuardar.disabled = false;
+            const file = input.files[0]; 
+            if (!file) return;
+            
+            const statusText = document.getElementById('upload-status'); 
+            const btnGuardar = document.getElementById('btn-guardar-servicio');
+            const preview = document.getElementById('serv-imagen-preview');
+            
+            statusText.style.display = 'block'; 
+            statusText.innerText = "Subiendo imagen a la nube..."; 
+            statusText.style.color = "#F59E0B"; 
+            btnGuardar.disabled = true; 
+            
+            const fileExt = file.name.split('.').pop().toLowerCase();
+            const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+
+            const { data: uploadData, error } = await supabaseClient.storage
+                .from('imagenes_servicios')
+                .upload(fileName, file, { cacheControl: '3600', upsert: false });
+                
+            if (error) { 
+                statusText.innerText = "Error al subir: " + error.message; 
+                statusText.style.color = "#DC2626"; btnGuardar.disabled = false; return; 
+            }
+
+            const { data } = supabaseClient.storage.from('imagenes_servicios').getPublicUrl(fileName);
+
+            if (data && data.publicUrl) {
+                document.getElementById('serv-imagen-url').value = data.publicUrl; 
+                preview.src = data.publicUrl; preview.style.display = 'inline-block';
+                statusText.innerText = "¡Imagen lista!"; statusText.style.color = "#10B981"; 
+            } else {
+                statusText.innerText = "Error al generar enlace."; statusText.style.color = "#DC2626"; 
+            }
+            btnGuardar.disabled = false;
         }
 
         function abrirModalServicio() {
@@ -633,46 +817,22 @@
             document.getElementById('serv-tipo-ingreso').value = 'numero'; document.getElementById('serv-geo-tipo').value = 'todos'; document.getElementById('serv-geo-paises').value = ''; toggleGeoInput();
             document.getElementById('serv-etiqueta').value = ''; document.getElementById('serv-caracteristicas').value = '';
             document.getElementById('serv-imagen-url').value = ''; document.getElementById('serv-imagen-file').value = ''; document.getElementById('serv-imagen-preview').style.display = 'none'; document.getElementById('upload-status').style.display = 'none';
-            document.getElementById('contenedor-planes').innerHTML = ''; agregarFilaPlan(1, 'meses'); document.getElementById('modal-servicio').style.display = 'flex';
+            document.getElementById('contenedor-planes').innerHTML = ''; agregarFilaPlan(1, 'meses'); abrirModal('modal-servicio');
         }
 
-        // ====== SOLUCIÓN AL PROBLEMA DE EDITAR SERVICIO ======
         function editarServicio(serv) {
-            // 1. Asignar IDs básicos
-            document.getElementById('serv-id').value = serv.id; 
-            document.getElementById('serv-nombre').value = serv.nombre || ''; 
-            document.getElementById('serv-categoria').value = serv.categoria || ''; 
-            document.getElementById('serv-tipo-ingreso').value = serv.tipo_ingreso || 'numero'; 
+            document.getElementById('serv-id').value = serv.id; document.getElementById('serv-nombre').value = serv.nombre || ''; document.getElementById('serv-categoria').value = serv.categoria || ''; 
+            document.getElementById('serv-tipo-ingreso').value = serv.tipo_ingreso || 'numero'; document.getElementById('serv-geo-tipo').value = serv.geo_tipo || 'todos'; document.getElementById('serv-geo-paises').value = serv.geo_paises || ''; toggleGeoInput();
+            document.getElementById('serv-etiqueta').value = serv.etiqueta || ''; document.getElementById('serv-caracteristicas').value = serv.caracteristicas || '';
             
-            // 2. Asignar Georeferenciación
-            document.getElementById('serv-geo-tipo').value = serv.geo_tipo || 'todos'; 
-            document.getElementById('serv-geo-paises').value = serv.geo_paises || ''; 
-            toggleGeoInput();
+            if (serv.imagen_url) { document.getElementById('serv-imagen-url').value = serv.imagen_url; document.getElementById('serv-imagen-preview').src = serv.imagen_url; document.getElementById('serv-imagen-preview').style.display = 'inline-block'; } 
+            else { document.getElementById('serv-imagen-url').value = ''; document.getElementById('serv-imagen-preview').style.display = 'none'; }
             
-            // 3. Asignar Textos y Etiquetas (¡Aquí estaba el error de los campos en blanco!)
-            document.getElementById('serv-etiqueta').value = serv.etiqueta || ''; 
-            document.getElementById('serv-caracteristicas').value = serv.caracteristicas || '';
-            
-            // 4. Asignar Imagen
-            if (serv.imagen_url) { 
-                document.getElementById('serv-imagen-url').value = serv.imagen_url; 
-                document.getElementById('serv-imagen-preview').src = serv.imagen_url; 
-                document.getElementById('serv-imagen-preview').style.display = 'inline-block'; 
-            } else { 
-                document.getElementById('serv-imagen-url').value = ''; 
-                document.getElementById('serv-imagen-preview').style.display = 'none'; 
-            }
-            
-            // 5. Asignar Planes
             document.getElementById('contenedor-planes').innerHTML = '';
             let planes = serv.planes && serv.planes.length > 0 ? serv.planes : [{ cantidad: serv.meses || 1, unidad: 'meses', precio: serv.precio, promo: serv.precio_promocional }];
             planes.forEach(p => agregarFilaPlan(p.cantidad !== undefined ? p.cantidad : p.meses, p.unidad || 'meses', p.precio, p.promo || ''));
-            
-            // 6. Mostrar el Modal
-            document.getElementById('modal-servicio').style.display = 'flex';
+            abrirModal('modal-servicio');
         }
-
-        function cerrarModalServicio() { document.getElementById('modal-servicio').style.display = 'none'; }
 
         async function guardarServicio() {
             let id = document.getElementById('serv-id').value;
@@ -685,6 +845,8 @@
                 if(c >= 0 && !isNaN(p)) planesGuardar.push({ cantidad: c, unidad: row.querySelector('.plan-unidad').value, precio: p, promo: isNaN(pr) ? null : pr });
             });
 
+            if(!nombre || planesGuardar.length === 0) return alert("Faltan datos. El servicio necesita nombre y al menos 1 precio.");
+
             const datos = { 
                 nombre: nombre, categoria: catInput ? catInput.charAt(0).toUpperCase() + catInput.slice(1).toLowerCase() : null, tipo_ingreso: document.getElementById('serv-tipo-ingreso').value,
                 geo_tipo: document.getElementById('serv-geo-tipo').value, geo_paises: document.getElementById('serv-geo-paises').value.trim().toUpperCase(),
@@ -694,7 +856,7 @@
             };
             
             if(id) await supabaseClient.from('servicios').update(datos).eq('id', id); else await supabaseClient.from('servicios').insert([datos]);
-            cerrarModalServicio(); cargarServicios();
+            cerrarModal('modal-servicio'); cargarServicios();
         }
 
         async function borrarServicio(id) { if (confirm("¿Borrar servicio?")) { await supabaseClient.from('servicios').delete().eq('id', id); cargarServicios(); } }
@@ -716,18 +878,17 @@
         }
 
         async function abrirSeguridad() {
-            document.getElementById('modal-seguridad').style.display = 'flex';
-            const cont = document.getElementById('lista-dispositivos'); cont.innerHTML = 'Cargando accesos...';
+            abrirModal('modal-seguridad');
+            const cont = document.getElementById('lista-dispositivos'); cont.innerHTML = '<p style="text-align:center; color:var(--text-muted);">Cargando accesos...</p>';
             const { data, error } = await supabaseClient.from('admin_accesos').select('*').order('fecha', { ascending: false }).limit(10);
-            if (error || !data) { cont.innerHTML = '<p>Error al cargar el historial.</p>'; return; }
+            if (error || !data) { cont.innerHTML = '<p style="color:red; text-align:center;">Error al cargar el historial.</p>'; return; }
             cont.innerHTML = '';
             data.forEach((acc, index) => {
                 let f = new Date(acc.fecha).toLocaleString('es-PE', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' });
-                let etiqueta = index === 0 ? '<span style="background:#10B981; color:white; padding:2px 8px; border-radius:12px; font-size:11px; margin-left:8px;">Actual</span>' : '';
-                cont.innerHTML += `<div style="padding:15px; border-bottom:1px solid #E5E7EB;"><h4 style="margin:0 0 5px 0;">${acc.dispositivo} ${etiqueta}</h4><p style="margin:0;font-size:13px;color:#6b7280">${acc.navegador} • ${f}</p></div>`;
+                let etiqueta = index === 0 ? '<span style="background:#D1FAE5; color:#059669; padding:2px 8px; border-radius:12px; font-size:11px; margin-left:8px; font-weight:bold;">Actual</span>' : '';
+                cont.innerHTML += `<div style="padding:15px; border-bottom:1px solid var(--border);"><h4 style="margin:0 0 5px 0; color:var(--text-main); font-size:14px;">${acc.dispositivo} ${etiqueta}</h4><p style="margin:0;font-size:12px;color:var(--text-muted);">${acc.navegador} • ${f}</p></div>`;
             });
         }
-        function cerrarSeguridad() { document.getElementById('modal-seguridad').style.display = 'none'; }
     </script>
 </body>
 </html>
