@@ -7,26 +7,172 @@ const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
 let productoSeleccionado = { nombre: '', precio: 0, cantidad: 1, unidad: 'meses', tipo_ingreso: 'numero' };
 const numeroWhatsApp = "51928293163"; 
 
+// SISTEMA DE SESIÓN DEL CLIENTE
+let userPhone = localStorage.getItem('vega_user_phone') || null;
+
 const modalCompra = document.getElementById('modal-compra');
-const modalTiempo = document.getElementById('modal-tiempo');
 const inputDatoCompra = document.getElementById('correo-compra');
 const alertaDato = document.getElementById('alerta-correo');
 const otpBoxes = document.querySelectorAll('.otp-box');
 
 // =====================================
-// CARGAR CATÁLOGO
+// INICIO Y SESIÓN
+// =====================================
+document.addEventListener('DOMContentLoaded', () => {
+    actualizarBotonHeader();
+    cargarCatalogo();
+});
+
+function actualizarBotonHeader() {
+    const btn = document.getElementById('btn-header-cuenta');
+    if (userPhone) {
+        btn.innerText = "👤 Mi Panel";
+        btn.style.background = "var(--primary-gradient)";
+        btn.style.color = "white";
+        btn.style.border = "none";
+    } else {
+        btn.innerText = "Ingresar";
+        btn.style.background = "#F3F4F6";
+        btn.style.color = "#1F2937";
+    }
+}
+
+function abrirMiCuenta() {
+    if (userPhone) {
+        document.getElementById('panel-telefono-txt').innerText = userPhone;
+        document.getElementById('modal-panel-cliente').classList.remove('oculto');
+        cargarMisServicios();
+    } else {
+        document.getElementById('modal-login').classList.remove('oculto');
+    }
+}
+
+function procesarLogin() {
+    let input = document.getElementById('login-telefono').value.replace(/\D/g,'');
+    if(input.length < 9) return mostrarNotificacion("⚠️ Por favor ingresa un número de WhatsApp válido.");
+    
+    userPhone = input;
+    localStorage.setItem('vega_user_phone', userPhone);
+    document.getElementById('modal-login').classList.add('oculto');
+    actualizarBotonHeader();
+    mostrarNotificacion("✅ Sesión iniciada correctamente.");
+    abrirMiCuenta();
+}
+
+function cerrarSesionCliente() {
+    localStorage.removeItem('vega_user_phone');
+    userPhone = null;
+    document.getElementById('modal-panel-cliente').classList.add('oculto');
+    actualizarBotonHeader();
+}
+
+// =====================================
+// PANEL DEL CLIENTE (Servicios y Promos)
+// =====================================
+window.switchPanelTab = function(tab) {
+    document.querySelectorAll('.panel-tabs .tab-btn').forEach(btn => btn.classList.remove('active'));
+    document.querySelectorAll('.panel-tab-content').forEach(content => content.style.display = 'none');
+    
+    document.getElementById(`btn-tab-${tab}`).classList.add('active');
+    document.getElementById(`panel-tab-${tab}`).style.display = 'block';
+    
+    if(tab === 'servicios') cargarMisServicios();
+    if(tab === 'promos') cargarPromociones();
+}
+
+async function cargarMisServicios() {
+    const contenedor = document.getElementById('lista-mis-servicios');
+    contenedor.innerHTML = '<p style="text-align: center; color: #6b7280;">Buscando tus servicios...</p>';
+    
+    const { data, error } = await supabaseClient.from('usuarios_canva').select('*').eq('telefono', userPhone).order('creado_en', { ascending: false });
+    
+    if (error || !data || data.length === 0) {
+        contenedor.innerHTML = '<p style="text-align: center; color: #6b7280;">No tienes servicios registrados aún.</p>';
+        return;
+    }
+
+    contenedor.innerHTML = '';
+    data.forEach(item => {
+        let estadoBadge = item.estado === 'Activo' ? '<span style="background:#D1FAE5; color:#059669; padding:4px 8px; border-radius:6px; font-size:11px; font-weight:bold;">✔️ Activo</span>' : '<span style="background:#FEF3C7; color:#D97706; padding:4px 8px; border-radius:6px; font-size:11px; font-weight:bold;">⏳ Pendiente</span>';
+        
+        let infoTiempo = '';
+        if (item.estado === 'Activo') {
+            if (item.meses == 0 || !item.fecha_fin) {
+                infoTiempo = '<span style="color:var(--primary); font-weight:bold; font-size:13px;">Acceso Permanente</span>';
+            } else {
+                let hoy = new Date(); let fin = new Date(item.fecha_fin);
+                let dias = Math.ceil((fin.getTime() - hoy.getTime()) / (1000 * 3600 * 24));
+                if (dias > 0) infoTiempo = `<span style="color:#10B981; font-weight:bold; font-size:13px;">Quedan ${dias} días</span>`;
+                else infoTiempo = `<span style="color:#DC2626; font-weight:bold; font-size:13px;">Vencido</span>`;
+            }
+        }
+
+        contenedor.innerHTML += `
+            <div class="item-servicio-cliente">
+                <div>
+                    <h4 style="margin: 0 0 5px 0; font-size: 15px;">${item.servicio}</h4>
+                    <p style="margin: 0; font-size: 12px; color: #6B7280;">Contratado: ${new Date(item.creado_en).toLocaleDateString()}</p>
+                </div>
+                <div style="text-align: right;">
+                    ${estadoBadge}<br>
+                    <div style="margin-top: 5px;">${infoTiempo}</div>
+                </div>
+            </div>
+        `;
+    });
+}
+
+async function cargarPromociones() {
+    const contenedor = document.getElementById('lista-promociones');
+    contenedor.innerHTML = '<p style="text-align: center; color: #6b7280;">Buscando promociones...</p>';
+    
+    // Verificamos si el usuario tiene compras activas para los requisitos
+    const { data: compras } = await supabaseClient.from('usuarios_canva').select('id').eq('telefono', userPhone).eq('estado', 'Activo');
+    let tieneCompras = compras && compras.length > 0;
+
+    const { data, error } = await supabaseClient.from('promociones').select('*').eq('activo', true);
+    
+    if (error || !data || data.length === 0) {
+        contenedor.innerHTML = '<p style="text-align: center; color: #6b7280;">No hay promociones disponibles en este momento.</p>';
+        return;
+    }
+
+    contenedor.innerHTML = '';
+    data.forEach(promo => {
+        let bloqueado = promo.requisito_compra && !tieneCompras;
+        let btnHtml = bloqueado 
+            ? `<button style="background:#D1D5DB; color:white; border:none; padding:8px 12px; border-radius:8px; font-size:12px; font-weight:bold; cursor:not-allowed;">Requiere compra previa</button>`
+            : `<a href="https://wa.me/${numeroWhatsApp}?text=Hola, quiero reclamar la promo: *${promo.titulo}* por S/${promo.precio_promo}" target="_blank" style="background:var(--primary); color:white; text-decoration:none; padding:8px 12px; border-radius:8px; font-size:12px; font-weight:bold; display:inline-block;">Reclamar Promo</a>`;
+
+        contenedor.innerHTML += `
+            <div class="item-promo">
+                <h4 style="margin: 0 0 5px 0; font-size: 16px; color:#92400E;">🎁 ${promo.titulo}</h4>
+                <p style="margin: 0 0 10px 0; font-size: 13px; color: #B45309;">${promo.descripcion}</p>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="font-size: 18px; font-weight: 900; color: #B45309;">S/ ${promo.precio_promo}</span>
+                    ${btnHtml}
+                </div>
+            </div>
+        `;
+    });
+}
+
+// =====================================
+// CARGAR CATÁLOGO Y RENDERIZAR
 // =====================================
 async function cargarCatalogo() {
-    try {
-        const { data: servicios, error } = await supabaseClient.from('servicios').select('*').order('id', { ascending: true });
-        if (error) throw error;
-        catalogoGlobal = servicios;
-        generarBotonesCategorias(catalogoGlobal);
-        renderizarCatalogo(catalogoGlobal);
-    } catch (error) {
-        console.error("Error:", error);
-        document.getElementById('contenedor-servicios').innerHTML = '<p style="color: red; text-align: center; grid-column: 1/-1;">Error al cargar los servicios.</p>';
-    }
+    const { data: servicios } = await supabaseClient.from('servicios').select('*').order('id', { ascending: true });
+    catalogoGlobal = servicios || [];
+    generarBotonesCategorias(catalogoGlobal);
+    renderizarCatalogo(catalogoGlobal);
+}
+
+function formatTiempo(c, u) {
+    if (c == 0) return "Pago Único";
+    let uni = u || 'meses';
+    if (c == 1) { if(uni==='meses') uni='Mes'; if(uni==='dias') uni='Día'; if(uni==='años') uni='Año'; } 
+    else { if(uni==='meses') uni='Meses'; if(uni==='dias') uni='Días'; if(uni==='años') uni='Años'; }
+    return `${c} ${uni}`;
 }
 
 function generarBotonesCategorias(servicios) {
@@ -38,293 +184,174 @@ function generarBotonesCategorias(servicios) {
     contenedorFiltros.innerHTML = html;
 }
 
-function formatTiempo(cantidad, unidad) {
-    if (cantidad == 0) return "Pago Único";
-    let u = unidad || 'meses';
-    if (cantidad == 1) {
-        if(u==='meses') u='Mes'; if(u==='dias') u='Día'; if(u==='años') u='Año';
-    } else {
-        if(u==='meses') u='Meses'; if(u==='dias') u='Días'; if(u==='años') u='Años';
-    }
-    return `${cantidad} ${u}`;
-}
-
-// =====================================
-// RENDERIZAR TARJETAS
-// =====================================
 function renderizarCatalogo(serviciosParaMostrar) {
     const contenedor = document.getElementById('contenedor-servicios');
     contenedor.innerHTML = ''; 
-    if (serviciosParaMostrar.length === 0) { contenedor.innerHTML = '<p style="text-align: center; grid-column: 1/-1; color: var(--text-light);">No hay servicios aquí.</p>'; return; }
+    if (serviciosParaMostrar.length === 0) { contenedor.innerHTML = '<p style="text-align: center; grid-column: 1/-1;">No hay servicios aquí.</p>'; return; }
 
     serviciosParaMostrar.forEach((servicio, indexServicio) => {
-        let planes = servicio.planes || [];
-        if (planes.length === 0) planes = [{ cantidad: servicio.meses || 1, unidad: 'meses', precio: servicio.precio, promo: servicio.precio_promocional }];
-
-        let planesOrdenados = [...planes].sort((a, b) => {
-            let pA = a.promo ? parseFloat(a.promo) : parseFloat(a.precio);
-            let pB = b.promo ? parseFloat(b.promo) : parseFloat(b.precio);
-            return pA - pB;
-        });
+        let planes = servicio.planes || [{ cantidad: servicio.meses || 1, unidad: 'meses', precio: servicio.precio, promo: servicio.precio_promocional }];
+        let planesOrdenados = [...planes].sort((a, b) => (a.promo ? parseFloat(a.promo) : parseFloat(a.precio)) - (b.promo ? parseFloat(b.promo) : parseFloat(b.precio)));
         
         const generarHtmlPrecioLimpio = (plan) => {
-            let precioNormal = parseFloat(plan.precio);
-            let precioOferta = plan.promo ? parseFloat(plan.promo) : null;
-            
-            if (precioOferta && precioOferta < precioNormal) {
-                return `
-                    <div style="display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;">
-                        <span style="font-size: 26px; color: #10B981; font-weight: 800; line-height: 1;">S/ ${precioOferta.toFixed(2)}</span>
-                        <span style="font-size: 14px; color: #9CA3AF; text-decoration: line-through;">S/ ${precioNormal.toFixed(2)}</span>
-                    </div>
-                `;
-            } else {
-                return `
-                    <div style="display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;">
-                        <span style="font-size: 26px; font-weight: 800; color: var(--text-dark); line-height: 1;">S/ ${precioNormal.toFixed(2)}</span>
-                    </div>
-                `;
-            }
+            let pNorm = parseFloat(plan.precio); let pOfe = plan.promo ? parseFloat(plan.promo) : null;
+            if (pOfe && pOfe < pNorm) return `<div style="display:flex; align-items:baseline; gap:8px; flex-wrap:wrap;"><span style="font-size:26px; color:#10B981; font-weight:800; line-height:1;">S/ ${pOfe.toFixed(2)}</span><span style="font-size:14px; color:#9CA3AF; text-decoration:line-through;">S/ ${pNorm.toFixed(2)}</span></div>`;
+            return `<div style="display:flex; align-items:baseline; gap:8px; flex-wrap:wrap;"><span style="font-size:26px; font-weight:800; color:var(--text-dark); line-height:1;">S/ ${pNorm.toFixed(2)}</span></div>`;
         };
 
         let htmlPlanesInteractivos = '';
         if (planesOrdenados.length > 1) {
-            let pills = planesOrdenados.map((p, indexPlan) => {
-                let c = p.cantidad !== undefined ? p.cantidad : (p.meses !== undefined ? p.meses : 1);
-                let u = p.unidad || 'meses';
-                let t = c == 0 ? 'Único' : formatTiempo(c, u);
-                let activeStyle = indexPlan === 0 ? 'background: #111827; color: white; border: 1px solid #111827;' : 'background: #F9FAFB; color: #6B7280; border: 1px solid #E5E7EB;';
-                return `<button class="btn-plan-tarjeta" data-servicio="${indexServicio}" data-plan="${indexPlan}" style="padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: bold; cursor: pointer; transition: 0.2s; ${activeStyle}">${t}</button>`;
+            let pills = planesOrdenados.map((p, i) => {
+                let t = p.cantidad == 0 ? 'Único' : formatTiempo(p.cantidad, p.unidad);
+                let activeStyle = i === 0 ? 'background:#111827; color:white; border:1px solid #111827;' : 'background:#F9FAFB; color:#6B7280; border:1px solid #E5E7EB;';
+                return `<button class="btn-plan-tarjeta" data-servicio="${indexServicio}" data-plan="${i}" style="padding:4px 10px; border-radius:6px; font-size:11px; font-weight:bold; cursor:pointer; transition:0.2s; ${activeStyle}">${t}</button>`;
             }).join('');
-            htmlPlanesInteractivos = `<div style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 15px;" id="contenedor-planes-${indexServicio}">${pills}</div>`;
+            htmlPlanesInteractivos = `<div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:15px;">${pills}</div>`;
         }
 
-        const servicioJSON = JSON.stringify(servicio).replace(/'/g, "&apos;");
-        const imagenHtml = servicio.imagen_url 
-            ? `<img src="${servicio.imagen_url}" class="card-img-top" alt="${servicio.nombre}" onclick='abrirModalDetalles(${servicioJSON})'>`
-            : `<div class="card-img-top" style="display:flex; align-items:center; justify-content:center; color:#64748b; font-size:12px;" onclick='abrirModalDetalles(${servicioJSON})'>Sin imagen</div>`;
+        const sJSON = JSON.stringify(servicio).replace(/'/g, "&apos;");
+        const imgHtml = servicio.imagen_url ? `<img src="${servicio.imagen_url}" class="card-img-top" onclick='abrirModalDetalles(${sJSON})'>` : `<div class="card-img-top" style="display:flex; align-items:center; justify-content:center; color:#64748b; font-size:12px;" onclick='abrirModalDetalles(${sJSON})'>Sin imagen</div>`;
 
-        const card = document.createElement('div');
-        card.className = 'card';
+        const card = document.createElement('div'); card.className = 'card';
         card.innerHTML = `
-            ${imagenHtml}
-            ${servicio.etiqueta ? `<div class="badge" style="position: absolute; top: -15px; right: 20px; background: var(--primary-gradient); color: white; padding: 6px 16px; border-radius: 20px; font-size: 13px; font-weight: 700;">${servicio.etiqueta}</div>` : ''}
-            <div style="font-size: 12px; color: #6B7280; margin-bottom: 5px; font-weight: bold; text-transform: uppercase;">${servicio.categoria || 'Servicio'}</div>
-            <h2 style="font-size: 18px; margin-bottom: 12px; line-height: 1.2;">${servicio.nombre}</h2>
-            
+            ${imgHtml}
+            ${servicio.etiqueta ? `<div class="badge" style="position:absolute; top:-15px; right:20px; background:var(--primary-gradient); color:white; padding:6px 16px; border-radius:20px; font-size:13px; font-weight:700;">${servicio.etiqueta}</div>` : ''}
+            <div style="font-size:12px; color:#6B7280; margin-bottom:5px; font-weight:bold; text-transform:uppercase;">${servicio.categoria || 'Servicio'}</div>
+            <h2 style="font-size:18px; margin-bottom:12px; line-height:1.2;">${servicio.nombre}</h2>
             ${htmlPlanesInteractivos}
-            
-            <div class="price" id="precio-tarjeta-${indexServicio}" style="margin-bottom: 15px;">${generarHtmlPrecioLimpio(planesOrdenados[0])}</div>
-            
-            <div class="card-botones-mini" style="display: flex; gap: 8px; margin-top: auto;">
-                <button class="btn-detalles" style="flex: 1; background: #F3F4F6; color: #4B5563; border: none; padding: 10px 5px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 13px;" onclick='abrirModalDetalles(${servicioJSON})'>Detalles</button>
-                <button class="btn-primary" id="btn-comprar-tarjeta-${indexServicio}" style="flex: 1; padding: 10px 5px; font-size: 13px;">Comprar</button>
+            <div class="price" id="precio-tarjeta-${indexServicio}" style="margin-bottom:15px;">${generarHtmlPrecioLimpio(planesOrdenados[0])}</div>
+            <div class="card-botones-mini" style="display:flex; gap:8px; margin-top:auto;">
+                <button class="btn-detalles" style="flex:1; background:#F3F4F6; color:#4B5563; border:none; padding:10px 5px; border-radius:8px; font-weight:bold; cursor:pointer; font-size:13px;" onclick='abrirModalDetalles(${sJSON})'>Detalles</button>
+                <button class="btn-primary" id="btn-comprar-tarjeta-${indexServicio}" style="flex:1; padding:10px 5px; font-size:13px;">Comprar</button>
             </div>
         `;
         contenedor.appendChild(card);
 
         let btnComprar = card.querySelector(`#btn-comprar-tarjeta-${indexServicio}`);
-        btnComprar.onclick = () => {
-            let planBaseToBuy = { ...servicio, ...planesOrdenados[0], nombre: servicio.nombre, tipo_ingreso: servicio.tipo_ingreso };
-            prepararCompra(planBaseToBuy);
-        };
+        btnComprar.onclick = () => prepararCompra({ ...servicio, ...planesOrdenados[0], nombre: servicio.nombre, tipo_ingreso: servicio.tipo_ingreso });
 
         if (planesOrdenados.length > 1) {
-            const botonesPlanes = card.querySelectorAll(`.btn-plan-tarjeta`);
-            botonesPlanes.forEach(btn => {
+            const btns = card.querySelectorAll(`.btn-plan-tarjeta`);
+            btns.forEach(btn => {
                 btn.addEventListener('click', (e) => {
-                    botonesPlanes.forEach(b => { b.style.background = '#F9FAFB'; b.style.color = '#6B7280'; b.style.border = '1px solid #E5E7EB'; });
+                    btns.forEach(b => { b.style.background = '#F9FAFB'; b.style.color = '#6B7280'; b.style.border = '1px solid #E5E7EB'; });
                     e.target.style.background = '#111827'; e.target.style.color = 'white'; e.target.style.border = '1px solid #111827';
-                    
-                    let idxPlan = e.target.getAttribute('data-plan');
-                    let planElegido = planesOrdenados[idxPlan];
-                    
+                    let planElegido = planesOrdenados[e.target.getAttribute('data-plan')];
                     document.getElementById(`precio-tarjeta-${indexServicio}`).innerHTML = generarHtmlPrecioLimpio(planElegido);
-                    
-                    btnComprar.onclick = () => {
-                        let planToBuy = { ...servicio, ...planElegido, nombre: servicio.nombre, tipo_ingreso: servicio.tipo_ingreso };
-                        prepararCompra(planToBuy);
-                    };
+                    btnComprar.onclick = () => prepararCompra({ ...servicio, ...planElegido, nombre: servicio.nombre, tipo_ingreso: servicio.tipo_ingreso });
                 });
             });
         }
     });
 }
 
-// 3. ABRIR MODAL DE DETALLES
 window.abrirModalDetalles = function(servicio) {
     const modal = document.getElementById('modal-detalles');
-    
-    let planes = servicio.planes || [];
-    if (planes.length === 0) planes = [{ cantidad: 1, unidad: 'meses', precio: servicio.precio, promo: servicio.precio_promocional }];
-    
-    planes = planes.map(p => ({
-        cantidad: p.cantidad !== undefined ? p.cantidad : (p.meses !== undefined ? p.meses : 1),
-        unidad: p.unidad || 'meses',
-        precio: p.precio, promo: p.promo
-    })).sort((a, b) => {
-        let pA = a.promo ? parseFloat(a.promo) : parseFloat(a.precio);
-        let pB = b.promo ? parseFloat(b.promo) : parseFloat(b.precio);
-        return pA - pB;
-    });
+    let planes = servicio.planes || [{ cantidad: 1, unidad: 'meses', precio: servicio.precio, promo: servicio.precio_promocional }];
+    planes = planes.map(p => ({ cantidad: p.cantidad !== undefined ? p.cantidad : (p.meses || 1), unidad: p.unidad || 'meses', precio: p.precio, promo: p.promo })).sort((a, b) => (a.promo ? parseFloat(a.promo) : parseFloat(a.precio)) - (b.promo ? parseFloat(b.promo) : parseFloat(b.precio)));
 
     const img = document.getElementById('detalles-imagen');
     if(servicio.imagen_url) { img.src = servicio.imagen_url; img.style.display = 'block'; } else { img.style.display = 'none'; }
     
     const badge = document.getElementById('detalles-badge');
-    if(servicio.etiqueta) { 
-        badge.innerText = servicio.etiqueta; badge.style.display = 'inline-block'; badge.style.background = 'var(--primary-gradient)';
-        badge.style.color = 'white'; badge.style.padding = '6px 16px'; badge.style.borderRadius = '20px'; badge.style.fontSize = '13px'; badge.style.fontWeight = '700';
-    } else { badge.style.display = 'none'; }
+    if(servicio.etiqueta) { badge.innerText = servicio.etiqueta; badge.style.display = 'inline-block'; badge.style.background = 'var(--primary-gradient)'; badge.style.color = 'white'; badge.style.padding = '6px 16px'; badge.style.borderRadius = '20px'; badge.style.fontSize = '13px'; badge.style.fontWeight = '700'; } else { badge.style.display = 'none'; }
     
     document.getElementById('detalles-titulo').innerText = servicio.nombre;
     
     const renderPrecioModal = (plan) => {
-        let pNorm = parseFloat(plan.precio);
-        let pOfe = plan.promo ? parseFloat(plan.promo) : null;
+        let pNorm = parseFloat(plan.precio); let pOfe = plan.promo ? parseFloat(plan.promo) : null;
         let txtTiempo = plan.cantidad == 0 ? "Permanente" : formatTiempo(plan.cantidad, plan.unidad);
-        
-        if (pOfe && pOfe < pNorm) {
-            return `
-                <div style="display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap;">
-                    <span class="precio-tachado" style="text-decoration: line-through; color: #9CA3AF; font-size: 16px;">S/ ${pNorm.toFixed(2)}</span> 
-                    <span class="precio-oferta" style="color: #10B981; font-size: 32px; font-weight: 800;">S/ ${pOfe.toFixed(2)}</span>
-                </div>
-                <div style="font-size:14px; color:#6B7280; margin-top: 5px;">por ${txtTiempo}</div>
-            `;
-        } else {
-            return `
-                <div style="display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap;">
-                    <span style="font-size: 32px; font-weight: 800; color: var(--text-dark);">S/ ${pNorm.toFixed(2)}</span>
-                </div>
-                <div style="font-size:14px; color:#6B7280; margin-top: 5px;">por ${txtTiempo}</div>
-            `;
-        }
+        if (pOfe && pOfe < pNorm) return `<div style="display:flex; align-items:center; justify-content:center; gap:10px; flex-wrap:wrap;"><span class="precio-tachado" style="text-decoration:line-through; color:#9CA3AF; font-size:16px;">S/ ${pNorm.toFixed(2)}</span> <span class="precio-oferta" style="color:#10B981; font-size:32px; font-weight:800;">S/ ${pOfe.toFixed(2)}</span></div><div style="font-size:14px; color:#6B7280; margin-top:5px;">por ${txtTiempo}</div>`;
+        return `<div style="display:flex; align-items:center; justify-content:center; gap:10px; flex-wrap:wrap;"><span style="font-size:32px; font-weight:800; color:var(--text-dark);">S/ ${pNorm.toFixed(2)}</span></div><div style="font-size:14px; color:#6B7280; margin-top:5px;">por ${txtTiempo}</div>`;
     };
 
     const box = document.getElementById('detalles-precio-box');
     let htmlPlanes = '';
     if (planes.length > 1) {
-        htmlPlanes = `<div style="font-size: 13px; color: var(--text-light); margin-bottom: 10px; font-weight: bold;">Elige tu plan:</div>
-                      <div id="lista-botones-planes" style="display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-bottom: 20px;">`;
+        htmlPlanes = `<div style="font-size:13px; color:var(--text-light); margin-bottom:10px; font-weight:bold;">Elige tu plan:</div><div style="display:flex; gap:8px; justify-content:center; flex-wrap:wrap; margin-bottom:20px;">`;
         planes.forEach((p, i) => {
-            let active = i === 0 ? 'background: #111827; color: white;' : 'background: #F9FAFB; color: #6B7280; border: 1px solid #E5E7EB;';
-            htmlPlanes += `<button class="btn-plan-selector" data-index="${i}" style="padding: 8px 16px; border-radius: 20px; font-size: 13px; font-weight: bold; cursor: pointer; transition: 0.2s; ${active}">${formatTiempo(p.cantidad, p.unidad)}</button>`;
+            let active = i === 0 ? 'background:#111827; color:white;' : 'background:#F9FAFB; color:#6B7280; border:1px solid #E5E7EB;';
+            htmlPlanes += `<button class="btn-plan-selector" data-index="${i}" style="padding:8px 16px; border-radius:20px; font-size:13px; font-weight:bold; cursor:pointer; transition:0.2s; ${active}">${formatTiempo(p.cantidad, p.unidad)}</button>`;
         });
         htmlPlanes += `</div>`;
     }
-    
     box.innerHTML = htmlPlanes + `<div id="precio-dinamico-modal">${renderPrecioModal(planes[0])}</div>`;
 
     const listaCaract = document.getElementById('detalles-caracteristicas');
-    if(servicio.caracteristicas) {
-        listaCaract.innerHTML = servicio.caracteristicas.split('\n').map(c => `<li style="margin-bottom: 10px; display: flex; gap: 8px; color: var(--text-light);"><span style="color: #10B981;">✔️</span> <span style="text-align: left;">${c}</span></li>`).join('');
-    } else {
-        listaCaract.innerHTML = '<li style="margin-bottom: 10px; display: flex; gap: 8px; color: var(--text-light);"><span style="color: #10B981;">✔️</span> Acceso garantizado y soporte.</li>';
-    }
+    if(servicio.caracteristicas) listaCaract.innerHTML = servicio.caracteristicas.split('\n').map(c => `<li style="margin-bottom:10px; display:flex; gap:8px; color:var(--text-light);"><span style="color:#10B981;">✔️</span> <span style="text-align:left;">${c}</span></li>`).join('');
+    else listaCaract.innerHTML = '<li style="margin-bottom:10px; display:flex; gap:8px; color:var(--text-light);"><span style="color:#10B981;">✔️</span> Acceso garantizado y soporte.</li>';
     
     const updateComprarBtn = (plan) => {
-        let planParaComprar = {
-            nombre: servicio.nombre,
-            precio: plan.promo ? parseFloat(plan.promo) : parseFloat(plan.precio),
-            cantidad: plan.cantidad,
-            unidad: plan.unidad,
-            tipo_ingreso: servicio.tipo_ingreso || 'numero' // Por defecto ahora es número
-        };
-        const planJSON = JSON.stringify(planParaComprar).replace(/'/g, "&apos;");
-        document.getElementById('detalles-btn-comprar').innerHTML = `<button class="btn-primary" style="width: 100%; padding: 15px; font-size: 16px; margin-top: 10px;" onclick='document.getElementById("modal-detalles").classList.add("oculto"); prepararCompra(${planJSON});'>Comprar ahora</button>`;
+        let pBuy = { nombre: servicio.nombre, precio: plan.promo ? parseFloat(plan.promo) : parseFloat(plan.precio), cantidad: plan.cantidad, unidad: plan.unidad, tipo_ingreso: servicio.tipo_ingreso || 'numero' };
+        document.getElementById('detalles-btn-comprar').innerHTML = `<button class="btn-primary" style="width:100%; padding:15px; font-size:16px; margin-top:10px;" onclick='document.getElementById("modal-detalles").classList.add("oculto"); prepararCompra(${JSON.stringify(pBuy).replace(/'/g, "&apos;")});'>Comprar ahora</button>`;
     };
-    
     updateComprarBtn(planes[0]);
 
     if (planes.length > 1) {
-        const botonesPlanes = box.querySelectorAll('.btn-plan-selector');
-        botonesPlanes.forEach(btn => {
+        const btns = box.querySelectorAll('.btn-plan-selector');
+        btns.forEach(btn => {
             btn.addEventListener('click', (e) => {
-                botonesPlanes.forEach(b => { b.style.background = '#F9FAFB'; b.style.color = '#6B7280'; b.style.border = '1px solid #E5E7EB'; });
+                btns.forEach(b => { b.style.background = '#F9FAFB'; b.style.color = '#6B7280'; b.style.border = '1px solid #E5E7EB'; });
                 e.target.style.background = '#111827'; e.target.style.color = 'white'; e.target.style.border = 'none';
-                
                 let idx = e.target.getAttribute('data-index');
                 document.getElementById('precio-dinamico-modal').innerHTML = renderPrecioModal(planes[idx]);
                 updateComprarBtn(planes[idx]);
             });
         });
     }
-
     modal.classList.remove('oculto');
 };
 
-document.getElementById('cerrar-detalles').addEventListener('click', () => { document.getElementById('modal-detalles').classList.add('oculto'); });
+document.getElementById('cerrar-detalles').addEventListener('click', () => document.getElementById('modal-detalles').classList.add('oculto'));
 
 // =====================================
-// PREPARAR COMPRA (Lógica de Ocultar/Mostrar input)
+// SISTEMA ANTI-SPAM Y PREPARAR COMPRA
 // =====================================
-window.prepararCompra = function(plan) {
-    productoSeleccionado = {
-        nombre: plan.nombre,
-        precio: parseFloat(plan.precio),
-        cantidad: plan.cantidad,
-        unidad: plan.unidad,
-        tipo_ingreso: plan.tipo_ingreso || 'numero' // Por defecto
-    };
-    
+window.prepararCompra = async function(plan) {
+    if (!userPhone) {
+        mostrarNotificacion("⚠️ Por favor, inicia sesión con tu número antes de comprar.");
+        document.getElementById('modal-login').classList.remove('oculto');
+        return;
+    }
+
+    // VERIFICACIÓN ANTI-SPAM (Máximo 3 compras pendientes)
+    const { data: pendientes } = await supabaseClient.from('usuarios_canva').select('id').eq('telefono', userPhone).eq('estado', 'Pendiente');
+    if (pendientes && pendientes.length >= 3) {
+        alert("🛑 SISTEMA ANTI-SPAM: Tienes 3 o más solicitudes de pago pendientes. Por favor, espera a que validemos tus pagos anteriores o contáctanos por soporte.");
+        return;
+    }
+
+    productoSeleccionado = { nombre: plan.nombre, precio: parseFloat(plan.precio), cantidad: plan.cantidad, unidad: plan.unidad, tipo_ingreso: plan.tipo_ingreso || 'numero' };
     let txtTiempo = formatTiempo(productoSeleccionado.cantidad, productoSeleccionado.unidad);
     
     document.getElementById('titulo-producto-modal').innerText = `Comprando: ${productoSeleccionado.nombre} (${txtTiempo})`;
     document.getElementById('texto-precio-yape').innerText = `S/ ${productoSeleccionado.precio.toFixed(2)}`;
-    document.getElementById('btn-confirmar-yape').innerText = `Confirmar Pago de S/ ${productoSeleccionado.precio.toFixed(2)}`;
-
-    // MAGIA: Mostramos u ocultamos la caja de correo según el servicio
-    const textoYape = document.getElementById('texto-precio-yape').parentElement;
     
+    const textoYape = document.getElementById('texto-precio-yape').parentElement;
     if (productoSeleccionado.tipo_ingreso === 'numero') {
-        // Modo Rápido (Solo Número): Ocultamos el campo de texto
-        inputDatoCompra.style.display = "none";
-        alertaDato.style.display = "none";
-        textoYape.firstChild.textContent = "Escanea y Yapea exactamente "; // Quitamos el "2."
+        inputDatoCompra.style.display = "none"; alertaDato.style.display = "none"; document.getElementById('txt-paso-yape').style.display = "none"; document.getElementById('txt-paso-yape-2').textContent = "1. ";
     } else {
-        // Modo Correo: Mostramos el campo para que escriba
-        inputDatoCompra.style.display = "block";
-        inputDatoCompra.placeholder = "Escribe el correo a vincular";
-        inputDatoCompra.type = "email";
-        alertaDato.style.display = "none";
-        textoYape.firstChild.textContent = "2. Escanea y Yapea exactamente "; // Ponemos el "2."
+        inputDatoCompra.style.display = "block"; inputDatoCompra.placeholder = "1. Escribe el correo a vincular"; inputDatoCompra.type = "email"; alertaDato.style.display = "none"; document.getElementById('txt-paso-yape').style.display = "inline"; document.getElementById('txt-paso-yape-2').textContent = "3. ";
     }
 
     modalCompra.classList.remove('oculto');
-    inputDatoCompra.value = ""; inputDatoCompra.style.borderColor = "#E5E7EB"; 
-    otpBoxes.forEach(box => box.value = ''); 
+    inputDatoCompra.value = ""; inputDatoCompra.style.borderColor = "#E5E7EB"; otpBoxes.forEach(box => box.value = ''); 
 };
 
 // =====================================
 // FILTROS Y BÚSQUEDA
 // =====================================
-window.filtrarCategoria = function(categoriaSeleccionada) {
-    const botones = document.querySelectorAll('.category-filters .pill');
-    botones.forEach(btn => { if(btn.innerText.trim() === categoriaSeleccionada) btn.classList.add('active'); else btn.classList.remove('active'); });
-    if (categoriaSeleccionada === 'Todos') renderizarCatalogo(catalogoGlobal);
-    else renderizarCatalogo(catalogoGlobal.filter(servicio => servicio.categoria && servicio.categoria.toLowerCase() === categoriaSeleccionada.toLowerCase()));
+window.filtrarCategoria = function(cat) {
+    document.querySelectorAll('.category-filters .pill').forEach(btn => { if(btn.innerText.trim() === cat) btn.classList.add('active'); else btn.classList.remove('active'); });
+    if (cat === 'Todos') renderizarCatalogo(catalogoGlobal); else renderizarCatalogo(catalogoGlobal.filter(s => s.categoria && s.categoria.toLowerCase() === cat.toLowerCase()));
 };
 
 document.addEventListener('DOMContentLoaded', () => {
-    const buscador = document.querySelector('input[placeholder="Buscar servicios..."]');
-    if(buscador) {
-        buscador.addEventListener('input', (e) => {
-            const texto = e.target.value.toLowerCase();
-            renderizarCatalogo(catalogoGlobal.filter(servicio => servicio.nombre.toLowerCase().includes(texto)));
-            document.querySelectorAll('.category-filters .pill').forEach(btn => btn.classList.remove('active'));
-        });
-    }
-});
-
-document.addEventListener('click', function(e) {
-    if (e.target && e.target.classList.contains('btn-consultar-dinamico')) {
-        modalTiempo.classList.remove('oculto'); document.getElementById('correo-tiempo').value = ""; document.getElementById('mensaje-tiempo').innerHTML = "";
-    }
+    const b = document.querySelector('input[placeholder="Buscar servicios..."]');
+    if(b) b.addEventListener('input', (e) => { renderizarCatalogo(catalogoGlobal.filter(s => s.nombre.toLowerCase().includes(e.target.value.toLowerCase()))); document.querySelectorAll('.category-filters .pill').forEach(btn => btn.classList.remove('active')); });
 });
 
 document.getElementById('cerrar-compra').addEventListener('click', () => modalCompra.classList.add('oculto'));
-document.getElementById('cerrar-tiempo').addEventListener('click', () => modalTiempo.classList.add('oculto'));
 
 otpBoxes.forEach((box, index) => {
     box.addEventListener('input', (e) => { e.target.value = e.target.value.replace(/[^0-9]/g, ''); if(e.target.value && index < otpBoxes.length - 1) otpBoxes[index + 1].focus(); });
@@ -332,17 +359,9 @@ otpBoxes.forEach((box, index) => {
 });
 
 function validarDatoCompra() {
-    // Si es solo número, no validamos nada de la caja y devolvemos texto por defecto
-    if (productoSeleccionado.tipo_ingreso === 'numero') {
-        return "Extraer de WhatsApp";
-    }
-
-    // Si es correo, validamos que haya escrito algo con @
+    if (productoSeleccionado.tipo_ingreso === 'numero') return "No requerido";
     const dato = inputDatoCompra.value.trim();
-    let esValido = dato !== "" && dato.includes("@");
-    
-    if(!esValido) { inputDatoCompra.style.borderColor = "#DC2626"; alertaDato.style.display = "block"; return false; }
-    
+    if(dato === "" || !dato.includes("@")) { inputDatoCompra.style.borderColor = "#DC2626"; alertaDato.style.display = "block"; return false; }
     inputDatoCompra.style.borderColor = "#E5E7EB"; alertaDato.style.display = "none"; return dato;
 }
 
@@ -356,68 +375,38 @@ document.getElementById('btn-confirmar-yape').addEventListener('click', async ()
 
     const btn = document.getElementById('btn-confirmar-yape'); btn.innerText = "Procesando..."; btn.disabled = true;
 
+    // GUARDAMOS TELÉFONO Y CORREO POR SEPARADO
     await supabaseClient.from('usuarios_canva').insert([{ 
-        correo: datoCliente, servicio: productoSeleccionado.nombre, 
-        meses: productoSeleccionado.cantidad, unidad: productoSeleccionado.unidad, 
+        telefono: userPhone, correo: datoCliente === "No requerido" ? null : datoCliente,
+        servicio: productoSeleccionado.nombre, meses: productoSeleccionado.cantidad, unidad: productoSeleccionado.unidad, 
         metodo_pago: 'Yape', num_operacion: operacion, estado: 'Pendiente' 
     }]);
 
     let txtTiempo = formatTiempo(productoSeleccionado.cantidad, productoSeleccionado.unidad);
-    let tipoDatoMsg = productoSeleccionado.tipo_ingreso === 'numero' ? '' : `\n📧 *Mi correo:* ${datoCliente}`;
-    
+    let tipoDatoMsg = productoSeleccionado.tipo_ingreso === 'numero' ? '' : `\n📧 *Correo a activar:* ${datoCliente}`;
     const mensaje = `Hola, acabo de pagar *S/ ${productoSeleccionado.precio.toFixed(2)}* por *${productoSeleccionado.nombre} (${txtTiempo})* vía Yape.${tipoDatoMsg}\n🧾 *N° de Operación:* ${operacion}`;
     
     window.open(`https://wa.me/${numeroWhatsApp}?text=${encodeURIComponent(mensaje)}`, '_blank');
-    modalCompra.classList.add('oculto'); btn.innerText = `Confirmar Pago de S/ ${productoSeleccionado.precio.toFixed(2)}`; btn.disabled = false;
+    modalCompra.classList.add('oculto'); btn.innerText = "Confirmar Pago"; btn.disabled = false;
 });
 
 document.getElementById('btn-otro-medio').addEventListener('click', async () => {
-    const datoCliente = validarDatoCompra(); if(!datoCliente) return mostrarNotificacion('Ingresa el correo solicitado antes de continuar.');
+    const datoCliente = validarDatoCompra(); if(!datoCliente) return mostrarNotificacion('Ingresa el correo solicitado.');
     const token = "TK-" + Math.random().toString(36).substr(2, 4).toUpperCase();
     const btn = document.getElementById('btn-otro-medio'); btn.innerText = "Generando..."; btn.disabled = true;
 
     await supabaseClient.from('usuarios_canva').insert([{ 
-        correo: datoCliente, servicio: productoSeleccionado.nombre, 
-        meses: productoSeleccionado.cantidad, unidad: productoSeleccionado.unidad, 
+        telefono: userPhone, correo: datoCliente === "No requerido" ? null : datoCliente,
+        servicio: productoSeleccionado.nombre, meses: productoSeleccionado.cantidad, unidad: productoSeleccionado.unidad, 
         metodo_pago: 'Otro (Plin/BCP)', token: token, estado: 'Pendiente' 
     }]);
 
     let txtTiempo = formatTiempo(productoSeleccionado.cantidad, productoSeleccionado.unidad);
-    let tipoDatoMsg = productoSeleccionado.tipo_ingreso === 'numero' ? '' : ` Mi correo es: *${datoCliente}*.`;
-    
-    const mensaje = `Hola, quiero adquirir *${productoSeleccionado.nombre} (${txtTiempo})* por S/${productoSeleccionado.precio.toFixed(2)}.${tipoDatoMsg} Mi token es: *${token}*`;
+    let tipoDatoMsg = productoSeleccionado.tipo_ingreso === 'numero' ? '' : `\n📧 *Correo a activar:* ${datoCliente}`;
+    const mensaje = `Hola, quiero adquirir *${productoSeleccionado.nombre} (${txtTiempo})* por S/${productoSeleccionado.precio.toFixed(2)}.${tipoDatoMsg}\n🔑 Mi token es: *${token}*`;
     
     window.open(`https://wa.me/${numeroWhatsApp}?text=${encodeURIComponent(mensaje)}`, '_blank');
     modalCompra.classList.add('oculto'); btn.innerText = "Pagar con Plin / BCP / BBVA"; btn.disabled = false;
 });
 
-// =====================================
-// CONSULTA DE TIEMPO
-// =====================================
-document.getElementById('btn-buscar-tiempo').addEventListener('click', async () => {
-    const datoBuscado = document.getElementById('correo-tiempo').value.trim();
-    const msj = document.getElementById('mensaje-tiempo');
-    if(datoBuscado === "") return mostrarNotificacion("Ingresa tu correo o número.");
-    const btn = document.getElementById('btn-buscar-tiempo'); btn.innerText = "Buscando..."; btn.disabled = true;
-    
-    const { data } = await supabaseClient.from('usuarios_canva').select('*').eq('correo', datoBuscado).order('creado_en', { ascending: false });
-    btn.innerText = "Buscar mi tiempo"; btn.disabled = false;
-
-    if (data && data.length > 0) {
-        let usuario = data[0]; 
-        if (usuario.estado === 'Activo') {
-            if (usuario.meses == 0 || !usuario.fecha_fin) {
-                msj.innerHTML = `✅ Tu cuenta de <b>${usuario.servicio || 'Servicio'}</b> está activa.<br><br><strong style="color:var(--primary); font-size:22px;">Acceso Permanente (Pago Único)</strong>`;
-            } else {
-                let hoy = new Date(); let fin = new Date(usuario.fecha_fin);
-                let dias = Math.ceil((fin.getTime() - hoy.getTime()) / (1000 * 3600 * 24));
-                if (dias > 0) msj.innerHTML = `✅ Tu <b>${usuario.servicio || 'Servicio'}</b> está activo.<br><br>Te quedan <strong style="color:var(--primary); font-size:26px;">${dias} días</strong>.`;
-                else msj.innerHTML = `⚠️ Tu suscripción de <b>${usuario.servicio || 'Servicio'}</b> ha vencido.<br>Renuévala desde el catálogo.`;
-            }
-        } else { msj.innerHTML = `⏳ Tu pago por <b>${usuario.servicio || 'Servicio'}</b> está <strong>Pendiente</strong>.`; }
-    } else { msj.innerHTML = `❌ No encontramos compras registradas con este dato.`; }
-});
-
 function mostrarNotificacion(mensaje) { alert(mensaje); }
-
-cargarCatalogo();
