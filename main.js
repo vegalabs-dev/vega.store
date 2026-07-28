@@ -277,7 +277,7 @@ window.abrirModalDetalles = function(servicio) {
 document.getElementById('cerrar-detalles').addEventListener('click', () => document.getElementById('modal-detalles').classList.add('oculto'));
 
 // =====================================
-// COMPRA DIRECTA Y ANTI-SPAM
+// COMPRA DIRECTA (SIN MODAL DE YAPE)
 // =====================================
 window.prepararCompra = async function(plan) {
     if (!userPhone) {
@@ -291,7 +291,16 @@ window.prepararCompra = async function(plan) {
         return alert("🛑 Tienes demasiadas solicitudes pendientes. Espera a que validemos tus pagos o contáctanos.");
     }
 
-    productoSeleccionado = { nombre: plan.nombre, precio: parseFloat(plan.precio), cantidad: plan.cantidad, unidad: plan.unidad, tipo_ingreso: plan.tipo_ingreso || 'numero' };
+    // ARREGLO DEL PRECIO: Priorizamos el precio de promoción si existe
+    let precioFinal = plan.promo ? parseFloat(plan.promo) : parseFloat(plan.precio);
+
+    productoSeleccionado = { 
+        nombre: plan.nombre, 
+        precio: precioFinal, 
+        cantidad: plan.cantidad, 
+        unidad: plan.unidad, 
+        tipo_ingreso: plan.tipo_ingreso || 'numero' 
+    };
     
     document.getElementById('titulo-producto-modal').innerText = `Comprando: ${productoSeleccionado.nombre}`;
     
@@ -313,13 +322,13 @@ window.prepararCompra = async function(plan) {
     let btnConfirmarYape = document.getElementById('btn-confirmar-yape'); if(btnConfirmarYape) btnConfirmarYape.style.display = "none";
     
     const btnFinal = document.getElementById('btn-otro-medio');
-    btnFinal.innerText = `Generar Pedido y Pagar (S/ ${productoSeleccionado.precio.toFixed(2)})`;
+    btnFinal.innerText = `Generar Pedido y Pagar (S/ ${precioFinal.toFixed(2)})`;
     btnFinal.style.background = "var(--primary-gradient)";
     btnFinal.style.color = "white";
 };
 
 document.getElementById('btn-otro-medio').addEventListener('click', async () => {
-    let datoCliente = null;
+    let datoCliente = "Sin correo"; // Texto por defecto para evitar errores en BD
     if (productoSeleccionado.tipo_ingreso === 'correo') {
         datoCliente = inputDatoCompra.value.trim();
         if(datoCliente === "" || !datoCliente.includes("@")) { 
@@ -343,9 +352,8 @@ document.getElementById('btn-otro-medio').addEventListener('click', async () => 
     }
 
     let txtTiempo = formatTiempo(productoSeleccionado.cantidad, productoSeleccionado.unidad);
-    let tipoDatoMsg = datoCliente ? `\n📧 *Correo a activar:* ${datoCliente}` : ``;
+    let tipoDatoMsg = (productoSeleccionado.tipo_ingreso === 'correo') ? `\n📧 *Correo a activar:* ${datoCliente}` : ``;
     
-    // MENSAJE LIMPIO (SIN EMOJIS RAROS)
     const mensaje = `Hola, quiero adquirir *${productoSeleccionado.nombre} (${txtTiempo})* por S/${productoSeleccionado.precio.toFixed(2)}.${tipoDatoMsg}\n*Mi token es:* ${token}`;
     
     window.open(`https://wa.me/${numeroWhatsApp}?text=${encodeURIComponent(mensaje)}`, '_blank');
