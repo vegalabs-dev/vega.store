@@ -1,6 +1,6 @@
 # Protección del panel de VegaStore
 
-Esta propuesta debe activarse junto con su migración de Supabase. Publicar únicamente los archivos web dejaría sin funcionar la nueva autorización y la consulta privada.
+La migración `harden_vega_admin` se aplicó en Supabase el 12 de septiembre de 2026, versión `20260912230954`. GitHub Pages publicó los archivos compatibles de la tienda y la redirección del panel antiguo. Las futuras publicaciones deben mantener coordinadas las reglas de la base de datos y los archivos web.
 
 ## Cambios
 
@@ -13,10 +13,10 @@ Esta propuesta debe activarse junto con su migración de Supabase. Publicar úni
 - Se elimina el borrado automático de pedidos y cancelaciones de más de 24 horas. El administrador conserva las acciones manuales existentes.
 - Las imágenes públicas siguen visibles. Las futuras subidas se limitan al administrador, formatos de imagen admitidos y 5 MB.
 
-## Activación coordinada
+## Procedimiento de activación
 
 1. Revisar que siga existiendo la misma cuenta confirmada del propietario en Auth. La migración se detiene si encuentra más de una cuenta activa o ninguna confirmada. No elige automáticamente entre varias cuentas.
-2. Aplicar `supabase/migrations/20260912225446_harden_vega_admin.sql` mediante una conexión administrativa con escritura. La conexión usada para la revisión estaba en modo de solo lectura. No deshabilitar RLS para resolver errores de acceso.
+2. Aplicar `supabase/migrations/20260912230954_harden_vega_admin.sql` mediante una conexión administrativa con escritura. La herramienta de consultas usa solo lectura; la herramienta específica de migraciones sí permitió aplicar los cambios. No deshabilitar RLS para resolver errores de acceso.
 3. Publicar esta rama y la propuesta de redirección de `vegalabs-dev/vegalabs-dev.github.io`. El panel antiguo usa la misma base y debe retirarse para que no siga ejecutando su código anterior.
 4. Comprobar la publicación de GitHub Pages, recargar el panel e iniciar sesión con la cuenta propietaria. Verificar catálogo, solicitudes, gestión de un cliente y generación de enlaces.
 5. Confirmar por HTTP que las consultas anónimas de contactos se rechazan y que una consulta sin código no devuelve pedidos. Revisar los avisos de seguridad de Supabase.
@@ -37,6 +37,8 @@ Con Node.js 24: `npm ci --ignore-scripts` y `npm test`.
 
 Las pruebas usan datos sintéticos y no se conectan a producción. Cubren consultas anónimas, enlaces separados, rechazo de modificaciones por cuentas ajenas, pedidos válidos y manipulados, permisos del propietario, imágenes y XSS. Las políticas se ejecutan en PostgreSQL mediante PGlite; el SHA-256 de pgcrypto se representa mediante la función SHA-256 integrada de PostgreSQL. El flujo HTML/JavaScript se comprueba con jsdom.
 
-Estas pruebas no sustituyen la comprobación final en Supabase y GitHub Pages después del despliegue. El límite de tres pedidos pendientes por enlace evita duplicados habituales; no es una protección completa contra spam distribuido. Esta propuesta no activa MFA ni cambia contraseñas.
+Después del despliegue se verificó por HTTP: consultas anónimas de contactos, hashes e historial rechazadas con 401; consulta de servicios contratados sin enlace devuelve cero filas; catálogo público devuelve 16 servicios; las tres páginas publicadas contienen los cambios. Los registros existentes siguen siendo 11 clientes y 30 imágenes. La lista privada contiene una sola cuenta confirmada. No se inició sesión usando la contraseña del propietario ni se crearon compras reales de prueba.
+
+El asesor de seguridad de Supabase únicamente conserva el aviso de protección de contraseñas filtradas desactivada. El límite de tres pedidos pendientes por enlace evita duplicados habituales; no es una protección completa contra spam distribuido. Esta actualización no activa MFA ni cambia contraseñas.
 
 Referencias: [RLS en Supabase](https://supabase.com/docs/guides/database/postgres/row-level-security), [control de acceso a Storage](https://supabase.com/docs/guides/storage/security/access-control).
