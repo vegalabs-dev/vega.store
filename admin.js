@@ -5,6 +5,8 @@ const h = VegaSecurity.escapeHtml;
 let adminAuthorized = false;
 let serviciosAdminGlobal = [];
 let clientesGlobal = [];
+let pedidosGlobal = [];
+let fichasGlobal = [];
 let solicitudesGlobal = [];
 let catalogoOpciones = [];
 
@@ -14,6 +16,11 @@ supabaseClient.auth.getSession().then(({ data: { session } }) => {
 supabaseClient.auth.onAuthStateChange((event, session) => {
     if (!session) {
         adminAuthorized = false;
+        clientesGlobal = []; solicitudesGlobal = []; pedidosGlobal = []; fichasGlobal = []; mensajeActual = null;
+        document.querySelectorAll('.modal').forEach(modal => { modal.style.display='none'; modal.classList.remove('show'); });
+        for (const id of ['ficha-enlace','mensaje-texto']) document.getElementById(id).value='';
+        for (const id of ['mensaje-whatsapp','mensaje-elegir-chat']) document.getElementById(id).removeAttribute('href');
+        for (const id of ['lista-fichas','ficha-servicios','tabla-clientes','tabla-solicitudes']) document.getElementById(id).replaceChildren();
         document.getElementById('admin-section').style.display = 'none';
         document.getElementById('login-section').style.display = 'block';
     }
@@ -89,7 +96,8 @@ async function mostrarPanel() {
 function switchTab(t) {
     document.querySelectorAll('.tab-content, .tab-btn').forEach(e => e.classList.remove('active'));
     document.getElementById('tab-' + t).classList.add('active'); document.getElementById('btn-tab-' + t).classList.add('active');
-    if(t === 'ventas') cargarDatosPrincipales();
+    if(t === 'fichas') { cargarDatosPrincipales().then(renderizarFichas); }
+    else if(t === 'ventas') cargarDatosPrincipales();
     else if(t === 'solicitudes') cargarDatosPrincipales();
     else if(t === 'catalogo') cargarServicios();
     else if(t === 'papelera') cargarPapelera();
@@ -101,8 +109,11 @@ window.copiarTexto = function(texto) {
 
 // ===== CARGAR DATOS PRINCIPALES =====
 async function cargarDatosPrincipales() {
-    const { data: todos } = await verificarOperacion(supabaseClient.from('usuarios_canva').select('*').neq('estado', 'Cancelado').order('creado_en', { ascending: false }));
+    const { data: todos } = await verificarOperacion(supabaseClient.from('usuarios_canva').select('*').order('creado_en', { ascending: false }));
     let todosLosRegistros = todos || [];
+    pedidosGlobal = todosLosRegistros;
+    const { data: fichas } = await verificarOperacion(supabaseClient.from('vega_clientes').select('*').order('creado_en', { ascending: false }));
+    fichasGlobal = fichas || [];
 
     clientesGlobal = todosLosRegistros.filter(u => u.estado === 'Activo');
     solicitudesGlobal = todosLosRegistros.filter(u => u.estado === 'Pendiente');
@@ -119,6 +130,7 @@ async function cargarDatosPrincipales() {
 
     filtrarClientes();
     renderizarSolicitudes();
+    renderizarFichas();
 }
 
 function filtrarClientes() {
@@ -127,7 +139,7 @@ function filtrarClientes() {
     let orden = document.getElementById('filtro-orden').value;
 
     let filtrados = clientesGlobal.filter(u => {
-        let coincideTxt = (u.correo && u.correo.toLowerCase().includes(txt)) || (u.telefono && u.telefono.toLowerCase().includes(txt));
+        let coincideTxt = textoBusquedaPedido(u).includes(txt);
         return coincideTxt && (servFiltro === "ALL" || u.servicio === servFiltro);
     });
 
@@ -159,16 +171,8 @@ function renderizarTablaClientes(clientes) {
             numWhatsApp = emailCliente.replace(/\D/g,''); emailCliente = null;
         }
 
-        let msjContacto = ""; let nombreServicio = user.servicio || 'Servicio';
-        if (estadoReal === 'Vencido') msjContacto = `Hola! Tu servicio de *${nombreServicio}* ha vencido. 😔\n\nSi deseas renovar o cambiar de plan, escríbeme por aquí o hazlo directo desde tu panel en la web:\n${URL_TIENDA}`;
-        else if (user.meses == 0) msjContacto = `Hola! Te escribo de VegaStore. Tu servicio de *${nombreServicio}* está Activo y es Permanente. Gracias por la confianza! ✨\n\nPuedes ver tu cuenta aquí:\n${URL_TIENDA}`;
-        else {
-            if (diasRestantes > 1) msjContacto = `Hola! Te escribo de VegaStore. Tu servicio de *${nombreServicio}* está Activo. Te quedan *${diasRestantes} días* de suscripción. \n\nRecuerda que puedes ver tu cuenta y renovar desde tu panel en la web:\n${URL_TIENDA}`;
-            else msjContacto = `Hola! Te escribo de VegaStore. Tu servicio de *${nombreServicio}* vence HOY. Disfruta tu último día, muchas gracias por la confianza. 😁\n\nSi deseas renovar escríbenos por este medio o hazlo desde tu panel:\n${URL_TIENDA}`;
-        }
-
-        let msjCodificado = encodeURIComponent(msjContacto);
-        let telRow = numWhatsApp ? `<div style="font-size: 13px; margin-bottom: 4px; display: flex; align-items: center; gap: 8px;">📱 <strong style="color:var(--text-main);">${h(numWhatsApp)}</strong> <a href="https://wa.me/${h(numWhatsApp)}?text=${msjCodificado}" class="btn-copiar" target="_blank" rel="noopener noreferrer" title="Enviar WhatsApp" style="background:#D1FAE5; color:#059669; border-color:#A7F3D0;">💬</a></div>` : '';
+        const ficha = fichasGlobal.find(f => f.id === user.cliente_id);
+        let telRow = `<div style="font-size:13px;margin-bottom:6px;"><strong>${h(ficha?.nombre || user.nombre_cliente || numWhatsApp || 'Cliente')}</strong> <button class="btn-copiar" onclick="abrirMensajesCliente(${Number(user.id)})" title="Mensaje y enlace privado">💬</button></div><div style="font-size:12px;color:var(--text-muted);">${h(numWhatsApp || '')} ${h((ficha?.whatsapp_usuario || user.whatsapp_usuario) ? '@' + (ficha?.whatsapp_usuario || user.whatsapp_usuario) : '')}</div>`;
         let corRow = emailCliente ? `<div style="font-size: 12px; margin-top: 4px; display: flex; align-items: center; gap: 8px;">✉️ <span style="color: var(--text-muted);">${h(emailCliente)}</span> <button data-email="${h(emailCliente)}" onclick="copiarTexto(this.dataset.email)" class="btn-copiar" style="padding: 2px 8px; font-size: 11px;">📋 Copiar</button></div>` : '';
 
         tabla.innerHTML += `<tr>
@@ -191,7 +195,7 @@ function renderizarSolicitudes() {
         let emailCliente = user.correo;
         if (!numWhatsApp && emailCliente && !emailCliente.includes('@') && emailCliente.replace(/\D/g,'').length >= 9) { numWhatsApp = emailCliente.replace(/\D/g,''); emailCliente = null; }
 
-        let telRow = numWhatsApp ? `<div style="font-size: 13px; margin-bottom: 4px; color:var(--text-main);">📱 <strong>${h(numWhatsApp)}</strong></div>` : '';
+        let telRow = `<div style="font-size:13px;margin-bottom:4px;"><strong>${h(user.nombre_cliente || numWhatsApp || 'Cliente')}</strong> ${h(user.whatsapp_usuario ? '@' + user.whatsapp_usuario : '')}</div>`;
         let corRow = emailCliente ? `<div style="font-size: 12px; margin-top: 4px; display: flex; align-items: center; gap: 8px;">✉️ <span style="color: var(--text-muted);">${h(emailCliente)}</span> <button data-email="${h(emailCliente)}" onclick="copiarTexto(this.dataset.email)" class="btn-copiar" style="padding: 2px 8px; font-size: 11px;">📋 Copiar</button></div>` : '';
         let tiempoTxt = user.meses == 0 ? "Pago Único" : `${user.meses || 1} ${user.unidad || 'Meses'}`;
 
@@ -216,6 +220,7 @@ async function aprobarPago(id) {
         let fin = new Date(); if(unidad === 'dias') fin.setDate(fin.getDate() + cantidad); else if(unidad === 'años') fin.setFullYear(fin.getFullYear() + cantidad); else fin.setMonth(fin.getMonth() + cantidad);
         finStr = fin.toISOString().split('T')[0];
     }
+    await asegurarFichaPedido(id);
     await verificarOperacion(supabaseClient.from('usuarios_canva').update({ estado: 'Activo', fecha_inicio: inicioStr, fecha_fin: finStr }).eq('id', id));
     cargarDatosPrincipales();
 }
@@ -228,27 +233,23 @@ async function rechazarSolicitud(id) {
 
 // ===== SÚPER MODAL DE GESTIÓN =====
 function abrirGestionCliente(id) {
-    let user = clientesGlobal.find(u => u.id === id);
+    let user = pedidosGlobal.find(u => u.id === id);
     if (!user) return;
     document.getElementById('gestion-id').value = user.id;
     document.getElementById('gestion-servicio-titulo').innerText = `${user.servicio} (${user.meses == 0 ? 'Permanente' : user.meses + ' ' + (user.unidad || 'meses')})`;
 
-    let numEdit = user.telefono ? user.telefono.replace(/[^+0-9]/g, '') : '';
-    let corEdit = user.correo || '';
-    if (!numEdit && corEdit && !corEdit.includes('@')) { numEdit = corEdit.replace(/\D/g,''); corEdit = ''; }
-
-    document.getElementById('gestion-telefono').value = numEdit;
-    document.getElementById('gestion-correo').value = corEdit;
-    document.getElementById('enlace-cliente-box').style.display = 'none';
+    document.getElementById('gestion-correo').value = user.correo || '';
+    opcionesFichas('gestion-ficha-destino', false);
+    document.getElementById('gestion-ficha-destino').value = user.cliente_id || '';
     abrirModal('modal-gestionar-cliente');
 }
 
 async function guardarDatosContacto() {
     let id = document.getElementById('gestion-id').value;
-    let tel = document.getElementById('gestion-telefono').value.replace(/\s+/g, '');
     let cor = document.getElementById('gestion-correo').value.trim();
-    await verificarOperacion(supabaseClient.from('usuarios_canva').update({ telefono: tel || null, correo: cor || null }).eq('id', id));
-    alert("Contacto guardado."); cargarDatosPrincipales();
+    if (cor && !document.getElementById('gestion-correo').checkValidity()) throw new Error('Revisa el correo.');
+    await verificarOperacion(supabaseClient.from('usuarios_canva').update({ correo: cor || null }).eq('id', id));
+    alert('Correo guardado para este servicio.'); await cargarDatosPrincipales();
 }
 
 async function darDiasExtra() {
@@ -464,22 +465,6 @@ async function guardarServicio() {
 
 async function borrarServicio(id) { if (confirm("¿Borrar servicio?")) { await verificarOperacion(supabaseClient.from('servicios').delete().eq('id', id)); cargarServicios(); } }
 
-async function registroManual() {
-    const tel = prompt("Ingresa el Número de WhatsApp del cliente:");
-    if (tel) {
-        let cor = prompt("Ingresa el Correo (Opcional):");
-        let serv = prompt("¿Qué servicio adquirió?") || "Canva Pro Edu";
-        let msInput = prompt("¿Cuántos meses? (Escribe 0 para Pago Único)", "1");
-        if (msInput !== null) {
-            let ms = parseInt(msInput) || 0;
-            let finStr = null; let inicioStr = new Date().toISOString().split('T')[0];
-            if (ms > 0) { let fin = new Date(); fin.setMonth(fin.getMonth() + ms); finStr = fin.toISOString().split('T')[0]; }
-            await verificarOperacion(supabaseClient.from('usuarios_canva').insert([{ telefono: tel.replace(/\s+/g, ''), correo: cor || null, servicio: serv, meses: ms, unidad: 'meses', metodo_pago: 'Manual', estado: 'Activo', fecha_inicio: inicioStr, fecha_fin: finStr }]));
-            cargarDatosPrincipales();
-        }
-    }
-}
-
 async function abrirSeguridad() {
     abrirModal('modal-seguridad');
     const cont = document.getElementById('lista-dispositivos'); cont.innerHTML = '<p style="text-align:center; color:var(--text-muted);">Cargando accesos...</p>';
@@ -491,24 +476,4 @@ async function abrirSeguridad() {
         let etiqueta = index === 0 ? '<span style="background:#D1FAE5; color:#059669; padding:2px 8px; border-radius:12px; font-size:11px; margin-left:8px; font-weight:bold;">Actual</span>' : '';
         cont.innerHTML += `<div style="padding:15px; border-bottom:1px solid var(--border);"><h4 style="margin:0 0 5px 0; color:var(--text-main); font-size:14px;">${h(acc.dispositivo)} ${etiqueta}</h4><p style="margin:0;font-size:12px;color:var(--text-muted);">${h(acc.navegador)} • ${f}</p></div>`;
     });
-}
-
-async function generarEnlaceCliente() {
-    if (!adminAuthorized) throw new Error('Inicia sesión como administrador.');
-    const id = Number(document.getElementById('gestion-id').value);
-    const cliente = clientesGlobal.find(item => Number(item.id) === id);
-    if (!cliente) return;
-    if (!confirm('Se creará un enlace privado nuevo para este cliente. Los enlaces anteriores de sus servicios dejarán de funcionar.')) return;
-    const code = VegaSecurity.newCode();
-    const consulta_hash = await VegaSecurity.hashCode(code);
-    let request = supabaseClient.from('usuarios_canva').update({ consulta_hash });
-    request = cliente.telefono ? request.eq('telefono', cliente.telefono) : request.eq('id', id);
-    await verificarOperacion(request);
-    const link = VegaSecurity.privateLink(code);
-    document.getElementById('enlace-cliente').value = link;
-    document.getElementById('enlace-cliente-box').style.display = 'block';
-    const whatsapp = document.getElementById('enviar-enlace-cliente');
-    const phone = (cliente.telefono || '').replace(/[^0-9]/g, '');
-    whatsapp.hidden = !phone;
-    whatsapp.href = 'https://wa.me/' + phone + '?text=' + encodeURIComponent('Hola, este es tu enlace privado para consultar tus servicios en VegaStore. Guárdalo y no lo compartas: ' + link);
 }

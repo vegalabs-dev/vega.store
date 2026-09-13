@@ -2,12 +2,14 @@
 
 La migración `harden_vega_admin` se aplicó en Supabase el 12 de septiembre de 2026, versión `20260912230954`. GitHub Pages publicó los archivos compatibles de la tienda y la redirección del panel antiguo. Las futuras publicaciones deben mantener coordinadas las reglas de la base de datos y los archivos web.
 
+La ampliación de fichas y mensajes corresponde a la migración `20260913035721_client_profiles_and_messages.sql`, aplicada el 13 de septiembre de 2026.
+
 ## Cambios
 
 - La cuenta de administrador pertenece a una lista privada en la base de datos. Registrarse en Supabase no concede permisos de administración.
 - RLS controla las operaciones aunque alguien use la API directamente o modifique el navegador. Solo el administrador puede gestionar clientes, catálogo, promociones e imágenes.
 - Los visitantes no pueden leer correos, teléfonos, tokens de pedido ni hashes de acceso. Un enlace privado permite consultar únicamente los servicios asociados y su estado.
-- Cada enlace contiene 192 bits aleatorios; solo se guarda su SHA-256 en la base de datos. El código viaja en `x-vega-access`, no en filtros de URL. La tienda elimina el fragmento de la barra de direcciones al abrirlo y mantiene la sesión de consulta separada de Supabase Auth.
+- Cada enlace contiene 192 bits aleatorios. Los pedidos conservan las huellas SHA-256; las fichas guardan el código reutilizable bajo los permisos exclusivos del propietario para poder preparar mensajes sin cambiar el enlace. El código viaja en `x-vega-access`, no en filtros de URL. La tienda elimina el fragmento de la barra de direcciones al abrirlo y mantiene la sesión de consulta separada de Supabase Auth.
 - Una compra pública solo puede crear un pedido pendiente de un plan activo. No puede definir fechas, aprobarse, editarse ni borrarse por la API pública.
 - Los textos procedentes de la base de datos se escapan al construir HTML. Los datos de productos dejan de insertarse como código en manejadores de botones.
 - Se elimina el borrado automático de pedidos y cancelaciones de más de 24 horas. El administrador conserva las acciones manuales existentes.
@@ -27,15 +29,21 @@ La migración no elimina pedidos, servicios, registros de acceso ni archivos. Ca
 
 Los clientes nuevos reciben su enlace al generar el pedido y pueden copiarlo en «Mis servicios». El botón de WhatsApp permite continuar si el navegador bloquea la ventana emergente.
 
-Para compras anteriores: abrir **Gestionar → Generar enlace privado del cliente**. El administrador debe comprobar que el teléfono corresponde a ese cliente antes de compartirlo. La acción asigna un enlace nuevo a los registros con ese mismo teléfono y revoca sus enlaces anteriores. No se envían mensajes automáticamente.
+En **Fichas de clientes** se puede buscar por nombre, usuario, teléfono o código de ficha. Una ficha agrupa los servicios de una persona y conserva su identidad cuando cambian sus datos de contacto. El correo de activación se mantiene por servicio.
 
-Quien posea el enlace podrá consultar esos servicios. No sirve para editar datos ni concede acceso al panel administrativo. Si se pierde o se comparte por error, generar otro desde el panel.
+El registro manual permite crear una ficha nueva con nombre o alias, teléfono o usuario de WhatsApp, o añadir un servicio a una ficha existente. La operación es atómica en la base de datos. La tienda también permite indicar un usuario de WhatsApp en lugar del teléfono.
+
+El botón **💬** abre un mensaje editable con el enlace privado de esa ficha. Hay atajos de enlace, activación, vencimiento y renovación. Con teléfono se abre el chat directamente; sin teléfono se abre el selector de chats. También hay un botón para copiar el texto. Ninguna de estas acciones envía mensajes automáticamente.
+
+Los enlaces anteriores se conservan. **Revocar y crear otro enlace** invalida explícitamente tanto el enlace de la ficha como los enlaces anteriores de sus pedidos. Abrir un mensaje o actualizar el contacto no cambia el enlace. Vincular un servicio a otra ficha revoca el acceso de la ficha anterior a ese servicio.
+
+Durante la migración se agrupan únicamente los registros existentes por su teléfono normalizado. Los pedidos futuros no se asocian a una ficha por declarar el mismo teléfono o usuario: el administrador debe vincularlos o deben demostrar posesión del mismo código privado. Las fichas y sus códigos no se pueden consultar desde la API anónima ni desde cuentas ajenas.
 
 ## Verificación
 
 Con Node.js 24: `npm ci --ignore-scripts` y `npm test`.
 
-Las pruebas usan datos sintéticos y no se conectan a producción. Cubren consultas anónimas, enlaces separados, rechazo de modificaciones por cuentas ajenas, pedidos válidos y manipulados, permisos del propietario, imágenes y XSS. Las políticas se ejecutan en PostgreSQL mediante PGlite; el SHA-256 de pgcrypto se representa mediante la función SHA-256 integrada de PostgreSQL. El flujo HTML/JavaScript se comprueba con jsdom.
+Las 22 pruebas usan datos sintéticos y no se conectan a producción. Cubren consultas anónimas, enlaces separados, rechazo de modificaciones por cuentas ajenas, pedidos válidos y manipulados, permisos del propietario, imágenes y XSS. Las políticas se ejecutan en PostgreSQL mediante PGlite; el SHA-256 de pgcrypto se representa mediante la función SHA-256 integrada de PostgreSQL. El flujo HTML/JavaScript se comprueba con jsdom.
 
 Después del despliegue se verificó por HTTP: consultas anónimas de contactos, hashes e historial rechazadas con 401; consulta de servicios contratados sin enlace devuelve cero filas; catálogo público devuelve 16 servicios; las tres páginas publicadas contienen los cambios. Los registros existentes siguen siendo 11 clientes y 30 imágenes. La lista privada contiene una sola cuenta confirmada. No se inició sesión usando la contraseña del propietario ni se crearon compras reales de prueba.
 

@@ -13,17 +13,17 @@ const service = {id:1,nombre:attack,categoria:attack,etiqueta:attack,caracterist
 async function page(kind, {allowed=true, code=null}={}) {
   const html = readFileSync(kind === 'admin' ? 'admin.html' : 'index.html','utf8').replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi,'');
   const dom = new JSDOM(html, {url:'https://vegalabs-dev.github.io/vega.store/' + (kind==='admin'?'admin.html':'') + (code?'#acceso='+code:''),runScripts:'outside-only'});
-  const w = dom.window, calls = [], alerts = [], authCalls = [];
+  const w = dom.window, calls = [], alerts = [], authCalls = [], rpcHandlers = {};
   Object.defineProperty(w,'crypto',{value:webcrypto}); w.TextEncoder = TextEncoder;
   w.alert=x=>alerts.push(x); w.confirm=()=>true; w.open=()=>null;
   w.fetch=async()=>({json:async()=>({country_code:'PE'})});
   w.navigator.clipboard={writeText:async()=>{}};
   w.intlTelInput=()=>({setCountry(){},isValidNumber:()=>true,getNumber:()=>'+51900000000'});
-  const data = {servicios:[service],promociones:[],admin_accesos:[],usuarios_canva:[]};
+  const data = {vega_clientes:[],servicios:[service],promociones:[],admin_accesos:[],usuarios_canva:[]};
   w.supabase={createClient:(url,key,options={})=>({
     auth:{getSession:async()=>({data:{session:null}}),onAuthStateChange:()=>{},getUser:async()=>({data:{user:{id:'fixture'}}}),
       signInWithPassword:async()=>({error:null}),signOut:async()=>{authCalls.push('signOut');}},
-    rpc:async(name)=>{authCalls.push(name);return {data:allowed,error:null};},
+    rpc:async(name,args)=>{authCalls.push(name); calls.push({rpc:name,args}); return rpcHandlers[name] ? rpcHandlers[name](args) : {data:allowed,error:null};},
     from(table){
       const call={table,options,op:'select',filters:[]};calls.push(call);
       const query={
@@ -42,10 +42,10 @@ async function page(kind, {allowed=true, code=null}={}) {
       };return query;
     }
   })};
-  for (const file of ['security.js',kind==='admin'?'admin.js':'main.js'])
+  for (const file of (kind==='admin' ? ['security.js','clientes.js','admin.js'] : ['security.js','main.js']))
     vm.runInContext(readFileSync(file,'utf8'),dom.getInternalVMContext(),{filename:file});
   await tick();
-  return {w,dom,calls,alerts,authCalls,data};
+  return {w,dom,calls,alerts,authCalls,data,rpcHandlers};
 }
 
 test('private code uses cryptographic entropy, SHA-256 and a fragment removed on entry', async t=>{
@@ -62,7 +62,7 @@ test('private code uses cryptographic entropy, SHA-256 and a fragment removed on
 test('admin rejects registered non-admin before loading management data', async t=>{
   const {w,dom,calls,authCalls}=await page('admin',{allowed:false});t.after(()=>dom.window.close());
   await assert.rejects(w.mostrarPanel(),/no tiene permiso/);
-  assert.equal(calls.length,0);
+  assert.equal(calls.filter(c=>c.table).length,0);
   assert.deepEqual(authCalls,['is_vega_admin','signOut']);
 });
 
@@ -114,4 +114,77 @@ test('new purchase keeps contact separate, inserts no activation fields and offe
   const link=w.document.getElementById('pagar-pedido-link');
   assert.equal(link.hidden,false); assert.ok(link.href.startsWith('https://wa.me/'));
   assert.equal(w.document.getElementById('modal-panel-cliente').classList.contains('oculto'),false);
+});
+
+const customer={id:'00000000-0000-4000-8000-000000000099',nombre:attack,telefono:null,whatsapp_usuario:'maria_test',codigo_privado:'f'.repeat(48)};
+const activeOrder={id:99,cliente_id:customer.id,nombre_cliente:customer.nombre,whatsapp_usuario:customer.whatsapp_usuario,telefono:null,
+  correo:'fixture@example.test',servicio:'Canva Pro',estado:'Activo',meses:1,unidad:'meses',fecha_fin:'2026-12-01',creado_en:'2026-09-12T00:00:00Z'};
+
+test('profile and message screens contain unique IDs and keep username-only customers searchable',async t=>{
+  const {w,dom,data}=await page('admin');t.after(()=>dom.window.close());
+  const ids=[...w.document.querySelectorAll('[id]')].map(x=>x.id);assert.equal(ids.length,new Set(ids).size);
+  data.vega_clientes=[customer];data.usuarios_canva=[activeOrder];await w.mostrarPanel();
+  assert.ok(w.document.getElementById('lista-fichas').textContent.includes(attack));
+  assert.equal(w.document.querySelectorAll('[onerror]').length,0);
+  w.document.getElementById('buscador-clientes').value='maria_test';w.filtrarClientes();
+  assert.ok(w.document.getElementById('tabla-clientes').textContent.includes('Canva Pro'));
+  w.abrirFicha(customer.id);
+  assert.equal(w.document.getElementById('ficha-enlace').value,w.VegaSecurity.privateLink(customer.codigo_privado));
+  assert.equal(w.document.getElementById('ficha-servicios').children.length,1);
+  w.registroManual(customer.id);
+  assert.equal(w.document.getElementById('manual-ficha').value,customer.id);
+  assert.equal(w.document.getElementById('manual-nuevo-cliente').hidden,true);
+});
+
+test('all message shortcuts reuse the private link and choose a chat without a phone',async t=>{
+  const {w,dom,calls,data}=await page('admin');t.after(()=>dom.window.close());
+  data.vega_clientes=[customer];data.usuarios_canva=[activeOrder];await w.mostrarPanel();
+  await w.abrirMensajesCliente(99);
+  const expected=w.VegaSecurity.privateLink(customer.codigo_privado);
+  for(const tipo of ['enlace','activacion','vencimiento','renovacion']){
+    w.document.getElementById('mensaje-atajo').value=tipo;w.prepararMensajeCliente();
+    const message=w.document.getElementById('mensaje-texto').value;
+    assert.ok(message.includes(expected));
+    const url=new URL(w.document.getElementById('mensaje-whatsapp').href);
+    assert.equal(url.origin,'https://wa.me');assert.equal(url.pathname,'/');assert.equal(url.searchParams.get('text'),message);
+  }
+  await w.abrirMensajesCliente(99);assert.ok(w.document.getElementById('mensaje-texto').value.includes(expected));
+  assert.equal(calls.some(c=>c.op==='update'||c.op==='insert'),false);
+  w.document.getElementById('mensaje-texto').value='Texto revisado '+expected;w.actualizarDestinosMensaje();
+  assert.equal(new URL(w.document.getElementById('mensaje-whatsapp').href).searchParams.get('text'),'Texto revisado '+expected);
+});
+
+test('phone contacts open a direct chat and still offer the chat picker',async t=>{
+  const {w,dom,data}=await page('admin');t.after(()=>dom.window.close());
+  data.vega_clientes=[{...customer,telefono:'+51900000000'}];data.usuarios_canva=[activeOrder];await w.mostrarPanel();
+  await w.abrirMensajesCliente(99);
+  assert.equal(new URL(w.document.getElementById('mensaje-whatsapp').href).pathname,'/51900000000');
+  assert.equal(new URL(w.document.getElementById('mensaje-elegir-chat').href).pathname,'/');
+});
+
+test('manual username-only registration calls the atomic RPC then prepares activation',async t=>{
+  const {w,dom,data,rpcHandlers}=await page('admin');t.after(()=>dom.window.close());await w.mostrarPanel();
+  w.registroManual();
+  w.document.getElementById('manual-nombre').value='María';w.document.getElementById('manual-usuario').value='@maria_test';
+  w.document.getElementById('manual-servicio').value='Canva Pro';
+  rpcHandlers.vega_registro_manual=async args=>{
+    assert.equal(args.p_telefono,null);assert.equal(args.p_usuario,'maria_test');assert.equal(args.p_nombre,'María');assert.equal(args.p_cantidad,1);
+    data.vega_clientes=[{...customer,nombre:'María'}];data.usuarios_canva=[activeOrder];return {data:99,error:null};
+  };
+  await w.guardarRegistroManual();
+  assert.equal(w.document.getElementById('manual-guardar').disabled,false);
+  assert.equal(w.document.getElementById('mensaje-atajo').value,'activacion');
+  assert.ok(w.document.getElementById('mensaje-texto').value.includes('está activo'));
+});
+
+test('store checkout accepts a username instead of a telephone',async t=>{
+  const {w,dom,calls}=await page('store');t.after(()=>dom.window.close());
+  await w.prepararCompra({nombre:'Canva Pro',precio:10,cantidad:1,unidad:'meses',tipo_ingreso:'numero'});
+  w.document.getElementById('login-tipo-contacto').value='usuario';w.cambiarTipoContacto();
+  assert.equal(w.document.getElementById('login-campo-telefono').hidden,true);
+  w.document.getElementById('login-usuario').value='@maria_test';w.document.getElementById('login-nombre').value='María';
+  await w.procesarLogin();w.document.getElementById('btn-otro-medio').click();
+  for(let i=0;i<5&&!calls.some(c=>c.op==='insert');i++)await tick();
+  const row=calls.find(c=>c.op==='insert').rows[0];
+  assert.equal(row.telefono,null);assert.equal(row.whatsapp_usuario,'maria_test');assert.equal(row.nombre_cliente,'María');
 });

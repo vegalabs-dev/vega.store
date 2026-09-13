@@ -32,6 +32,8 @@ const numeroWhatsApp = "51928293163";
 
 // SISTEMA DE SESIÓN Y GEO
 let userPhone = localStorage.getItem('vega_user_phone') || null;
+let userUsername = localStorage.getItem('vega_user_username') || null;
+let userName = localStorage.getItem('vega_user_name') || null;
 let paisCliente = 'PE';
 
 const modalCompra = document.getElementById('modal-compra');
@@ -76,10 +78,26 @@ function abrirMiCuenta() {
     document.getElementById('modal-panel-cliente').classList.remove('oculto');
     cargarMisServicios();
 }
+function cambiarTipoContacto() {
+    const username = document.getElementById('login-tipo-contacto').value === 'usuario';
+    document.getElementById('login-campo-telefono').hidden = username;
+    document.getElementById('login-campo-usuario').hidden = !username;
+}
 async function procesarLogin() {
-    if (!iti.isValidNumber()) return alert('Ingresa un número de WhatsApp válido para este país.');
-    userPhone = iti.getNumber();
-    localStorage.setItem('vega_user_phone', userPhone);
+    const byUsername = document.getElementById('login-tipo-contacto').value === 'usuario';
+    let nextPhone = null, nextUsername = null;
+    if (byUsername) {
+        nextUsername = VegaSecurity.username(document.getElementById('login-usuario').value);
+        if (!nextUsername) throw new Error('Indica tu usuario de WhatsApp.');
+    } else {
+        if (!iti.isValidNumber()) return alert('Ingresa un número de WhatsApp válido para este país.');
+        nextPhone = iti.getNumber();
+    }
+    userPhone = nextPhone; userUsername = nextUsername;
+    userName = document.getElementById('login-nombre').value.trim() || null;
+    for (const [key,value] of [['vega_user_phone',userPhone],['vega_user_username',userUsername],['vega_user_name',userName]]) {
+        if (value) localStorage.setItem(key,value); else localStorage.removeItem(key);
+    }
     document.getElementById('modal-login').classList.add('oculto');
     const plan = pendingPurchase; pendingPurchase = null;
     if (plan) await prepararCompra(plan);
@@ -100,7 +118,8 @@ async function copiarMiEnlace() {
 }
 function cerrarSesionCliente() {
     VegaSecurity.forgetCode(); accessCode = null; privateClient = null; privateClientCode = null;
-    localStorage.removeItem('vega_user_phone'); userPhone = null;
+    for (const key of ['vega_user_phone','vega_user_username','vega_user_name']) localStorage.removeItem(key);
+    userPhone = null; userUsername = null; userName = null;
     document.getElementById('modal-panel-cliente').classList.add('oculto');
     document.getElementById('lista-mis-servicios').textContent = '';
     document.getElementById('lista-promociones').textContent = '';
@@ -324,7 +343,7 @@ document.getElementById('cerrar-detalles').addEventListener('click', () => docum
 // COMPRA DIRECTA (SIN MODAL DE YAPE)
 // =====================================
 window.prepararCompra = async function(plan) {
-    if (!userPhone) {
+    if (!userPhone && !userUsername) {
         pendingPurchase = plan;
         document.getElementById('modal-login').classList.remove('oculto');
         return;
@@ -386,7 +405,7 @@ document.getElementById('btn-otro-medio').addEventListener('click', async () => 
     const btn = document.getElementById('btn-otro-medio'); btn.innerText = "Generando..."; btn.disabled = true;
 
     const { error } = await clientForAccess().from('usuarios_canva').insert([{
-        telefono: userPhone, correo: datoCliente,
+        telefono: userPhone, whatsapp_usuario: userUsername, nombre_cliente: userName, correo: datoCliente,
         servicio: productoSeleccionado.nombre, meses: productoSeleccionado.cantidad, unidad: productoSeleccionado.unidad,
         metodo_pago: 'WhatsApp', token: token, consulta_hash
     }]);

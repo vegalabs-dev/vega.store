@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="referrer" content="no-referrer">
     <title>Panel Admin | VegaStore Premium</title>
+    <link rel="stylesheet" href="clientes.css?v=20260912-clientes1">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.116.0"></script>
     <style>
         /* =========================================
@@ -236,6 +237,7 @@
 
             <div class="tabs">
                 <button id="btn-tab-ventas" class="tab-btn active" onclick="switchTab('ventas')">💰 Clientes Activos</button>
+                <button id="btn-tab-fichas" class="tab-btn" onclick="switchTab('fichas')">👤 Fichas de clientes</button>
                 <button id="btn-tab-solicitudes" class="tab-btn" onclick="switchTab('solicitudes')">🔔 Solicitudes</button>
                 <button id="btn-tab-catalogo" class="tab-btn" onclick="switchTab('catalogo')">📦 Catálogo</button>
                 <button id="btn-tab-papelera" class="tab-btn" onclick="switchTab('papelera')">🗑️ Papelera</button>
@@ -255,7 +257,7 @@
             <!-- PESTAÑA CLIENTES ACTIVOS -->
             <div id="tab-ventas" class="tab-content active">
                 <div class="filtros-admin">
-                    <input type="text" id="buscador-clientes" class="search-box" placeholder="🔍 Buscar teléfono o correo..." oninput="filtrarClientes()">
+                    <input type="text" id="buscador-clientes" class="search-box" placeholder="🔍 Buscar nombre, usuario, teléfono o correo..." oninput="filtrarClientes()">
                     <select id="filtro-servicio" class="filtro-select" onchange="filtrarClientes()"><option value="ALL">Todos los Servicios</option></select>
                     <select id="filtro-orden" class="filtro-select" onchange="filtrarClientes()">
                         <option value="RECIENTES">Más Recientes</option>
@@ -271,6 +273,10 @@
                 </div>
             </div>
 
+            <div id="tab-fichas" class="tab-content">
+                <div class="filtros-admin"><input id="buscador-fichas" class="search-box" placeholder="Buscar cliente por nombre, usuario o teléfono" oninput="renderizarFichas()"><button class="btn-primary" onclick="registroManual()">+ Registrar cliente y servicio</button></div>
+                <div id="lista-fichas" class="fichas-grid"></div>
+            </div>
             <!-- PESTAÑA SOLICITUDES -->
             <div id="tab-solicitudes" class="tab-content">
                 <div class="info-box">
@@ -320,30 +326,12 @@
             <h2 style="margin-top:0; color: var(--text-main); margin-bottom: 5px; font-size: 24px;">⚙️ Gestionar Cliente</h2>
             <p id="gestion-servicio-titulo" style="color: var(--primary); font-weight: bold; margin-bottom: 25px; font-size: 15px; background: #F5F3FF; display: inline-block; padding: 6px 12px; border-radius: 8px;">Servicio</p>
             <input type="hidden" id="gestion-id">
-            <div style="padding:15px; background:#F5F3FF; border-radius:12px; margin-bottom:20px;">
-                <button class="btn-primary" onclick="generarEnlaceCliente()">🔗 Generar enlace privado del cliente</button>
-                <p style="font-size:12px; margin-bottom:0;">Permite consultar sus servicios. Compártelo únicamente con este cliente.</p>
-                <div id="enlace-cliente-box" style="display:none; margin-top:12px;">
-                    <input id="enlace-cliente" type="text" readonly style="width:100%; box-sizing:border-box; padding:10px;" aria-label="Enlace privado del cliente">
-                    <button class="btn-primary" onclick="copiarTexto(document.getElementById('enlace-cliente').value)" style="margin-top:10px;">Copiar enlace</button>
-                    <a id="enviar-enlace-cliente" class="btn-primary" target="_blank" rel="noopener noreferrer" style="display:inline-block; text-decoration:none; margin-top:10px;">Abrir WhatsApp</a>
-                </div>
+            <div class="cliente-link-box">
+                <button class="btn-primary" onclick="abrirMensajesCliente(Number(document.getElementById('gestion-id').value))">💬 Mensajes y enlace privado</button>
+                <button class="btn-gestionar" onclick="abrirFichaDelPedido()">👤 Ver ficha y todos sus servicios</button>
             </div>
-
-            <div style="background: #F9FAFB; padding: 20px; border-radius: 16px; border: 1px solid var(--border); margin-bottom: 25px;">
-                <h3 style="font-size: 14px; margin-top: 0; margin-bottom: 15px; color: var(--text-main); text-transform: uppercase; letter-spacing: 0.5px;">📞 Datos de Contacto</h3>
-                <div style="display: flex; gap: 15px;">
-                    <div style="flex: 1;">
-                        <label style="font-size: 12px; font-weight: bold; color: var(--text-muted);">N° WhatsApp (Con código país)</label>
-                        <input type="text" id="gestion-telefono" style="width: 100%; padding: 12px; border: 2px solid var(--border); border-radius: 10px; margin-top: 5px; outline: none; transition: 0.3s;" placeholder="Ej: +51987654321" onfocus="this.style.borderColor='var(--primary)'" onblur="this.style.borderColor='var(--border)'">
-                    </div>
-                    <div style="flex: 1;">
-                        <label style="font-size: 12px; font-weight: bold; color: var(--text-muted);">Correo Electrónico</label>
-                        <input type="email" id="gestion-correo" style="width: 100%; padding: 12px; border: 2px solid var(--border); border-radius: 10px; margin-top: 5px; outline: none; transition: 0.3s;" placeholder="correo@ejemplo.com" onfocus="this.style.borderColor='var(--primary)'" onblur="this.style.borderColor='var(--border)'">
-                    </div>
-                </div>
-                <button class="btn-gestionar" style="width: 100%; margin-top: 15px; padding: 12px; font-size: 14px;" onclick="guardarDatosContacto()">Guardar Contacto</button>
-            </div>
+            <div class="input-group"><label for="gestion-correo">Correo para este servicio</label><input type="email" id="gestion-correo" placeholder="correo@ejemplo.com"><button class="btn-gestionar" onclick="guardarDatosContacto()">Guardar correo</button></div>
+            <details class="cliente-link-box"><summary>Vincular este servicio a otra ficha</summary><p>Elige la ficha del cliente correcto. Su enlace anterior dejará de dar acceso a este servicio.</p><select id="gestion-ficha-destino" class="filtro-select"></select><button class="btn-gestionar" onclick="vincularServicioFicha()">Vincular servicio</button></details>
 
             <h3 style="font-size: 14px; margin-top: 0; margin-bottom: 15px; color: var(--text-main); text-transform: uppercase; letter-spacing: 0.5px;">⚡ Acciones Rápidas</h3>
             <div style="display: flex; gap: 12px; flex-wrap: wrap;">
@@ -432,8 +420,49 @@
         </div>
     </div>
 
-    <script src="security.js?v=20260912-security1"></script>
-    <script src="admin.js?v=20260912-security1"></script>
+    <div id="modal-ficha" class="modal"><div class="modal-content" style="max-width:650px;">
+        <span class="cerrar-modal" onclick="cerrarModal('modal-ficha')">&times;</span>
+        <h2>👤 Ficha del cliente</h2><p id="ficha-codigo" class="cliente-help"></p><input type="hidden" id="ficha-id">
+        <div class="input-group"><label for="ficha-nombre">Nombre o alias</label><input id="ficha-nombre" maxlength="100" placeholder="Cómo reconoces al cliente"></div>
+        <div class="cliente-form-grid">
+            <div class="input-group"><label for="ficha-telefono">WhatsApp con código de país (opcional)</label><input id="ficha-telefono" placeholder="+51987654321" type="tel"></div>
+            <div class="input-group"><label for="ficha-usuario">Usuario de WhatsApp (opcional)</label><input id="ficha-usuario" placeholder="@usuario" maxlength="36" autocapitalize="off"></div>
+        </div>
+        <button class="btn-primary" onclick="guardarFicha()">Guardar ficha</button>
+        <p class="cliente-help">El contacto se actualiza para todos sus servicios. Comprueba que el número o usuario pertenece a este cliente.</p>
+        <label for="ficha-enlace">Enlace privado del cliente</label><input id="ficha-enlace" class="cliente-readonly" readonly>
+        <div class="cliente-actions"><button class="btn-gestionar" onclick="copiarTexto(document.getElementById('ficha-enlace').value)">Copiar enlace</button><button class="btn-borrar" onclick="renovarEnlaceFicha()">Revocar y crear otro enlace</button></div>
+        <p class="cliente-help">Este enlace se reutiliza en los mensajes y permite consultar todos los servicios de esta ficha.</p>
+        <h3>Servicios del cliente</h3><div id="ficha-servicios"></div>
+        <button class="btn-primary" onclick="registroManual(document.getElementById('ficha-id').value)">+ Añadir servicio a este cliente</button>
+    </div></div>
+    <div id="modal-registro-manual" class="modal"><div class="modal-content" style="max-width:650px;">
+        <span class="cerrar-modal" onclick="cerrarModal('modal-registro-manual')">&times;</span>
+        <h2>Registrar cliente y servicio</h2>
+        <div class="input-group"><label for="manual-ficha">Cliente</label><select id="manual-ficha" class="filtro-select" onchange="cambiarClienteManual()"></select></div>
+        <div id="manual-nuevo-cliente">
+            <div class="input-group"><label for="manual-nombre">Nombre o alias</label><input id="manual-nombre" maxlength="100" placeholder="Ej.: María"></div>
+            <div class="cliente-form-grid"><div class="input-group"><label for="manual-telefono">WhatsApp con código de país (opcional)</label><input id="manual-telefono" type="tel" placeholder="+51987654321"></div><div class="input-group"><label for="manual-usuario">Usuario de WhatsApp (opcional)</label><input id="manual-usuario" placeholder="@usuario" maxlength="36" autocapitalize="off"></div></div>
+            <p class="cliente-help">Puedes registrarlo solo con un nombre o alias y elegir su chat al compartir el mensaje.</p>
+        </div>
+        <div class="input-group"><label for="manual-servicio">Servicio</label><input id="manual-servicio" list="manual-catalogo" placeholder="Selecciona o escribe el servicio"><datalist id="manual-catalogo"></datalist></div>
+        <div class="input-group"><label for="manual-correo">Correo para este servicio (opcional)</label><input id="manual-correo" type="email" placeholder="correo@ejemplo.com"></div>
+        <div class="cliente-form-grid"><div class="input-group"><label for="manual-cantidad">Duración (0 = permanente)</label><input id="manual-cantidad" type="number" value="1" min="0" max="36500"></div><div class="input-group"><label for="manual-unidad">Unidad</label><select id="manual-unidad" class="filtro-select"><option value="meses">Meses</option><option value="dias">Días</option><option value="años">Años</option></select></div></div>
+        <button id="manual-guardar" class="btn-primary" onclick="guardarRegistroManual()">Guardar servicio activo</button><p class="cliente-help">Después podrás revisar el mensaje de activación y enviarlo por WhatsApp.</p>
+    </div></div>
+    <div id="modal-mensajes" class="modal"><div class="modal-content" style="max-width:650px;">
+        <span class="cerrar-modal" onclick="cerrarModal('modal-mensajes')">&times;</span>
+        <h2>💬 Mensaje para el cliente</h2><p id="mensaje-cliente" class="cliente-help"></p>
+        <div class="input-group"><label for="mensaje-atajo">Atajo de mensaje</label><select id="mensaje-atajo" class="filtro-select" onchange="prepararMensajeCliente()"><option value="enlace">Enlace de mis servicios</option><option value="activacion">Activación</option><option value="vencimiento">Recordatorio de vencimiento</option><option value="renovacion">Renovación</option></select></div>
+        <label for="mensaje-texto">Revisa o ajusta el mensaje</label><textarea id="mensaje-texto" class="mensaje-editor" oninput="actualizarDestinosMensaje()"></textarea>
+        <div class="cliente-actions"><a id="mensaje-whatsapp" class="btn-primary" target="_blank" rel="noopener noreferrer">Abrir WhatsApp</a><a id="mensaje-elegir-chat" class="btn-gestionar" target="_blank" rel="noopener noreferrer">Elegir otro chat</a><button class="btn-gestionar" onclick="copiarMensajeCliente()">Copiar mensaje</button></div>
+        <p id="mensaje-destino" class="cliente-help"></p><p id="mensaje-copiado" class="cliente-status" role="status"></p>
+        <p class="cliente-help">El mensaje incluye su enlace privado. Comprueba el destinatario y pulsa Enviar dentro de WhatsApp.</p>
+    </div></div>
+
+    <script src="security.js?v=20260912-clientes1"></script>
+    <script src="clientes.js?v=20260912-clientes1"></script>
+    <script src="admin.js?v=20260912-clientes1"></script>
 
 </body>
 </html>

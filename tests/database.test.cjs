@@ -146,4 +146,74 @@ test('PostgreSQL enforces owner permissions, private links and restricted orders
     await role('anon',null,'c'.repeat(48));
     assert.equal((await rows('select id from public.usuarios_canva where id=1')).length,1);
   });
+
+  await db.exec('reset role');
+  // Test-only stand-in for pgcrypto randomness; real migrations use gen_random_bytes.
+  await db.exec(`create function extensions.gen_random_bytes(integer) returns bytea language sql volatile as $$
+      select substring(decode(replace(gen_random_uuid()::text || gen_random_uuid()::text,'-',''),'hex') from 1 for $1)
+  $$;`);
+  const beforeProfiles=await rows('select id,consulta_hash,correo,estado,fecha_fin from public.usuarios_canva order by id');
+  const profileMigration=readdirSync('supabase/migrations').find(f=>f.endsWith('_client_profiles_and_messages.sql'));
+  await db.exec(readFileSync('supabase/migrations/'+profileMigration,'utf8'));
+  assert.deepEqual(await rows('select id,consulta_hash,correo,estado,fecha_fin from public.usuarios_canva order by id'),beforeProfiles);
+  let stable, manualId;
+  await t.test('profiles preserve existing private links and offer reusable links to all associated services',async()=>{
+    await role('authenticated',owner);
+    const first=(await rows('select * from public.vega_ficha_pedido(1)'))[0];
+    const second=(await rows('select * from public.vega_ficha_pedido(1)'))[0];
+    assert.equal(first.codigo_privado,second.codigo_privado);
+    assert.match(first.codigo_privado,/^[a-f0-9]{48}$/);
+    stable=first;
+    manualId=(await db.query("select public.vega_registro_manual($1,null,null,null,null,'Second service',3,'meses') as id",[first.id])).rows[0].id;
+    await role('anon',null,'c'.repeat(48));assert.equal((await rows('select id from public.usuarios_canva where id=1')).length,1);
+    await role('anon',null,first.codigo_privado);
+    assert.equal((await rows('select id from public.usuarios_canva')).length,2);
+    await denied('select codigo_privado from public.vega_clientes');
+    await denied('select cliente_id,cliente_consulta_hash from public.usuarios_canva');
+  });
+  await t.test('manual registration accepts username only and contact edits keep identity and links',async()=>{
+    await role('authenticated',owner);
+    const id=(await rows("select public.vega_registro_manual(null,'María',null,'maria_test',null,'Manual fixture',1,'meses') as id"))[0].id;
+    const ficha=(await rows(`select * from public.vega_ficha_pedido(${id})`))[0];
+    assert.equal(ficha.telefono,null);assert.equal(ficha.whatsapp_usuario,'maria_test');
+    await db.query("update public.vega_clientes set nombre='Nuevo nombre',telefono='+51911111111',whatsapp_usuario='nuevo_usuario' where id=$1",[ficha.id]);
+    const updated=(await rows(`select * from public.vega_ficha_pedido(${id})`))[0];
+    assert.equal(updated.id,ficha.id);assert.equal(updated.codigo_privado,ficha.codigo_privado);
+    const order=(await rows(`select * from public.usuarios_canva where id=${id}`))[0];
+    assert.equal(order.telefono,updated.telefono);assert.equal(order.whatsapp_usuario,updated.whatsapp_usuario);
+  });
+  await t.test('guest username orders cannot attach to existing profiles by claiming their contact',async()=>{
+    await role('anon',null,codeA);
+    await order({telefono:null,whatsapp_usuario:'nuevo_usuario'});
+    await assert.rejects(order({telefono:null,whatsapp_usuario:null}),e=>e.code==='42501');
+    await assert.rejects(order({cliente_id:stable.id}),e=>e.code==='42501');
+    await denied('select * from public.vega_ficha_pedido(1)');
+    await role('authenticated',owner);
+    const guest=(await rows("select * from public.usuarios_canva where estado='Pendiente' and whatsapp_usuario='nuevo_usuario'"))[0];
+    assert.equal(guest.cliente_id,null);
+    const resolved=(await rows(`select * from public.vega_ficha_pedido(${guest.id})`))[0];
+    const victim=(await rows("select * from public.vega_clientes where nombre='Nuevo nombre'"))[0];
+    assert.notEqual(resolved.id,victim.id);
+  });
+  await t.test('non-admin accounts cannot read link secrets or invoke profile mutations',async()=>{
+    await role('authenticated',outsider);
+    assert.equal((await rows('select * from public.vega_clientes')).length,0);
+    assert.equal((await rows("update public.vega_clientes set nombre='forged' returning id")).length,0);
+    await denied('select * from public.vega_ficha_pedido(1)');
+    await denied("select public.vega_registro_manual(null,'forged',null,null,null,'forged',1,'meses')");
+    await denied("insert into public.vega_clientes(nombre) values('forged')");
+  });
+  await t.test('explicit revocation removes both the stable link and all legacy links',async()=>{
+    await role('authenticated',owner);
+    await db.query("update public.vega_clientes set codigo_privado=$1 where id=$2",['e'.repeat(48),stable.id]);
+    for(const old of [stable.codigo_privado,'c'.repeat(48)]){
+      await role('anon',null,old);assert.equal((await rows('select id from public.usuarios_canva where id=1')).length,0);
+    }
+    await role('anon',null,'e'.repeat(48));assert.equal((await rows('select id from public.usuarios_canva')).length,2);
+    await role('authenticated',owner);
+    const target=(await rows("select * from public.vega_clientes where whatsapp_usuario='nuevo_usuario' and nombre='Nuevo nombre'"))[0];
+    await db.query('update public.usuarios_canva set cliente_id=$1 where id=$2',[target.id,manualId]);
+    await role('anon',null,'e'.repeat(48));assert.equal((await rows('select id from public.usuarios_canva')).length,1);
+    await role('anon',null,target.codigo_privado);assert.equal((await rows(`select id from public.usuarios_canva where id=${manualId}`)).length,1);
+  });
 });
