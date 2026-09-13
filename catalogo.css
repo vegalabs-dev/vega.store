@@ -1,0 +1,42 @@
+/* Availability, offers and catalogue navigation. */
+[hidden] { display: none !important; }
+button:disabled { opacity: .6; cursor: not-allowed !important; transform: none !important; }
+.stock-badge { display: inline-flex; align-items: center; width: fit-content; padding: 6px 10px; border-radius: 8px; background: #ecfdf5; color: #047857; font-size: 12px; font-weight: 700; margin: 6px 0 12px; }
+.stock-badge.sold-out { background: #f3f4f6; color: #6b7280; }
+.card.is-sold-out .card-img-top { filter: grayscale(.7); opacity: .7; }
+.card.is-sold-out { border-style: dashed; }
+.offer-clock { display: block; font-size: 12px; font-weight: 650; color: #6d28d9; line-height: 1.6; margin-bottom: 12px; }
+.offer-clock small { display: block; font-size: 11px; font-weight: 400; }
+.offer-section { margin: 0 5% 36px; padding: 28px; border: 1px solid #ddd6fe; border-radius: 24px; background: linear-gradient(125deg,#f5f3ff,#fff 80%); }
+.section-heading { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 26px; }
+.section-heading h2 { font-size: 25px; letter-spacing: -.5px; margin: 0 0 6px; }
+.section-heading p { font-size: 14px; color: #6b7280; line-height: 1.6; margin: 0; }
+.offer-eyebrow { display: block; color: #7c3aed; font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; font-weight: 800; margin-bottom: 8px; }
+.offer-section .grid-servicios { grid-template-columns: repeat(auto-fit,minmax(230px,1fr)); gap: 24px; }
+.offer-section .card { max-width: 360px; width: 100%; }
+.catalog-toolbar { padding: 0 5%; }
+.catalog-toolbar label { font-size: 14px; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; }
+.catalog-toolbar input { accent-color: #7c3aed; width: 17px; height: 17px; }
+.catalog-note { color: #6b7280; font-size: 12px; line-height: 1.6; margin-top: 12px; }
+.stock-settings { padding: 18px; margin: 22px 0; border: 1px solid #ddd6fe; border-radius: 14px; background: #faf9ff; }
+.stock-settings h3 { margin: 0 0 14px; font-size: 16px; }
+.stock-settings label { display: block; font-size: 13px; margin-bottom: 6px; }
+.stock-settings .check-label { display: flex; align-items: center; gap: 8px; margin: 12px 0; }
+.stock-settings input[type=checkbox] { width: 18px; height: 18px; margin: 0; }
+.stock-settings p { color: #6b7280; font-size: 12px; line-height: 1.6; margin: 10px 0 0; }
+.stock-form-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 14px; }
+.stock-settings input, .stock-settings select { max-width: 100%; box-sizing: border-box; }
+.stock-settings input[type=datetime-local] { font-size: 13px; padding: 10px; }
+.stock-admin-summary { display: block; font-size: 12px; color: #6d28d9; margin-top: 6px; line-height: 1.5; }
+.hero { min-height: auto; padding-top: 55px; padding-bottom: 55px; }
+@media(max-width:640px) {
+    .offer-section { padding: 20px 16px; margin: 0 4% 26px; }
+    .offer-section .grid-servicios { grid-template-columns: minmax(0,1fr); }
+    .offer-section .card { max-width: none; }
+    .stock-form-grid { grid-template-columns: minmax(0,1fr); }
+    .section-heading h2 { font-size: 22px; }
+    .hero { padding-top: 35px; padding-bottom: 35px; }
+}
+@media(prefers-reduced-motion:reduce) {
+    .floating-card, .status-dot { animation: none; }
+}

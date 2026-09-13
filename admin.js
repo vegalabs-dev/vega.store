@@ -121,7 +121,7 @@ async function cargarDatosPrincipales() {
     document.getElementById('stat-activos').innerText = clientesGlobal.length;
     document.getElementById('stat-pendientes').innerText = solicitudesGlobal.length;
 
-    const { data: catalogo } = await verificarOperacion(supabaseClient.from('servicios').select('nombre').order('nombre', { ascending: true }));
+    const { data: catalogo } = await verificarOperacion(supabaseClient.from('servicios').select('id,nombre,stock,agotado,activo').order('nombre', { ascending: true }));
     catalogoOpciones = catalogo || [];
 
     const selectServicios = document.getElementById('filtro-servicio');
@@ -202,7 +202,7 @@ function renderizarSolicitudes() {
         tabla.innerHTML += `<tr>
             <td>${telRow} ${corRow}</td>
             <td><strong style="color:var(--text-main); font-size:15px;">${h(user.servicio)}</strong><br><span style="font-size:12px; color:var(--text-muted); font-weight:600;">${h(tiempoTxt)}</span></td>
-            <td><strong style="color: var(--primary); background:#F5F3FF; padding:4px 8px; border-radius:6px;">${h(user.token || user.num_operacion || '---')}</strong></td>
+            <td>${user.precio_acordado != null ? `<div style="font-size:13px;margin-bottom:8px;">Importe del pedido: <strong>S/ ${Number(user.precio_acordado).toFixed(2)}</strong></div>` : ''}<strong style="color: var(--primary); background:#F5F3FF; padding:4px 8px; border-radius:6px;">${h(user.token || user.num_operacion || '---')}</strong></td>
             <td><span style="color:var(--text-muted); font-size:13px;">${new Date(user.creado_en).toLocaleString('es-PE')}</span></td>
             <td style="display:flex; gap:8px;">
                 <button class="btn-aprobar" onclick="aprobarPago(${user.id})">✅ Aprobar</button>
@@ -214,6 +214,15 @@ function renderizarSolicitudes() {
 
 async function aprobarPago(id) {
     let user = solicitudesGlobal.find(u => u.id === id);
+    if (!user) return;
+    let servicioId = user.servicio_id;
+    if (!servicioId) {
+        const opciones = catalogoOpciones.filter(s => s.activo !== false);
+        const choice = prompt('Selecciona el producto para descontar el cupo:\n'+opciones.map((s,i)=>`${i+1}. ${s.nombre} (#${s.id}) · ${VegaCatalog.stockTexto(s)}`).join('\n'));
+        if (choice === null) return;
+        servicioId = opciones[Number(choice)-1]?.id;
+        if (!servicioId) throw new Error('Selecciona un producto válido.');
+    }
     let cantidad = parseInt(user.meses) || 0; let unidad = user.unidad || 'meses';
     let inicioStr = new Date().toISOString().split('T')[0]; let finStr = null;
     if (cantidad > 0) {
@@ -221,7 +230,7 @@ async function aprobarPago(id) {
         finStr = fin.toISOString().split('T')[0];
     }
     await asegurarFichaPedido(id);
-    await verificarOperacion(supabaseClient.from('usuarios_canva').update({ estado: 'Activo', fecha_inicio: inicioStr, fecha_fin: finStr }).eq('id', id));
+    await verificarOperacion(supabaseClient.from('usuarios_canva').update({ estado: 'Activo', servicio_id: servicioId, fecha_inicio: inicioStr, fecha_fin: finStr }).eq('id', id).eq('estado', 'Pendiente'));
     cargarDatosPrincipales();
 }
 
@@ -279,10 +288,10 @@ async function renovarServicio() {
 
 async function cambiarServicio() {
     let id = document.getElementById('gestion-id').value;
-    let opcionesStr = catalogoOpciones.map((s, i) => `${i+1}. ${s.nombre}`).join('\n');
+    let opcionesStr = catalogoOpciones.map((s, i) => `${i+1}. ${s.nombre} (#${s.id}) · ${VegaCatalog.stockTexto(s)}`).join('\n');
     let eleccion = prompt(`NÚMERO del nuevo servicio:\n\n${opcionesStr}`);
     if (eleccion && !isNaN(eleccion) && catalogoOpciones[parseInt(eleccion) - 1]) {
-        await verificarOperacion(supabaseClient.from('usuarios_canva').update({ servicio: catalogoOpciones[parseInt(eleccion) - 1].nombre }).eq('id', id));
+        await verificarOperacion(supabaseClient.from('usuarios_canva').update({ servicio: catalogoOpciones[parseInt(eleccion) - 1].nombre, servicio_id: catalogoOpciones[parseInt(eleccion) - 1].id }).eq('id', id));
         alert("Cambiado."); cerrarModal('modal-gestionar-cliente'); cargarDatosPrincipales();
     }
 }
@@ -337,7 +346,7 @@ async function cargarServicios() {
         if(serv.geo_tipo === 'solo') geoText = `<span style="color:#2563EB; font-weight:600;">✅ Solo:</span> ${h(serv.geo_paises)}`;
         if(serv.geo_tipo === 'excepto') geoText = `<span style="color:#DC2626; font-weight:600;">❌ Excepto:</span> ${h(serv.geo_paises)}`;
 
-        let planes = serv.planes && serv.planes.length > 0 ? serv.planes : [{ cantidad: serv.meses || 1, unidad: 'meses', precio: serv.precio, promo: serv.precio_promocional }];
+        let planes = VegaCatalog.planes(serv);
         let txtPlanes = planes.map(p => {
             let cant = p.cantidad !== undefined ? p.cantidad : (p.meses || 1); let uni = p.unidad || 'meses';
             let t = cant == 0 ? 'Único' : `${cant} ${uni.charAt(0).toUpperCase()}`;
@@ -345,11 +354,11 @@ async function cargarServicios() {
         }).join('');
 
         tabla.innerHTML += `<tr>
-            <td><div style="display:flex; align-items:center; gap:10px;">${serv.imagen_url ? `<img src="${h(VegaSecurity.imageUrl(serv.imagen_url))}" style="width:40px; height:40px; border-radius:8px; object-fit:cover;">` : '📦'} <strong style="color:var(--text-main); font-size:15px;">${h(serv.nombre)}</strong></div></td>
+            <td><div style="display:flex; align-items:center; gap:10px;">${serv.imagen_url ? `<img src="${h(VegaSecurity.imageUrl(serv.imagen_url))}" style="width:40px; height:40px; border-radius:8px; object-fit:cover;">` : '📦'} <strong style="color:var(--text-main); font-size:15px;">${h(serv.nombre)}</strong></div><span class="stock-badge ${VegaCatalog.disponible(serv) ? '' : 'sold-out'}">${h(VegaCatalog.stockTexto(serv))}</span><span class="stock-admin-summary">${h(resumenPromocion(serv))}</span></td>
             <td><span style="background:#EFF6FF; color:#1E3A8A; padding:4px 8px; border-radius:6px; font-size:12px; font-weight:700;">${h(serv.categoria || '---')}</span></td>
             <td style="font-size: 12px; color: var(--text-muted);">${geoText}</td>
             <td>${txtPlanes}</td>
-            <td style="display:flex; gap:8px;"><button class="btn-gestionar" onclick="editarServicioPorId(${Number(serv.id)})">✏️ Editar</button><button class="btn-borrar" onclick="borrarServicio(${serv.id})">🗑️</button></td>
+            <td style="display:flex; gap:8px;"><button class="btn-gestionar" onclick="editarServicioPorId(${Number(serv.id)})">✏️ Editar</button><button class="btn-borrar" onclick="borrarServicio(${serv.id})" title="Ocultar de la tienda">Ocultar</button></td>
         </tr>`;
     });
 }
@@ -417,6 +426,7 @@ function abrirModalServicio() {
     document.getElementById('serv-tipo-ingreso').value = 'numero'; document.getElementById('serv-geo-tipo').value = 'todos'; document.getElementById('serv-geo-paises').value = ''; toggleGeoInput();
     document.getElementById('serv-etiqueta').value = ''; document.getElementById('serv-caracteristicas').value = '';
     document.getElementById('serv-imagen-url').value = ''; document.getElementById('serv-imagen-file').value = ''; document.getElementById('serv-imagen-preview').style.display = 'none'; document.getElementById('upload-status').style.display = 'none';
+    cargarOpcionesStock({});
     document.getElementById('contenedor-planes').innerHTML = ''; agregarFilaPlan(1, 'meses'); abrirModal('modal-servicio');
 }
 
@@ -425,6 +435,7 @@ function editarServicioPorId(id) {
     if (service) editarServicio(service);
 }
 function editarServicio(serv) {
+    cargarOpcionesStock(serv);
     document.getElementById('serv-id').value = serv.id; document.getElementById('serv-nombre').value = serv.nombre || ''; document.getElementById('serv-categoria').value = serv.categoria || '';
     document.getElementById('serv-tipo-ingreso').value = serv.tipo_ingreso || 'numero'; document.getElementById('serv-geo-tipo').value = serv.geo_tipo || 'todos'; document.getElementById('serv-geo-paises').value = serv.geo_paises || ''; toggleGeoInput();
     document.getElementById('serv-etiqueta').value = serv.etiqueta || ''; document.getElementById('serv-caracteristicas').value = serv.caracteristicas || '';
@@ -445,10 +456,19 @@ async function guardarServicio() {
 
     let planesGuardar = [];
     document.querySelectorAll('.plan-row').forEach(row => {
-        let c = parseInt(row.querySelector('.plan-cantidad').value); let p = parseFloat(row.querySelector('.plan-precio').value); let pr = parseFloat(row.querySelector('.plan-promo').value);
+        let c = Number(row.querySelector('.plan-cantidad').value); if (!row.querySelector('.plan-cantidad').value.trim()) c = NaN; let p = parseFloat(row.querySelector('.plan-precio').value); let pr = parseFloat(row.querySelector('.plan-promo').value);
         if(c >= 0 && !isNaN(p)) planesGuardar.push({ cantidad: c, unidad: row.querySelector('.plan-unidad').value, precio: p, promo: isNaN(pr) ? null : pr });
     });
 
+    const seen = new Set();
+    for (const p of planesGuardar) {
+        const key = `${p.cantidad}:${p.unidad}`;
+        if (seen.has(key) || !Number.isInteger(p.cantidad) || p.precio < 0 || (p.promo !== null && (p.promo <= 0 || p.promo >= p.precio)))
+            throw new Error('Cada duración debe ser única y el precio de oferta debe ser mayor que 0 y menor al normal.');
+        seen.add(key);
+    }
+    if (planesGuardar.length !== document.querySelectorAll('.plan-row').length) throw new Error('Completa o elimina los planes vacíos.');
+    const opciones = leerOpcionesStock(planesGuardar);
     if(!nombre || planesGuardar.length === 0) return alert("Faltan datos. El servicio necesita nombre y al menos 1 precio.");
 
     const datos = {
@@ -456,14 +476,23 @@ async function guardarServicio() {
         geo_tipo: document.getElementById('serv-geo-tipo').value, geo_paises: document.getElementById('serv-geo-paises').value.trim().toUpperCase(),
         etiqueta: document.getElementById('serv-etiqueta').value.trim(), caracteristicas: document.getElementById('serv-caracteristicas').value.trim(),
         imagen_url: VegaSecurity.imageUrl(document.getElementById('serv-imagen-url').value) || null,
-        planes: planesGuardar, activo: true, precio: planesGuardar[0].precio, precio_promocional: planesGuardar[0].promo
+        ...opciones, planes: planesGuardar, precio: planesGuardar[0].precio, precio_promocional: planesGuardar[0].promo
     };
 
-    if(id) await verificarOperacion(supabaseClient.from('servicios').update(datos).eq('id', id)); else await verificarOperacion(supabaseClient.from('servicios').insert([datos]));
+    if (id) {
+        const previous = serviciosAdminGlobal.find(s => Number(s.id) === Number(id));
+        if (!previous) throw new Error('Recarga el catálogo antes de guardar.');
+        const changedStock = datos.stock !== (previous.stock ?? null) || datos.agotado !== !!previous.agotado;
+        if (!changedStock) { delete datos.stock; delete datos.agotado; }
+        let request = supabaseClient.from('servicios').update(datos).eq('id', Number(id));
+        if (changedStock) request = request.eq('stock_version', previous.stock_version ?? 0);
+        const {data:saved} = await verificarOperacion(request.select('id'));
+        if (!saved?.length) throw new Error('El stock cambió mientras editabas. Cierra este formulario y vuelve a abrir el producto para revisar la cantidad actual.');
+    } else await verificarOperacion(supabaseClient.from('servicios').insert([datos]));
     cerrarModal('modal-servicio'); cargarServicios();
 }
 
-async function borrarServicio(id) { if (confirm("¿Borrar servicio?")) { await verificarOperacion(supabaseClient.from('servicios').delete().eq('id', id)); cargarServicios(); } }
+async function borrarServicio(id) { if (confirm("¿Ocultar este producto de la tienda? Sus ventas se conservarán. Puedes volver a mostrarlo desde Editar.")) { await verificarOperacion(supabaseClient.from('servicios').update({activo:false}).eq('id', id)); cargarServicios(); } }
 
 async function abrirSeguridad() {
     abrirModal('modal-seguridad');
@@ -476,4 +505,39 @@ async function abrirSeguridad() {
         let etiqueta = index === 0 ? '<span style="background:#D1FAE5; color:#059669; padding:2px 8px; border-radius:12px; font-size:11px; margin-left:8px; font-weight:bold;">Actual</span>' : '';
         cont.innerHTML += `<div style="padding:15px; border-bottom:1px solid var(--border);"><h4 style="margin:0 0 5px 0; color:var(--text-main); font-size:14px;">${h(acc.dispositivo)} ${etiqueta}</h4><p style="margin:0;font-size:12px;color:var(--text-muted);">${h(acc.navegador)} • ${f}</p></div>`;
     });
+}
+
+function toggleStockInput() {
+    document.getElementById('serv-stock-grupo').hidden = document.getElementById('serv-stock-modo').value !== 'limitado';
+}
+function togglePromoInput() {
+    document.getElementById('serv-promo-fechas').hidden = !document.getElementById('serv-promo-programada').checked;
+}
+function cargarOpcionesStock(serv) {
+    document.getElementById('serv-stock-modo').value = serv.stock == null ? 'ilimitado' : 'limitado';
+    document.getElementById('serv-stock').value = serv.stock ?? '';
+    document.getElementById('serv-agotado').checked = !!serv.agotado;
+    document.getElementById('serv-activo').checked = serv.activo !== false;
+    document.getElementById('serv-promo-programada').checked = !!serv.promocion_inicio;
+    document.getElementById('serv-promo-inicio').value = VegaCatalog.inputPeru(serv.promocion_inicio);
+    document.getElementById('serv-promo-fin').value = VegaCatalog.inputPeru(serv.promocion_fin);
+    toggleStockInput(); togglePromoInput();
+}
+function leerOpcionesStock(planes) {
+    const limited = document.getElementById('serv-stock-modo').value === 'limitado';
+    const raw = document.getElementById('serv-stock').value;
+    const stock = limited ? Number(raw) : null;
+    if (limited && (!raw.trim() || !Number.isInteger(stock) || stock < 0 || stock > 2147483647)) throw new Error('Indica una cantidad de stock válida, incluyendo 0 para agotado.');
+    const scheduled = document.getElementById('serv-promo-programada').checked;
+    const inicio = scheduled ? VegaCatalog.desdePeru(document.getElementById('serv-promo-inicio').value) : null;
+    const fin = scheduled ? VegaCatalog.desdePeru(document.getElementById('serv-promo-fin').value) : null;
+    if (scheduled && (!inicio || !fin || fin <= inicio || !planes.some(p => p.promo !== null)))
+        throw new Error('La promoción necesita inicio, un fin posterior y al menos un precio de oferta.');
+    return {stock, agotado:document.getElementById('serv-agotado').checked, activo:document.getElementById('serv-activo').checked,
+        promocion_inicio:inicio, promocion_fin:fin};
+}
+function resumenPromocion(s) {
+    if (!s.promocion_inicio) return '';
+    const estado = Date.now() < Date.parse(s.promocion_inicio) ? 'Programada' : Date.now() >= Date.parse(s.promocion_fin) ? 'Finalizada' : 'Oferta activa';
+    return `${estado}: ${VegaCatalog.fechaPeru(s.promocion_inicio)} → ${VegaCatalog.fechaPeru(s.promocion_fin)} (Perú)`;
 }

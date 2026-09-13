@@ -94,8 +94,12 @@ function registroManual(clienteId='') {
     opcionesFichas('manual-ficha');document.getElementById('manual-ficha').value=clienteId;
     for(const field of ['nombre','telefono','usuario','correo','servicio'])document.getElementById('manual-'+field).value='';
     document.getElementById('manual-cantidad').value='1';document.getElementById('manual-unidad').value='meses';
-    const lista=document.getElementById('manual-catalogo');lista.replaceChildren();
-    for(const nombre of new Set(catalogoOpciones.map(s=>s.nombre)))lista.append(new Option(nombre,nombre));
+    const lista=document.getElementById('manual-producto');lista.replaceChildren(new Option('Selecciona un producto',''),new Option('Servicio fuera del catálogo','libre'));
+    for(const s of catalogoOpciones.filter(s=>s.activo!==false)) {
+        const option=new Option(`${s.nombre} (#${s.id}) · ${VegaCatalog.stockTexto(s)}`,String(s.id));
+        option.disabled=!VegaCatalog.disponible(s);lista.append(option);
+    }
+    cambiarProductoManual();
     cambiarClienteManual();abrirModal('modal-registro-manual');
 }
 function cambiarClienteManual() {
@@ -106,14 +110,19 @@ async function guardarRegistroManual() {
     const clienteId=document.getElementById('manual-ficha').value;
     const contacto=clienteId ? {nombre:null,telefono:null,whatsapp_usuario:null} : datosContacto('manual');
     if(!clienteId&&!Object.values(contacto).some(Boolean))throw new Error('Indica el nombre, teléfono o usuario del cliente.');
-    const cantidad=Number(document.getElementById('manual-cantidad').value),servicio=document.getElementById('manual-servicio').value.trim();
+    const productValue=document.getElementById('manual-producto').value;
+    if(!productValue) throw new Error('Selecciona un producto o la opción fuera del catálogo.');
+    const product=catalogoOpciones.find(s=>String(s.id)===productValue);
+    if(product&&!VegaCatalog.disponible(product))throw new Error('Este producto está agotado.');
+    const cantidad=Number(document.getElementById('manual-cantidad').value),servicio=product?.nombre || document.getElementById('manual-servicio').value.trim();
     if(!servicio||!document.getElementById('manual-cantidad').value.trim()||!Number.isInteger(cantidad)||cantidad<0||cantidad>36500)throw new Error('Revisa el servicio y la duración.');
+    if(!product && catalogoOpciones.some(s=>s.nombre===servicio))throw new Error('Este servicio pertenece al catálogo. Selecciona su producto para controlar el stock.');
     const correo=document.getElementById('manual-correo');if(correo.value&&!correo.checkValidity())throw new Error('Revisa el correo.');
     btn.disabled=true;btn.textContent='Guardando...';
     try {
         const {data:id}=await verificarOperacion(supabaseClient.rpc('vega_registro_manual',{
             p_cliente_id:clienteId||null,p_nombre:contacto.nombre,p_telefono:contacto.telefono,p_usuario:contacto.whatsapp_usuario,
-            p_correo:correo.value.trim()||null,p_servicio:servicio,p_cantidad:cantidad,p_unidad:document.getElementById('manual-unidad').value
+            p_servicio_id:product?.id||null,p_correo:correo.value.trim()||null,p_servicio:servicio,p_cantidad:cantidad,p_unidad:document.getElementById('manual-unidad').value
         }));
         await cargarDatosPrincipales();cerrarModal('modal-registro-manual');await abrirMensajesCliente(Number(id),'activacion');
     } finally {btn.disabled=false;btn.textContent='Guardar servicio activo';}
@@ -152,4 +161,8 @@ function actualizarDestinosMensaje() {
 async function copiarMensajeCliente() {
     await navigator.clipboard.writeText(document.getElementById('mensaje-texto').value);
     document.getElementById('mensaje-copiado').textContent='Mensaje copiado. Pégalo en el chat del cliente.';
+}
+
+function cambiarProductoManual() {
+    document.getElementById('manual-servicio-libre').hidden = document.getElementById('manual-producto').value !== 'libre';
 }

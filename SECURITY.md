@@ -39,11 +39,27 @@ Los enlaces anteriores se conservan. **Revocar y crear otro enlace** invalida ex
 
 Durante la migración se agrupan únicamente los registros existentes por su teléfono normalizado. Los pedidos futuros no se asocian a una ficha por declarar el mismo teléfono o usuario: el administrador debe vincularlos o deben demostrar posesión del mismo código privado. Las fichas y sus códigos no se pueden consultar desde la API anónima ni desde cuentas ajenas.
 
+## Stock y ofertas programadas
+
+Migración `20260913043149_stock_and_scheduled_offers.sql`, aplicada el 13 de septiembre de 2026.
+
+En **Catálogo → Editar**, el administrador puede mantener stock ilimitado (`NULL`), fijar los cupos disponibles o marcar un producto como agotado. Los 16 productos existentes conservan el modo ilimitado hasta configurar sus cantidades reales. Todos los planes de un producto comparten el stock.
+
+Cada solicitud se vincula por `servicio_id`; un nombre repetido nunca elige arbitrariamente otro producto. Los registros anteriores se vinculan solo cuando el nombre es único y las ventas ya activadas no se descuentan retroactivamente. Una solicitud antigua sin producto asociado pide seleccionarlo antes de aprobarla. Los servicios manuales fuera del catálogo no llevan inventario.
+
+El trigger `vega_private.order_catalogue_sync` usa los permisos del llamador y un bloqueo de fila para descontar un cupo al activar una venta. La aprobación y el descuento forman parte de la misma transacción. La API anónima no puede modificar el stock ni activar pedidos. Repetir la aprobación, restaurar o renovar el mismo acceso no descuenta otra unidad. Cancelar o eliminar un acceso entregado no repone inventario: el administrador debe hacerlo explícitamente. Cambiar a otro producto consume una unidad del nuevo producto. Para vender un acceso adicional, se registra otro servicio.
+
+La edición del stock comprueba `stock_version`, evitando sobrescribir una venta realizada mientras el formulario estaba abierto. Editar otros campos sin tocar la cantidad no vuelve a guardar un stock antiguo. Ocultar un producto conserva las ventas que lo referencian y permite volver a mostrarlo desde Editar.
+
+Los precios de oferta sin fechas conservan su funcionamiento anterior. Al programarlos se requieren inicio y fin, en hora de Perú, guardados como instantes `timestamptz`. El inicio es inclusivo y el fin exclusivo. Durante ese intervalo, los productos disponibles con descuentos aparecen en **Ofertas que terminan pronto**. El navegador actualiza las fechas y vuelve a consultar disponibilidad al comprar; Supabase valida de nuevo el producto, el plan y el precio. Un precio vencido enviado desde una pestaña antigua se rechaza. `precio_acordado` conserva el importe válido al crear la solicitud, visible al administrador aunque el catálogo cambie después. Las solicitudes no reservan cupos; la disponibilidad se confirma al aprobar el pago.
+
+Las pruebas adicionales cubren stock agotado, cantidades no negativas, aprobación repetida, dos pedidos compitiendo secuencialmente por la última unidad, restauración, registro manual sin fichas huérfanas, productos con nombres duplicados, descuentos futuros y vencidos, filtros combinados y conversión de fechas de Perú. La prueba local no es una prueba de carga concurrente; la exclusión entre transacciones depende del bloqueo `FOR UPDATE` de PostgreSQL.
+
 ## Verificación
 
 Con Node.js 24: `npm ci --ignore-scripts` y `npm test`.
 
-Las 22 pruebas usan datos sintéticos y no se conectan a producción. Cubren consultas anónimas, enlaces separados, rechazo de modificaciones por cuentas ajenas, pedidos válidos y manipulados, permisos del propietario, imágenes y XSS. Las políticas se ejecutan en PostgreSQL mediante PGlite; el SHA-256 de pgcrypto se representa mediante la función SHA-256 integrada de PostgreSQL. El flujo HTML/JavaScript se comprueba con jsdom.
+Las 31 pruebas usan datos sintéticos y no se conectan a producción. Cubren consultas anónimas, enlaces separados, rechazo de modificaciones por cuentas ajenas, pedidos válidos y manipulados, permisos del propietario, imágenes y XSS. Las políticas se ejecutan en PostgreSQL mediante PGlite; el SHA-256 de pgcrypto se representa mediante la función SHA-256 integrada de PostgreSQL. El flujo HTML/JavaScript se comprueba con jsdom.
 
 Después del despliegue se verificó por HTTP: consultas anónimas de contactos, hashes e historial rechazadas con 401; consulta de servicios contratados sin enlace devuelve cero filas; catálogo público devuelve 16 servicios; las tres páginas publicadas contienen los cambios. Los registros existentes siguen siendo 11 clientes y 30 imágenes. La lista privada contiene una sola cuenta confirmada. No se inició sesión usando la contraseña del propietario ni se crearon compras reales de prueba.
 

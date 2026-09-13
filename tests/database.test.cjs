@@ -216,4 +216,79 @@ test('PostgreSQL enforces owner permissions, private links and restricted orders
     await role('anon',null,'e'.repeat(48));assert.equal((await rows('select id from public.usuarios_canva')).length,1);
     await role('anon',null,target.codigo_privado);assert.equal((await rows(`select id from public.usuarios_canva where id=${manualId}`)).length,1);
   });
+  await db.exec('reset role');
+  const beforeStock=await rows('select id,consulta_hash,cliente_consulta_hash,correo,estado,fecha_fin from public.usuarios_canva order by id');
+  const stockMigration=readdirSync('supabase/migrations').find(f=>f.endsWith('_stock_and_scheduled_offers.sql'));
+  await db.exec(readFileSync('supabase/migrations/'+stockMigration,'utf8'));
+  assert.deepEqual(await rows('select id,consulta_hash,cliente_consulta_hash,correo,estado,fecha_fin from public.usuarios_canva order by id'),beforeStock);
+  let stockId, firstOrder, secondOrder;
+  await t.test('inventory defaults preserve existing sales and catalogue prices',async()=>{
+    await role('authenticated',owner);
+    assert.equal((await rows('select count(*)::int n from public.servicios where stock is not null or agotado'))[0].n,0);
+    assert.equal((await rows("select count(*)::int n from public.usuarios_canva where estado='Activo' and not stock_descontado"))[0].n,0);
+    stockId=(await rows(`insert into public.servicios(nombre,precio,planes,stock,tipo_ingreso)
+      values ('Limited fixture',20,'[{"cantidad":1,"unidad":"meses","precio":20,"promo":10}]',1,'numero') returning id`))[0].id;
+  });
+  await t.test('pending requests do not consume stock; database validates scheduled prices',async()=>{
+    await role('authenticated',owner);
+    await db.query("update public.servicios set promocion_inicio=now()-interval '1 hour',promocion_fin=now()+interval '1 hour' where id=$1",[stockId]);
+    await role('anon',null,'d'.repeat(48));
+    const purchase={servicio_id:stockId,servicio:'Limited fixture',correo:null,consulta_hash:hash('d'.repeat(48)),precio_acordado:10};
+    await assert.rejects(order({...purchase,precio_acordado:1}),/precio cambió/);
+    await order(purchase); await order(purchase);
+    const pending=await rows("select id,precio_acordado from public.usuarios_canva where estado='Pendiente' order by id");
+    assert.equal(pending.length,2);assert.equal(Number(pending[0].precio_acordado),10);
+    firstOrder=pending[0].id;secondOrder=pending[1].id;
+    assert.equal((await rows(`select stock from public.servicios where id=${stockId}`))[0].stock,1);
+    await role('authenticated',owner);
+    await db.query("update public.servicios set promocion_inicio=now()-interval '2 hours',promocion_fin=now()-interval '1 hour' where id=$1",[stockId]);
+    await role('anon',null,'d'.repeat(48));
+    await assert.rejects(order(purchase),/precio cambió/);
+    await order({...purchase,precio_acordado:20});
+    await role('authenticated',owner);
+    await db.query("update public.servicios set promocion_inicio=now()+interval '1 hour',promocion_fin=now()+interval '2 hours' where id=$1",[stockId]);
+    await role('anon',null,'f'.repeat(48));
+    await assert.rejects(order({...purchase,consulta_hash:hash('f'.repeat(48))}),/precio cambió/);
+  });
+  await t.test('only one approval can consume the last unit and retries never decrement twice',async()=>{
+    await role('authenticated',owner);
+    await db.query(`update public.usuarios_canva set estado='Activo' where id=${firstOrder}`);
+    assert.equal((await rows(`select stock from public.servicios where id=${stockId}`))[0].stock,0);
+    await assert.rejects(db.query(`update public.usuarios_canva set estado='Activo' where id=${secondOrder}`),/agotado/);
+    assert.equal((await rows(`select estado from public.usuarios_canva where id=${secondOrder}`))[0].estado,'Pendiente');
+    for(const estado of ['Activo','Cancelado','Activo'])await db.query(`update public.usuarios_canva set estado=$1,stock_descontado=false where id=${firstOrder}`,[estado]);
+    assert.equal((await rows(`select stock from public.servicios where id=${stockId}`))[0].stock,0);
+    assert.equal(Number((await rows(`select precio_acordado from public.usuarios_canva where id=${firstOrder}`))[0].precio_acordado),10);
+    assert.equal((await rows(`update public.servicios set stock=10 where id=${stockId} and stock_version=0 returning id`)).length,0);
+    await assert.rejects(db.query(`update public.servicios set stock=-1 where id=${stockId}`),e=>e.code==='23514');
+  });
+  await t.test('manual sales consume inventory atomically and out-of-stock failures leave no profile',async()=>{
+    await role('authenticated',owner);
+    const count=(await rows('select count(*)::int n from public.vega_clientes'))[0].n;
+    const register=()=>db.query("select public.vega_registro_manual(null,'Stock buyer',null,'stock_buyer',null,'Limited fixture',1,'meses',$1) as id",[stockId]);
+    await assert.rejects(register(),/agotado/);
+    assert.equal((await rows('select count(*)::int n from public.vega_clientes'))[0].n,count);
+    await db.query(`update public.servicios set stock=2 where id=${stockId}`);
+    await register();assert.equal((await rows(`select stock from public.servicios where id=${stockId}`))[0].stock,1);
+    await db.query(`update public.servicios set agotado=true where id=${stockId}`);
+    await assert.rejects(register(),/agotado/);
+    await db.query(`update public.servicios set agotado=false where id=${stockId}`);
+  });
+  await t.test('duplicate names require the exact product and guests cannot manipulate stock or activation',async()=>{
+    await role('authenticated',owner);
+    const duplicate=(await rows(`insert into public.servicios(nombre,precio,planes,stock,tipo_ingreso)
+      values ('Limited fixture',7,'[{"cantidad":1,"unidad":"meses","precio":7}]',0,'numero') returning id`))[0].id;
+    await role('anon',null,'9'.repeat(48));
+    const purchase={servicio:'Limited fixture',correo:null,consulta_hash:hash('9'.repeat(48))};
+    await assert.rejects(order(purchase),/varios productos/);
+    await assert.rejects(order({...purchase,servicio_id:duplicate}),/agotado/);
+    await order({...purchase,servicio_id:stockId,precio_acordado:20});
+    await assert.rejects(order({...purchase,servicio_id:stockId,stock_descontado:true}),e=>e.code==='42501');
+    await denied(`update public.servicios set stock=100 where id=${stockId}`);
+    await denied(`update public.usuarios_canva set estado='Activo' where id=${secondOrder}`);
+    await role('authenticated',outsider);
+    assert.equal((await rows(`update public.servicios set stock=100 where id=${stockId} returning id`)).length,0);
+    await denied(`select public.vega_registro_manual(null,'Fake',null,null,null,'Limited fixture',1,'meses',${stockId})`);
+  });
+
 });

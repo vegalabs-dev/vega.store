@@ -42,7 +42,7 @@ async function page(kind, {allowed=true, code=null}={}) {
       };return query;
     }
   })};
-  for (const file of (kind==='admin' ? ['security.js','clientes.js','admin.js'] : ['security.js','main.js']))
+  for (const file of (kind==='admin' ? ['catalogo.js','security.js','clientes.js','admin.js'] : ['catalogo.js','security.js','main.js']))
     vm.runInContext(readFileSync(file,'utf8'),dom.getInternalVMContext(),{filename:file});
   await tick();
   return {w,dom,calls,alerts,authCalls,data,rpcHandlers};
@@ -96,7 +96,7 @@ test('store preserves malicious catalogue values as text and requests private co
 
 test('new purchase keeps contact separate, inserts no activation fields and offers WhatsApp fallback', async t=>{
   const {w,dom,calls}=await page('store');t.after(()=>dom.window.close());
-  await w.prepararCompra({nombre:'Fixture service',precio:10,cantidad:1,unidad:'meses',tipo_ingreso:'correo'});
+  await w.prepararCompra({id:1,nombre:'Fixture service',precio:10,cantidad:1,unidad:'meses',tipo_ingreso:'correo'});
   assert.equal(w.document.getElementById('modal-login').classList.contains('oculto'),false);
   await w.procesarLogin();
   w.document.getElementById('correo-compra').value='fixture@example.test';
@@ -166,7 +166,7 @@ test('manual username-only registration calls the atomic RPC then prepares activ
   const {w,dom,data,rpcHandlers}=await page('admin');t.after(()=>dom.window.close());await w.mostrarPanel();
   w.registroManual();
   w.document.getElementById('manual-nombre').value='María';w.document.getElementById('manual-usuario').value='@maria_test';
-  w.document.getElementById('manual-servicio').value='Canva Pro';
+  w.document.getElementById('manual-producto').value='libre';w.document.getElementById('manual-servicio').value='Canva Pro';
   rpcHandlers.vega_registro_manual=async args=>{
     assert.equal(args.p_telefono,null);assert.equal(args.p_usuario,'maria_test');assert.equal(args.p_nombre,'María');assert.equal(args.p_cantidad,1);
     data.vega_clientes=[{...customer,nombre:'María'}];data.usuarios_canva=[activeOrder];return {data:99,error:null};
@@ -179,12 +179,67 @@ test('manual username-only registration calls the atomic RPC then prepares activ
 
 test('store checkout accepts a username instead of a telephone',async t=>{
   const {w,dom,calls}=await page('store');t.after(()=>dom.window.close());
-  await w.prepararCompra({nombre:'Canva Pro',precio:10,cantidad:1,unidad:'meses',tipo_ingreso:'numero'});
+  await w.prepararCompra({id:1,nombre:'Canva Pro',precio:10,cantidad:1,unidad:'meses',tipo_ingreso:'numero'});
   w.document.getElementById('login-tipo-contacto').value='usuario';w.cambiarTipoContacto();
   assert.equal(w.document.getElementById('login-campo-telefono').hidden,true);
   w.document.getElementById('login-usuario').value='@maria_test';w.document.getElementById('login-nombre').value='María';
-  await w.procesarLogin();w.document.getElementById('btn-otro-medio').click();
+  await w.procesarLogin();w.document.getElementById('correo-compra').value='fixture@example.test';w.document.getElementById('btn-otro-medio').click();
   for(let i=0;i<5&&!calls.some(c=>c.op==='insert');i++)await tick();
   const row=calls.find(c=>c.op==='insert').rows[0];
   assert.equal(row.telefono,null);assert.equal(row.whatsapp_usuario,'maria_test');assert.equal(row.nombre_cliente,'María');
+});
+
+test('limited offers respect exact start/end and Peru dates independently of local timezone',async t=>{
+  const {w,dom}=await page('store');t.after(()=>dom.window.close());
+  const s={...service,promocion_inicio:'2026-09-20T15:00:00Z',promocion_fin:'2026-09-21T15:00:00Z',planes:[{cantidad:1,unidad:'meses',precio:20,promo:10}]};
+  const start=Date.parse(s.promocion_inicio),end=Date.parse(s.promocion_fin);
+  assert.equal(w.VegaCatalog.planes(s,start-1)[0].total,20);
+  assert.equal(w.VegaCatalog.planes(s,start)[0].total,10);
+  assert.equal(w.VegaCatalog.planes(s,end)[0].total,20);
+  assert.equal(w.VegaCatalog.inputPeru(s.promocion_inicio),'2026-09-20T10:00');
+  assert.equal(w.VegaCatalog.desdePeru('2026-09-20T10:00'),s.promocion_inicio.replace('Z','.000Z'));
+});
+
+test('offers show discounted plans, sold-out controls are disabled, and filters combine',async t=>{
+  const {w,dom,data}=await page('store');t.after(()=>dom.window.close());
+  const offer={...service,nombre:'Canva',categoria:'Diseño',stock:3,promocion_inicio:new Date(Date.now()-3600000).toISOString(),promocion_fin:new Date(Date.now()+3600000).toISOString(),planes:[{cantidad:1,unidad:'meses',precio:2},{cantidad:6,unidad:'meses',precio:20,promo:10}]};
+  data.servicios=[offer,{...service,id:2,nombre:'Gemini',stock:0}];await w.cargarCatalogo();
+  const ofertas=w.document.getElementById('ofertas-limitadas');assert.equal(ofertas.hidden,false);
+  assert.match(ofertas.textContent,/S\/ 10.00/);assert.match(ofertas.textContent,/3 cupos disponibles/);
+  const sold=w.document.querySelector('.is-sold-out');assert.ok(sold.querySelector('.btn-primary').disabled);
+  w.abrirModalDetalles(data.servicios[1]);assert.equal(w.document.querySelector('#detalles-btn-comprar button').disabled,true);
+  const ids=[...w.document.querySelectorAll('[id]')].map(x=>x.id);assert.equal(ids.length,new Set(ids).size);
+  w.document.getElementById('solo-disponibles').checked=true;w.actualizarVistaCatalogo();
+  assert.equal(w.document.querySelectorAll('#contenedor-servicios .card').length,1);
+  w.document.querySelector('.search-bar input').value='Gemini';w.actualizarVistaCatalogo();
+  assert.equal(w.document.querySelectorAll('#contenedor-servicios .card').length,0);assert.equal(ofertas.hidden,true);
+});
+
+test('checkout rechecks stock and changed prices before inserting a request',async t=>{
+  const {w,dom,data,calls,alerts}=await page('store');t.after(()=>dom.window.close());
+  data.servicios=[{...service,stock:1}];await w.prepararCompra({...service,cantidad:1,unidad:'meses'});await w.procesarLogin();
+  w.document.getElementById('correo-compra').value='fixture@example.test';
+  data.servicios=[{...service,stock:0}];w.document.getElementById('btn-otro-medio').click();await tick();
+  assert.equal(calls.some(c=>c.op==='insert'),false);assert.ok(alerts.some(x=>x.includes('agotado')));
+  data.servicios=[{...service,stock:1,planes:[{cantidad:1,unidad:'meses',precio:12}]}];
+  w.document.getElementById('btn-otro-medio').click();await tick();
+  assert.equal(calls.some(c=>c.op==='insert'),false);assert.ok(alerts.some(x=>x.includes('precio cambió')));
+  assert.match(w.document.getElementById('btn-otro-medio').innerText,/12.00/);
+});
+
+test('admin saves stock and Peru schedule with a stale-stock guard, without overwriting untouched counts',async t=>{
+  const {w,dom,data,calls}=await page('admin');t.after(()=>dom.window.close());
+  data.servicios=[{...service,stock:5,stock_version:3,planes:[{cantidad:1,unidad:'meses',precio:20,promo:10}]}];
+  await w.mostrarPanel();await w.cargarServicios();w.editarServicioPorId(1);
+  w.document.getElementById('serv-stock').value='8';
+  w.document.getElementById('serv-promo-programada').checked=true;
+  w.document.getElementById('serv-promo-inicio').value='2026-09-20T10:00';
+  w.document.getElementById('serv-promo-fin').value='2026-09-21T10:00';
+  await w.guardarServicio();
+  let saved=calls.filter(c=>c.table==='servicios'&&c.op==='update').at(-1);
+  assert.equal(saved.values.stock,8);assert.equal(saved.values.promocion_inicio,'2026-09-20T15:00:00.000Z');
+  assert.ok(saved.filters.some(f=>f[1]==='stock_version'&&f[2]===3));
+  w.editarServicioPorId(1);await w.guardarServicio();
+  saved=calls.filter(c=>c.table==='servicios'&&c.op==='update').at(-1);
+  assert.equal('stock' in saved.values,false);assert.equal('agotado' in saved.values,false);
 });

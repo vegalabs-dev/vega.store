@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="referrer" content="no-referrer">
     <title>Panel Admin | VegaStore Premium</title>
-    <link rel="stylesheet" href="clientes.css?v=20260912-clientes1">
+    <link rel="stylesheet" href="clientes.css?v=20260913-stock1">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.116.0"></script>
     <style>
         /* =========================================
@@ -199,6 +199,7 @@
         .info-box { background: #EFF6FF; border-left: 4px solid #3B82F6; padding: 15px 20px; border-radius: 0 12px 12px 0; margin-bottom: 20px; }
         .info-box p { margin: 0; color: #1E3A8A; font-size: 14px; line-height: 1.5; }
     </style>
+    <link rel="stylesheet" href="catalogo.css?v=20260913-stock1">
 </head>
 <body>
 
@@ -396,6 +397,18 @@
                 <input type="text" id="serv-geo-paises" placeholder="Ej: PE, MX, CO, US, ES (Separados por coma)" style="display: none; border-color: #FCD34D; background: white;">
             </div>
 
+            <fieldset class="stock-settings"><legend>Disponibilidad</legend>
+                <div class="stock-form-grid"><div><label for="serv-stock-modo">Control de cupos</label><select id="serv-stock-modo" class="filtro-select" onchange="toggleStockInput()"><option value="ilimitado">Sin límite de stock</option><option value="limitado">Cantidad disponible</option></select></div><div id="serv-stock-grupo" hidden><label for="serv-stock">Cupos disponibles ahora</label><input id="serv-stock" type="number" min="0" max="2147483647" step="1" placeholder="Ej: 10"></div></div>
+                <label class="check-label"><input id="serv-agotado" type="checkbox"> Marcar como agotado</label>
+                <label class="check-label"><input id="serv-activo" type="checkbox" checked> Mostrar en la tienda</label>
+                <p>Todos los planes comparten estos cupos. Se descuenta 1 al aprobar una solicitud o registrar una venta activa. Al llegar a 0 aparecerá agotado. Renovar, restaurar o cancelar el mismo acceso no cambia el stock; repón los cupos aquí cuando corresponda.</p>
+            </fieldset>
+            <fieldset class="stock-settings"><legend>Promoción por tiempo limitado</legend>
+                <label class="check-label"><input id="serv-promo-programada" type="checkbox" onchange="togglePromoInput()"> Programar los precios de oferta</label>
+                <div id="serv-promo-fechas" class="stock-form-grid" hidden><div><label for="serv-promo-inicio">Inicio · hora de Perú</label><input id="serv-promo-inicio" type="datetime-local"></div><div><label for="serv-promo-fin">Fin · hora de Perú</label><input id="serv-promo-fin" type="datetime-local"></div></div>
+                <p>Escribe el precio de oferta en cada plan que quieras rebajar. Con fechas, la oferta aparecerá automáticamente en la sección de promociones durante ese periodo. Sin fechas, el descuento se mantiene hasta que lo cambies.</p>
+            </fieldset>
+
             <div class="input-group"><label>Etiqueta Promocional (Opcional)</label><input type="text" id="serv-etiqueta" placeholder="Ej: Plan Estrella, 50% Dcto"></div>
             <div class="input-group"><label>Características (Separadas por coma)</label><textarea id="serv-caracteristicas" rows="3" placeholder="Ej: Plantillas Premium, Diseños 3D..."></textarea></div>
 
@@ -445,7 +458,8 @@
             <div class="cliente-form-grid"><div class="input-group"><label for="manual-telefono">WhatsApp con código de país (opcional)</label><input id="manual-telefono" type="tel" placeholder="+51987654321"></div><div class="input-group"><label for="manual-usuario">Usuario de WhatsApp (opcional)</label><input id="manual-usuario" placeholder="@usuario" maxlength="36" autocapitalize="off"></div></div>
             <p class="cliente-help">Puedes registrarlo solo con un nombre o alias y elegir su chat al compartir el mensaje.</p>
         </div>
-        <div class="input-group"><label for="manual-servicio">Servicio</label><input id="manual-servicio" list="manual-catalogo" placeholder="Selecciona o escribe el servicio"><datalist id="manual-catalogo"></datalist></div>
+        <div class="input-group"><label for="manual-producto">Producto del catálogo</label><select id="manual-producto" class="filtro-select" onchange="cambiarProductoManual()"></select></div>
+        <div class="input-group" id="manual-servicio-libre"><label for="manual-servicio">Servicio fuera del catálogo</label><input id="manual-servicio" placeholder="Escribe el servicio"><p class="cliente-help">Los servicios fuera del catálogo no llevan stock.</p></div>
         <div class="input-group"><label for="manual-correo">Correo para este servicio (opcional)</label><input id="manual-correo" type="email" placeholder="correo@ejemplo.com"></div>
         <div class="cliente-form-grid"><div class="input-group"><label for="manual-cantidad">Duración (0 = permanente)</label><input id="manual-cantidad" type="number" value="1" min="0" max="36500"></div><div class="input-group"><label for="manual-unidad">Unidad</label><select id="manual-unidad" class="filtro-select"><option value="meses">Meses</option><option value="dias">Días</option><option value="años">Años</option></select></div></div>
         <button id="manual-guardar" class="btn-primary" onclick="guardarRegistroManual()">Guardar servicio activo</button><p class="cliente-help">Después podrás revisar el mensaje de activación y enviarlo por WhatsApp.</p>
@@ -460,9 +474,10 @@
         <p class="cliente-help">El mensaje incluye su enlace privado. Comprueba el destinatario y pulsa Enviar dentro de WhatsApp.</p>
     </div></div>
 
-    <script src="security.js?v=20260912-clientes1"></script>
-    <script src="clientes.js?v=20260912-clientes1"></script>
-    <script src="admin.js?v=20260912-clientes1"></script>
+    <script src="catalogo.js?v=20260913-stock1"></script>
+    <script src="security.js?v=20260913-stock1"></script>
+    <script src="clientes.js?v=20260913-stock1"></script>
+    <script src="admin.js?v=20260913-stock1"></script>
 
 </body>
 </html>
