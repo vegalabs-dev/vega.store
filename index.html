@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="referrer" content="no-referrer">
     <title>Servicios Digitales | VegaStore</title>
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles.css?v=20260913-compact1">
 
     <!-- Librería para el Input de Teléfono con Banderitas -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/17.0.8/css/intlTelInput.css"/>
@@ -17,7 +17,7 @@
         .iti__flag {background-image: url("https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/17.0.8/img/flags.png");}
         @media (min-resolution: 2x) { .iti__flag {background-image: url("https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/17.0.8/img/flags@2x.png");} }
     </style>
-    <link rel="stylesheet" href="catalogo.css?v=20260913-stock1">
+    <link rel="stylesheet" href="catalogo.css?v=20260913-compact1">
 </head>
 <body>
 
@@ -43,7 +43,7 @@
         <section class="hero">
             <div class="hero-text">
                 <h1>Servicios digitales <br><span>Premium y Seguros</span></h1>
-                <p>Las mejores herramientas a tu alcance. Garantía total y soporte personalizado para que nunca dejes de disfrutar.</p>
+                <p>Herramientas, entretenimiento y soporte cercano. Elige el plan que va contigo.</p>
                 <button class="btn-primary" onclick="document.getElementById('catalogo').scrollIntoView({behavior: 'smooth'})">Ver Catálogo Completo</button>
             </div>
             <div class="hero-visual">
@@ -56,9 +56,9 @@
             </div>
         </section>
 
-        <section id="ofertas-limitadas" class="offer-section" aria-labelledby="ofertas-titulo" hidden>
-            <div class="section-heading"><div><span class="offer-eyebrow">Por tiempo limitado</span><h2 id="ofertas-titulo">Ofertas que terminan pronto</h2><p>Elige tu plan y aprovecha su precio especial mientras esté vigente.</p></div></div>
-            <div id="contenedor-ofertas" class="grid-servicios"></div>
+        <section id="ofertas-limitadas" class="offer-section" aria-roledescription="carrusel" aria-label="Ofertas por tiempo limitado" hidden>
+            <div class="offer-heading"><h2 id="ofertas-titulo">Ofertas por tiempo limitado</h2><div class="offer-controls" id="ofertas-controles" hidden><button id="oferta-anterior" aria-label="Oferta anterior">‹</button><span id="oferta-posicion">1 / 1</span><button id="oferta-pausa" aria-label="Pausar ofertas">Ⅱ</button><button id="oferta-siguiente" aria-label="Oferta siguiente">›</button></div></div>
+            <div class="offer-viewport" id="ofertas-ventana"><div id="contenedor-ofertas" class="offer-track"></div></div>
         </section>
         <div class="section-heading catalog-toolbar"><div><h2>Explora el catálogo</h2><p id="catalogo-resumen" role="status">Planes para lo que necesitas.</p></div><label><input type="checkbox" id="solo-disponibles"> Solo disponibles</label></div>
         <div class="category-filters" id="filtros-categorias">
@@ -75,7 +75,7 @@
     <!-- MODAL DETALLES DEL PRODUCTO -->
     <div id="modal-detalles" class="modal oculto">
         <div class="modal-content" style="max-width: 450px; text-align: center; padding: 30px;">
-            <span class="cerrar-modal" id="cerrar-detalles">&times;</span>
+            <button type="button" aria-label="Cerrar ventana" class="cerrar-modal" id="cerrar-detalles">&times;</button>
             <img id="detalles-imagen" src="" alt="Producto" style="width: 150px; height: 150px; object-fit: cover; border-radius: 16px; margin: 0 auto 20px auto; display: block; box-shadow: 0 10px 20px rgba(0,0,0,0.1);">
             <div id="detalles-badge" class="badge" style="display: inline-block; margin-bottom: 15px;"></div>
             <h2 id="detalles-titulo" style="margin: 0 0 10px 0; color: var(--text);">Nombre Producto</h2>
@@ -92,7 +92,7 @@
     <!-- MODAL LOGIN -->
     <div id="modal-login" class="modal oculto">
         <div class="modal-content" style="max-width: 400px; text-align: center;">
-            <span class="cerrar-modal" onclick="document.getElementById('modal-login').classList.add('oculto')">&times;</span>
+            <button type="button" aria-label="Cerrar ventana" class="cerrar-modal" onclick="document.getElementById('modal-login').classList.add('oculto')">&times;</button>
             <div style="font-size: 40px; margin-bottom: 10px;">📱</div>
             <h3 style="margin-bottom: 5px;">Datos de contacto</h3>
             <p style="font-size: 13px; color: var(--text-light); margin-bottom: 20px;">Ingresa tu WhatsApp para coordinar el pago y la entrega. Tus servicios se consultan con un enlace privado.</p>
@@ -115,7 +115,7 @@
     <!-- MODAL PANEL DEL CLIENTE -->
     <div id="modal-acceso-privado" class="modal oculto">
         <div class="modal-content" style="max-width:440px;">
-            <span class="cerrar-modal" onclick="document.getElementById('modal-acceso-privado').classList.add('oculto')">&times;</span>
+            <button type="button" aria-label="Cerrar ventana" class="cerrar-modal" onclick="document.getElementById('modal-acceso-privado').classList.add('oculto')">&times;</button>
             <h3>Consulta privada de servicios</h3>
             <p>Pega el enlace privado que guardaste al comprar o que recibiste por WhatsApp.</p>
             <input id="enlace-privado-input" type="text" placeholder="Pega tu enlace privado" autocomplete="off" style="width:100%;box-sizing:border-box;padding:12px;margin:15px 0;">
@@ -125,19 +125,13 @@
     </div>
     <div id="modal-panel-cliente" class="modal oculto">
         <div class="modal-content" style="max-width: 550px; text-align: left; padding: 30px;">
-            <span class="cerrar-modal" onclick="document.getElementById('modal-panel-cliente').classList.add('oculto')">&times;</span>
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                <h3 style="margin: 0;">👤 Mi Panel</h3>
-                <button onclick="cerrarSesionCliente()" style="background: #FEE2E2; color: #DC2626; border: none; padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: bold; cursor: pointer;">Cerrar Sesión</button>
-            </div>
-            <p style="font-size: 13px; color: var(--text-light); margin-top: -15px; margin-bottom: 20px;"><strong id="panel-telefono-txt"></strong></p>
-
-            <div style="background:#F5F3FF;padding:14px;border-radius:12px;margin-bottom:20px;">
-                <label for="mi-enlace-privado" style="font-size:13px;font-weight:bold;">Tu enlace privado</label>
-                <input id="mi-enlace-privado" type="text" readonly style="width:100%;box-sizing:border-box;padding:10px;margin:8px 0;">
-                <button class="btn-secondary" onclick="copiarMiEnlace()">Copiar enlace</button>
-                <p id="estado-copia-enlace" role="status" style="font-size:12px;margin:8px 0 0;">Cualquier persona con este enlace podrá consultar tus servicios. Guárdalo en privado.</p>
-            </div>
+            <button type="button" aria-label="Cerrar ventana" class="cerrar-modal" onclick="document.getElementById('modal-panel-cliente').classList.add('oculto')">&times;</button>
+            <div class="customer-heading"><h3>Mis servicios</h3><p id="panel-telefono-txt"></p></div>
+            <details class="private-link-box"><summary>Guardar mi enlace privado</summary>
+                <label for="mi-enlace-privado" class="sr-only">Tu enlace privado</label>
+                <div class="private-link-row"><input id="mi-enlace-privado" type="text" readonly><button class="btn-secondary" onclick="copiarMiEnlace()">Copiar</button></div>
+                <p id="estado-copia-enlace" role="status">Guárdalo en privado: permite consultar tus servicios.</p>
+            </details>
             <a id="pagar-pedido-link" hidden target="_blank" rel="noopener noreferrer">Continuar el pago por WhatsApp</a>
             <div class="panel-tabs" style="display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid #E5E7EB; padding-bottom: 10px;">
                 <button class="tab-btn active" onclick="switchPanelTab('servicios')" id="btn-tab-servicios">Mis Servicios</button>
@@ -155,13 +149,14 @@
                     <p style="text-align: center; color: var(--text-light); font-size: 14px;">Cargando promociones...</p>
                 </div>
             </div>
+            <footer class="customer-footer"><span>Tu acceso se guarda en este dispositivo.</span><button class="logout-button" onclick="cerrarSesionCliente()">Cerrar sesión</button></footer>
         </div>
     </div>
 
     <!-- VENTANA DE COMPRA -->
     <div id="modal-compra" class="modal oculto">
         <div class="modal-content">
-            <span class="cerrar" id="cerrar-compra">&times;</span>
+            <button type="button" aria-label="Cerrar ventana" class="cerrar" id="cerrar-compra">&times;</button>
             <h3 id="titulo-producto-modal">Finaliza tu Pago</h3>
 
             <p id="alerta-correo" style="color: #DC2626; font-size: 13px; font-weight: bold; margin-bottom: 5px; display: none;">⚠️ Ingresa tu correo primero.</p>
@@ -191,6 +186,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.116.0"></script>
     <script src="catalogo.js?v=20260913-stock1"></script>
     <script src="security.js?v=20260913-stock1"></script>
-    <script src="main.js?v=20260913-stock2"></script>
+    <script src="main.js?v=20260913-compact1"></script>
+    <script src="ventanas.js?v=20260913-compact1"></script>
 </body>
 </html>

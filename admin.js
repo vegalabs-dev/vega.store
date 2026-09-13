@@ -77,6 +77,7 @@ async function iniciarSesion() {
     finally { btn.innerText = 'Ingresar al Panel'; btn.disabled = false; }
 }
 async function cerrarSesion() {
+    if (!confirm('¿Cerrar sesión del panel de administración?')) return;
     await supabaseClient.auth.signOut(); window.location.reload();
 }
 async function mostrarPanel() {

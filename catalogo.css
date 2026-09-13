@@ -7,13 +7,10 @@ button:disabled { opacity: .6; cursor: not-allowed !important; transform: none !
 .card.is-sold-out { border-style: dashed; }
 .offer-clock { display: block; font-size: 12px; font-weight: 650; color: #6d28d9; line-height: 1.6; margin-bottom: 12px; }
 .offer-clock small { display: block; font-size: 11px; font-weight: 400; }
-.offer-section { margin: 0 5% 36px; padding: 28px; border: 1px solid #ddd6fe; border-radius: 24px; background: linear-gradient(125deg,#f5f3ff,#fff 80%); }
 .section-heading { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 26px; }
 .section-heading h2 { font-size: 25px; letter-spacing: -.5px; margin: 0 0 6px; }
 .section-heading p { font-size: 14px; color: #6b7280; line-height: 1.6; margin: 0; }
 .offer-eyebrow { display: block; color: #7c3aed; font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; font-weight: 800; margin-bottom: 8px; }
-.offer-section .grid-servicios { grid-template-columns: repeat(auto-fit,minmax(230px,1fr)); gap: 24px; }
-.offer-section .card { max-width: 360px; width: 100%; }
 .catalog-toolbar { padding: 0 5%; }
 .catalog-toolbar label { font-size: 14px; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; }
 .catalog-toolbar input { accent-color: #7c3aed; width: 17px; height: 17px; }
@@ -30,9 +27,6 @@ button:disabled { opacity: .6; cursor: not-allowed !important; transform: none !
 .stock-admin-summary { display: block; font-size: 12px; color: #6d28d9; margin-top: 6px; line-height: 1.5; }
 .hero { min-height: auto; padding-top: 55px; padding-bottom: 55px; }
 @media(max-width:640px) {
-    .offer-section { padding: 20px 16px; margin: 0 4% 26px; }
-    .offer-section .grid-servicios { grid-template-columns: minmax(0,1fr); }
-    .offer-section .card { max-width: none; }
     .stock-form-grid { grid-template-columns: minmax(0,1fr); }
     .section-heading h2 { font-size: 22px; }
     .hero { padding-top: 35px; padding-bottom: 35px; }
@@ -40,3 +34,116 @@ button:disabled { opacity: .6; cursor: not-allowed !important; transform: none !
 @media(prefers-reduced-motion:reduce) {
     .floating-card, .status-dot { animation: none; }
 }
+/* Compact storefront; offer slides have their own layout instead of product cards. */
+.hero { padding: 32px 5% 28px; gap: 30px; }
+.hero-text { max-width: 740px; }
+.hero-text h1 { font-size: clamp(28px,3.1vw,44px); margin-bottom: 12px; }
+.hero-text h1 br { display: none; }
+.hero-text p { font-size: 15px; line-height: 1.6; margin-bottom: 18px; max-width: 530px; }
+.hero-visual { flex: 0 0 185px; }
+.hero-visual .floating-card { padding: 20px; width: 185px; animation: none; }
+.hero-visual .card-icon { font-size: 28px; margin-bottom: 8px; }
+.hero-visual h3 { font-size: 16px; }
+.hero-visual p { font-size: 12px; }
+.offer-section { margin: 0 auto 28px; width: 90%; max-width: 1300px; padding: 14px 18px; border: 1px solid #ddd6fe; border-radius: 18px; background: linear-gradient(110deg,#f5f3ff,#fff); box-sizing: border-box; }
+.offer-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+.offer-heading h2 { font-size: 12px; font-weight: 750; color: #6d28d9; margin: 0; }
+.offer-controls { display: flex; align-items: center; gap: 6px; flex: 0 0 auto; }
+.offer-controls button { border: 1px solid #e4def5; background: #fff; color: #6d28d9; border-radius: 50%; width: 34px; height: 34px; cursor: pointer; font-size: 19px; }
+.offer-controls #oferta-pausa { font-size: 12px; }
+#oferta-posicion { font-size: 11px; color: #6b7280; min-width: 28px; text-align: center; }
+.offer-viewport { overflow: hidden; touch-action: pan-y; }
+.offer-track { display: flex; width: 100%; transition: transform .4s ease; }
+.offer-slide { flex: 0 0 100%; min-width: 0; box-sizing: border-box; display: grid; grid-template-columns: 76px minmax(0,1fr) auto auto; align-items: center; gap: 18px; padding: 4px 0; }
+.offer-image { width: 76px; height: 76px; border-radius: 12px; object-fit: cover; }
+.offer-placeholder { display: grid; place-items: center; background: #ede9fe; color: #7c3aed; font-size: 28px; }
+.offer-copy { min-width: 0; }
+.offer-copy h3 { font-size: 18px; margin: 3px 0; line-height: 1.25; overflow-wrap: anywhere; }
+.offer-kicker, .offer-stock { color: #6b7280; font-size: 11px; margin: 0; }
+.offer-copy .offer-clock { font-size: 11px; margin: 4px 0 0; }
+.offer-price { display: flex; flex-direction: column; gap: 3px; white-space: nowrap; }
+.offer-price strong { font-size: 23px; color: #6d28d9; }
+.offer-price del { font-size: 12px; color: #6b7280; }
+.offer-open { background: #7c3aed; color: white; border: 0; border-radius: 10px; padding: 12px 18px; font-size: 13px; font-weight: 700; cursor: pointer; }
+.offer-open:hover { background: #6d28d9; }
+.catalog-toolbar { max-width: 1445px; margin: 0 auto 12px; }
+.section-heading h2 { font-size: 22px; }
+.section-heading p { font-size: 12px; }
+.category-filters { margin-bottom: 20px; gap: 8px; }
+.catalog { padding-top: 0; }
+#contenedor-servicios { grid-template-columns: repeat(auto-fill,minmax(255px,1fr)); gap: 14px; }
+.product-card.card { padding: 16px; border-radius: 16px; box-shadow: 0 3px 12px #11182704; min-width: 0; }
+.product-header { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.product-media { flex: 0 0 66px; width: 66px; height: 66px; padding: 0; border: 0; background: #f3f4f6; border-radius: 10px; cursor: pointer; overflow: hidden; }
+.product-media .card-img-top { width: 66px; height: 66px; margin: 0; border-radius: 10px; display: block; }
+.product-info { min-width: 0; }
+.product-category { color: #6b7280; font-size: 10px; }
+.product-card h2 { font-size: 15px; line-height: 1.3; margin: 4px 0; overflow-wrap: anywhere; }
+.product-tag { font-size: 10px; color: #6b7280; margin: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.product-card .stock-badge { background: transparent; padding: 0; font-size: 11px; margin: 13px 0 9px; }
+.product-card .stock-badge::before { content: '●'; font-size: 8px; margin-right: 5px; }
+.product-plans { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 12px; }
+.product-plans button { padding: 6px 9px; border: 1px solid #e5e7eb; border-radius: 7px; color: #6b7280; background: #fff; font-size: 11px; cursor: pointer; }
+.product-plans button[aria-pressed=true] { background: #f0ebff; border-color: #ddd6fe; color: #6d28d9; font-weight: 700; }
+.product-bottom { margin-top: auto; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+.product-card .price { display: flex; flex-direction: column; gap: 2px; margin: 0; }
+.product-card .price strong { font-size: 20px; letter-spacing: -.4px; }
+.product-card .price del { font-size: 11px; color: #9ca3af; }
+.product-actions { display: flex; align-items: center; gap: 7px; }
+.product-actions button { font-size: 11px; border: 0; cursor: pointer; border-radius: 8px; padding: 9px; }
+.product-actions .btn-detalles { color: #6b7280; background: transparent; }
+.catalog-empty { grid-column: 1/-1; text-align: center; padding: 30px; font-size: 14px; color: #6b7280; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.has-modal { overflow: hidden; }
+.modal .cerrar-modal, .modal .cerrar { display: grid; place-items: center; width: 42px; height: 42px; top: 12px; right: 12px; padding: 0; margin: 0; line-height: 1; border: 0; border-radius: 50%; background: #f3f4f6; color: #6b7280; font-size: 27px; z-index: 2; }
+.modal .cerrar-modal:focus-visible, button:focus-visible, summary:focus-visible { outline: 3px solid #a78bfa; outline-offset: 3px; }
+.modal-content > h2:first-of-type, .modal-content > h3:first-of-type { padding-right: 32px; }
+#modal-panel-cliente .modal-content { padding: 26px !important; border-radius: 20px; }
+.customer-heading { padding-right: 45px; margin-bottom: 18px; }
+.customer-heading h3 { font-size: 22px; margin: 0 0 5px; }
+.customer-heading p { font-size: 12px; color: #6b7280; margin: 0; }
+.private-link-box { border: 1px solid #e8e1fa; background: #faf8ff; border-radius: 10px; padding: 12px; margin-bottom: 18px; }
+.private-link-box summary { font-size: 13px; font-weight: 650; cursor: pointer; }
+.private-link-row { display: flex; gap: 8px; margin: 10px 0; }
+.private-link-row input { min-width: 0; width: 100%; margin: 0 !important; padding: 8px !important; font-size: 12px; }
+.private-link-row button { padding: 8px 12px; font-size: 12px; }
+.private-link-box p { font-size: 11px; color: #6b7280; line-height: 1.5; margin: 8px 0 0; }
+.customer-footer { display: flex; align-items: center; justify-content: space-between; gap: 15px; margin-top: 18px; padding-top: 16px; border-top: 1px solid #e5e7eb; }
+.customer-footer span { font-size: 11px; color: #6b7280; max-width: 220px; }
+.logout-button { flex-shrink: 0; border: 1px solid #fecaca; color: #b91c1c; background: #fff; border-radius: 8px; padding: 10px 12px; cursor: pointer; font-size: 12px; }
+@media(max-width:768px) {
+    .hero { text-align: left; align-items: flex-start; padding: 24px 5%; }
+    .hero-visual { display: none; }
+    .hero-text h1 { font-size: 29px; max-width: 420px; }
+    .hero-text p { font-size: 13px; margin-bottom: 14px; }
+    header { gap: 10px; padding: 12px 5%; justify-content: space-between; }
+    .search-bar input { padding: 10px 14px; font-size: 13px; }
+    .offer-section { padding: 12px; }
+    .offer-slide { grid-template-columns: 60px minmax(0,1fr) auto; gap: 10px; }
+    .offer-image { width: 60px; height: 60px; }
+    .offer-copy h3 { font-size: 15px; }
+    .offer-price strong { font-size: 19px; }
+    .offer-open { grid-column: 2 / 4; justify-self: end; padding: 8px 12px; font-size: 11px; }
+    .offer-stock { display: none; }
+}
+@media(max-width:600px) {
+    #contenedor-servicios { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; }
+    .product-card.card { padding: 12px; }
+    .product-header { flex-direction: column; align-items: flex-start; gap: 8px; }
+    .product-media, .product-media .card-img-top { width: 54px; height: 54px; flex-basis: 54px; }
+    .product-card h2 { font-size: 13px; }
+    .product-category { font-size: 9px; }
+    .product-card .stock-badge { font-size: 10px; margin: 10px 0 8px; }
+    .product-plans button { padding: 6px; font-size: 10px; }
+    .product-card .price strong { font-size: 18px; }
+    .product-actions { width: 100%; justify-content: space-between; gap: 3px; }
+    .catalog-toolbar { gap: 9px; }
+    .catalog-toolbar label { font-size: 11px; }
+    .category-filters { justify-content: flex-start; flex-wrap: nowrap; overflow-x: auto; padding: 5px 5% 10px; }
+    .category-filters .pill { flex: 0 0 auto; font-size: 11px; padding: 8px 12px; }
+    .offer-controls { gap: 3px; }
+    .offer-controls button { width: 30px; height: 30px; }
+    .offer-heading h2 { font-size: 11px; }
+    #modal-panel-cliente .modal-content { padding: 22px 18px !important; }
+}
+@media(prefers-reduced-motion:reduce) { .offer-track { transition: none; } }

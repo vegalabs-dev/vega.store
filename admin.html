@@ -199,7 +199,7 @@
         .info-box { background: #EFF6FF; border-left: 4px solid #3B82F6; padding: 15px 20px; border-radius: 0 12px 12px 0; margin-bottom: 20px; }
         .info-box p { margin: 0; color: #1E3A8A; font-size: 14px; line-height: 1.5; }
     </style>
-    <link rel="stylesheet" href="catalogo.css?v=20260913-stock1">
+    <link rel="stylesheet" href="catalogo.css?v=20260913-compact1">
 </head>
 <body>
 
@@ -323,7 +323,7 @@
     <!-- MODAL GESTIONAR CLIENTE -->
     <div id="modal-gestionar-cliente" class="modal">
         <div class="modal-content" style="max-width: 500px;">
-            <span class="cerrar-modal" onclick="cerrarModal('modal-gestionar-cliente')">&times;</span>
+            <button type="button" aria-label="Cerrar ventana" class="cerrar-modal" onclick="cerrarModal('modal-gestionar-cliente')">&times;</button>
             <h2 style="margin-top:0; color: var(--text-main); margin-bottom: 5px; font-size: 24px;">⚙️ Gestionar Cliente</h2>
             <p id="gestion-servicio-titulo" style="color: var(--primary); font-weight: bold; margin-bottom: 25px; font-size: 15px; background: #F5F3FF; display: inline-block; padding: 6px 12px; border-radius: 8px;">Servicio</p>
             <input type="hidden" id="gestion-id">
@@ -355,7 +355,7 @@
     <!-- MODAL GESTIONAR SERVICIO (CATÁLOGO) -->
     <div id="modal-servicio" class="modal">
         <div class="modal-content">
-            <span class="cerrar-modal" onclick="cerrarModal('modal-servicio')">&times;</span>
+            <button type="button" aria-label="Cerrar ventana" class="cerrar-modal" onclick="cerrarModal('modal-servicio')">&times;</button>
             <h2 id="titulo-modal-servicio" style="margin-top:0; margin-bottom:25px; color: var(--text-main); font-size: 24px;">📦 Crear Servicio</h2>
             <input type="hidden" id="serv-id">
 
@@ -426,7 +426,7 @@
     <!-- MODAL SEGURIDAD -->
     <div id="modal-seguridad" class="modal">
         <div class="modal-content" style="max-width: 450px;">
-            <span class="cerrar-modal" onclick="cerrarModal('modal-seguridad')">&times;</span>
+            <button type="button" aria-label="Cerrar ventana" class="cerrar-modal" onclick="cerrarModal('modal-seguridad')">&times;</button>
             <h2 style="margin-top:0; color: var(--text-main); font-size: 22px;">🛡️ Accesos Recientes</h2>
             <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 20px;">Registro de dispositivos que entraron al panel.</p>
             <div id="lista-dispositivos" style="max-height: 300px; overflow-y: auto;"></div>
@@ -434,7 +434,7 @@
     </div>
 
     <div id="modal-ficha" class="modal"><div class="modal-content" style="max-width:650px;">
-        <span class="cerrar-modal" onclick="cerrarModal('modal-ficha')">&times;</span>
+        <button type="button" aria-label="Cerrar ventana" class="cerrar-modal" onclick="cerrarModal('modal-ficha')">&times;</button>
         <h2>👤 Ficha del cliente</h2><p id="ficha-codigo" class="cliente-help"></p><input type="hidden" id="ficha-id">
         <div class="input-group"><label for="ficha-nombre">Nombre o alias</label><input id="ficha-nombre" maxlength="100" placeholder="Cómo reconoces al cliente"></div>
         <div class="cliente-form-grid">
@@ -450,7 +450,7 @@
         <button class="btn-primary" onclick="registroManual(document.getElementById('ficha-id').value)">+ Añadir servicio a este cliente</button>
     </div></div>
     <div id="modal-registro-manual" class="modal"><div class="modal-content" style="max-width:650px;">
-        <span class="cerrar-modal" onclick="cerrarModal('modal-registro-manual')">&times;</span>
+        <button type="button" aria-label="Cerrar ventana" class="cerrar-modal" onclick="cerrarModal('modal-registro-manual')">&times;</button>
         <h2>Registrar cliente y servicio</h2>
         <div class="input-group"><label for="manual-ficha">Cliente</label><select id="manual-ficha" class="filtro-select" onchange="cambiarClienteManual()"></select></div>
         <div id="manual-nuevo-cliente">
@@ -465,7 +465,7 @@
         <button id="manual-guardar" class="btn-primary" onclick="guardarRegistroManual()">Guardar servicio activo</button><p class="cliente-help">Después podrás revisar el mensaje de activación y enviarlo por WhatsApp.</p>
     </div></div>
     <div id="modal-mensajes" class="modal"><div class="modal-content" style="max-width:650px;">
-        <span class="cerrar-modal" onclick="cerrarModal('modal-mensajes')">&times;</span>
+        <button type="button" aria-label="Cerrar ventana" class="cerrar-modal" onclick="cerrarModal('modal-mensajes')">&times;</button>
         <h2>💬 Mensaje para el cliente</h2><p id="mensaje-cliente" class="cliente-help"></p>
         <div class="input-group"><label for="mensaje-atajo">Atajo de mensaje</label><select id="mensaje-atajo" class="filtro-select" onchange="prepararMensajeCliente()"><option value="enlace">Enlace de mis servicios</option><option value="activacion">Activación</option><option value="vencimiento">Recordatorio de vencimiento</option><option value="renovacion">Renovación</option></select></div>
         <label for="mensaje-texto">Revisa o ajusta el mensaje</label><textarea id="mensaje-texto" class="mensaje-editor" oninput="actualizarDestinosMensaje()"></textarea>
@@ -477,7 +477,8 @@
     <script src="catalogo.js?v=20260913-stock1"></script>
     <script src="security.js?v=20260913-stock1"></script>
     <script src="clientes.js?v=20260913-stock1"></script>
-    <script src="admin.js?v=20260913-stock1"></script>
+    <script src="admin.js?v=20260913-compact1"></script>
 
+    <script src="ventanas.js?v=20260913-compact1"></script>
 </body>
 </html>

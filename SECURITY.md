@@ -59,10 +59,22 @@ Las pruebas adicionales cubren stock agotado, cantidades no negativas, aprobaci�
 
 Con Node.js 24: `npm ci --ignore-scripts` y `npm test`.
 
-Las 31 pruebas usan datos sintéticos y no se conectan a producción. Cubren consultas anónimas, enlaces separados, rechazo de modificaciones por cuentas ajenas, pedidos válidos y manipulados, permisos del propietario, imágenes y XSS. Las políticas se ejecutan en PostgreSQL mediante PGlite; el SHA-256 de pgcrypto se representa mediante la función SHA-256 integrada de PostgreSQL. El flujo HTML/JavaScript se comprueba con jsdom.
+Las 34 pruebas usan datos sintéticos y no se conectan a producción. Cubren consultas anónimas, enlaces separados, rechazo de modificaciones por cuentas ajenas, pedidos válidos y manipulados, permisos del propietario, imágenes y XSS. Las políticas se ejecutan en PostgreSQL mediante PGlite; el SHA-256 de pgcrypto se representa mediante la función SHA-256 integrada de PostgreSQL. El flujo HTML/JavaScript se comprueba con jsdom.
 
 Después del despliegue se verificó por HTTP: consultas anónimas de contactos, hashes e historial rechazadas con 401; consulta de servicios contratados sin enlace devuelve cero filas; catálogo público devuelve 16 servicios; las tres páginas publicadas contienen los cambios. Los registros existentes siguen siendo 11 clientes y 30 imágenes. La lista privada contiene una sola cuenta confirmada. No se inició sesión usando la contraseña del propietario ni se crearon compras reales de prueba.
 
 El asesor de seguridad de Supabase únicamente conserva el aviso de protección de contraseñas filtradas desactivada. El límite de tres pedidos pendientes por enlace evita duplicados habituales; no es una protección completa contra spam distribuido. Esta actualización no activa MFA ni cambia contraseñas.
 
 Referencias: [RLS en Supabase](https://supabase.com/docs/guides/database/postgres/row-level-security), [control de acceso a Storage](https://supabase.com/docs/guides/storage/security/access-control).
+
+## Interfaz compacta
+
+El catálogo usa tarjetas pequeñas con imagen, disponibilidad, duración y precio. Las ofertas programadas se muestran en un carrusel horizontal, independiente del estilo de las tarjetas: avanza cada seis segundos, permite deslizar, tiene controles de navegación y pausa, y respeta la preferencia de movimiento reducido. Se detiene al interactuar, al abrir una ventana o al ocultar la pestaña. No crea ofertas ni modifica los descuentos de Supabase.
+
+El acceso privado queda en un apartado desplegable. Cerrar sesión requiere confirmación tanto en la tienda como en el administrador. La X, Escape y tocar el fondo cierran la ventana sin cerrar sesión; las ventanas controlan el foco del teclado. Las comprobaciones usan datos sintéticos y no generan ventas reales.
+
+## Propuesta de redacción con IA (sin activar)
+
+Para una siguiente etapa: botón de redacción dentro del administrador, selección de producto y tono, función protegida en Supabase que verifique al propietario y limite las solicitudes, y Gemini Flash-Lite como proveedor inicial. La función leería solo los datos públicos del producto y devolvería un borrador editable; teléfonos, correos y enlaces privados se añadirían localmente después, cuando hicieran falta. La clave del proveedor se guardaría como secreto del servidor. La IA no decidiría precios, stock, fechas ni permisos y no enviaría mensajes automáticamente.
+
+La generación con IA todavía no está conectada: requiere elegir proveedor y configurar su clave y presupuesto. Referencias: [Gemini API](https://ai.google.dev/gemini-api/docs/pricing), [secretos de Edge Functions](https://supabase.com/docs/guides/functions/secrets).

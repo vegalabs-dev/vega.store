@@ -117,6 +117,7 @@ async function copiarMiEnlace() {
     document.getElementById('estado-copia-enlace').textContent = 'Enlace copiado. Guárdalo en un lugar privado.';
 }
 function cerrarSesionCliente() {
+    if (!confirm('¿Cerrar sesión en este dispositivo? Guarda tu enlace privado para volver a consultar tus servicios.')) return;
     VegaSecurity.forgetCode(); accessCode = null; privateClient = null; privateClientCode = null;
     for (const key of ['vega_user_phone','vega_user_username','vega_user_name']) localStorage.removeItem(key);
     userPhone = null; userUsername = null; userName = null;
@@ -222,69 +223,33 @@ function generarBotonesCategorias(servicios) {
 }
 
 const planesElegidos = new Map();
-function renderizarCatalogo(serviciosParaMostrar, target='contenedor-servicios') {
-    const contenedor = document.getElementById(target);
-    contenedor.innerHTML = '';
-    if (serviciosParaMostrar.length === 0) { contenedor.innerHTML = '<p style="text-align: center; grid-column: 1/-1;">No hay servicios disponibles en tu región.</p>'; return; }
-
-    serviciosParaMostrar.forEach((servicio, index) => {
-        const indexServicio = `${target}-${index}`;
-        let planesOrdenados = VegaCatalog.planes(servicio);
-        if (target === 'contenedor-ofertas') planesOrdenados = planesOrdenados.filter(p => p.promo !== null);
-        const selectionKey = `${target}:${servicio.id}`;
-        const selection = planesElegidos.get(selectionKey);
-        const selectedIndex = Math.max(0, planesOrdenados.findIndex(p => p.cantidad === selection?.cantidad && p.unidad === selection?.unidad));
-
-        const generarHtmlPrecioLimpio = (plan) => {
-            let pNorm = parseFloat(plan.precio); let pOfe = plan.promo ? parseFloat(plan.promo) : null;
-            if (pOfe && pOfe < pNorm) return `<div style="display:flex; align-items:baseline; gap:8px; flex-wrap:wrap;"><span style="font-size:26px; color:#10B981; font-weight:800; line-height:1;">S/ ${pOfe.toFixed(2)}</span><span style="font-size:14px; color:#9CA3AF; text-decoration:line-through;">S/ ${pNorm.toFixed(2)}</span></div>`;
-            return `<div style="display:flex; align-items:baseline; gap:8px; flex-wrap:wrap;"><span style="font-size:26px; font-weight:800; color:var(--text-dark); line-height:1;">S/ ${pNorm.toFixed(2)}</span></div>`;
+function renderizarCatalogo(serviciosParaMostrar) {
+    const contenedor = document.getElementById('contenedor-servicios');
+    contenedor.replaceChildren();
+    if (!serviciosParaMostrar.length) { contenedor.innerHTML = '<p class="catalog-empty">No hay productos que coincidan con estos filtros.</p>'; return; }
+    serviciosParaMostrar.forEach(servicio => {
+        const plans = VegaCatalog.planes(servicio);
+        const key = `contenedor-servicios:${servicio.id}`, choice = planesElegidos.get(key);
+        let selected = plans.find(p => p.cantidad === choice?.cantidad && p.unidad === choice?.unidad) || plans[0];
+        const available = VegaCatalog.disponible(servicio);
+        const card = document.createElement('article'); card.className = 'card product-card' + (available ? '' : ' is-sold-out');
+        card.innerHTML = `<div class="product-header"><button class="product-media" aria-label="Ver detalles de ${h(servicio.nombre)}">${servicio.imagen_url ? `<img class="card-img-top" src="${h(VegaSecurity.imageUrl(servicio.imagen_url))}" alt="" loading="lazy">` : '<span aria-hidden="true">◇</span>'}</button><div class="product-info"><span class="product-category">${h(servicio.categoria || 'Servicio')}</span><h2>${h(servicio.nombre)}</h2>${servicio.etiqueta ? `<p class="product-tag" title="${h(servicio.etiqueta)}">${h(servicio.etiqueta)}</p>` : ''}</div></div>
+            <span class="stock-badge ${available ? '' : 'sold-out'}">${h(VegaCatalog.stockTexto(servicio))}</span>
+            <div class="product-plans" role="group" aria-label="Duración de ${h(servicio.nombre)}"></div>
+            <div class="product-bottom"><div class="price"></div><div class="product-actions"><button class="btn-detalles">Detalles</button><button class="btn-primary">${available ? 'Comprar' : 'Agotado'}</button></div></div>`;
+        card.querySelector('.product-media').onclick = card.querySelector('.btn-detalles').onclick = () => abrirModalDetalles(servicio, selected);
+        const buy = card.querySelector('.btn-primary'); buy.disabled = !available;
+        buy.onclick = () => prepararCompra({...servicio,...selected});
+        const refresh = () => {
+            card.querySelector('.price').innerHTML = `<strong>S/ ${selected.total.toFixed(2)}</strong>${selected.promo !== null ? `<del>S/ ${selected.precio.toFixed(2)}</del>` : ''}`;
+            card.querySelectorAll('.btn-plan-tarjeta').forEach((btn,i) => btn.setAttribute('aria-pressed',String(plans[i] === selected)));
         };
-
-        let pills = planesOrdenados.map((p, i) => {
-            let t = p.cantidad == 0 ? 'Único' : formatTiempo(p.cantidad, p.unidad);
-            let activeStyle = i === selectedIndex ? 'background:#111827; color:white; border:1px solid #111827;' : 'background:#F9FAFB; color:#6B7280; border:1px solid #E5E7EB;';
-            return `<button class="btn-plan-tarjeta" data-servicio="${indexServicio}" data-plan="${i}" style="padding:4px 10px; border-radius:6px; font-size:11px; font-weight:bold; cursor:pointer; transition:0.2s; ${activeStyle}">${h(t)}</button>`;
-        }).join('');
-        let htmlPlanesInteractivos = `<div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:15px;" id="contenedor-planes-${indexServicio}">${pills}</div>`;
-
-        const serviceId = Number(servicio.id);
-        const imgHtml = servicio.imagen_url ? `<img src="${h(VegaSecurity.imageUrl(servicio.imagen_url))}" class="card-img-top" onclick="abrirDetallesPorId(${serviceId})">` : `<div class="card-img-top" style="display:flex; align-items:center; justify-content:center; color:#64748b; font-size:12px;" onclick="abrirDetallesPorId(${serviceId})">Sin imagen</div>`;
-
-        const card = document.createElement('div'); card.className = 'card' + (VegaCatalog.disponible(servicio) ? '' : ' is-sold-out');
-        card.innerHTML = `
-            ${imgHtml}
-            ${servicio.etiqueta ? `<div class="badge" style="position:absolute; top:-15px; right:20px; background:var(--primary-gradient); color:white; padding:6px 16px; border-radius:20px; font-size:13px; font-weight:700;">${h(servicio.etiqueta)}</div>` : ''}
-            <div style="font-size:12px; color:#6B7280; margin-bottom:5px; font-weight:bold; text-transform:uppercase;">${h(servicio.categoria || 'Servicio')}</div>
-            <h2 style="font-size:18px; margin-bottom:12px; line-height:1.2;">${h(servicio.nombre)}</h2>
-            ${htmlDisponibilidad(servicio)}
-            ${htmlPlanesInteractivos}
-            <div class="price" id="precio-tarjeta-${indexServicio}" style="margin-bottom:15px;">${generarHtmlPrecioLimpio(planesOrdenados[selectedIndex])}</div>
-            <div class="card-botones-mini" style="display:flex; gap:8px; margin-top:auto;">
-                <button class="btn-detalles" style="flex:1; background:#F3F4F6; color:#4B5563; border:none; padding:10px 5px; border-radius:8px; font-weight:bold; cursor:pointer; font-size:13px;" onclick="abrirDetallesPorId(${serviceId})">Detalles</button>
-                <button class="btn-primary" id="btn-comprar-tarjeta-${indexServicio}" style="flex:1; padding:10px 5px; font-size:13px;">Comprar</button>
-            </div>
-        `;
-        contenedor.appendChild(card);
-
-        let btnComprar = card.querySelector(`#btn-comprar-tarjeta-${indexServicio}`);
-        btnComprar.disabled = !VegaCatalog.disponible(servicio);
-        if (btnComprar.disabled) btnComprar.textContent = 'Agotado';
-        btnComprar.onclick = () => prepararCompra({ ...servicio, ...planesOrdenados[selectedIndex], nombre: servicio.nombre, tipo_ingreso: servicio.tipo_ingreso });
-
-        if (planesOrdenados.length > 1) {
-            const btns = card.querySelectorAll(`.btn-plan-tarjeta`);
-            btns.forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    btns.forEach(b => { b.style.background = '#F9FAFB'; b.style.color = '#6B7280'; b.style.border = '1px solid #E5E7EB'; });
-                    e.target.style.background = '#111827'; e.target.style.color = 'white'; e.target.style.border = '1px solid #111827';
-                    let planElegido = planesOrdenados[e.target.getAttribute('data-plan')];
-                    planesElegidos.set(selectionKey, {cantidad:planElegido.cantidad, unidad:planElegido.unidad});
-                    document.getElementById(`precio-tarjeta-${indexServicio}`).innerHTML = generarHtmlPrecioLimpio(planElegido);
-                    btnComprar.onclick = () => prepararCompra({ ...servicio, ...planElegido, nombre: servicio.nombre, tipo_ingreso: servicio.tipo_ingreso });
-                });
-            });
-        }
+        plans.forEach(plan => {
+            const btn = document.createElement('button'); btn.className = 'btn-plan-tarjeta'; btn.textContent = formatTiempo(plan.cantidad,plan.unidad);
+            btn.onclick = () => { selected = plan; planesElegidos.set(key,{cantidad:plan.cantidad,unidad:plan.unidad}); refresh(); };
+            card.querySelector('.product-plans').append(btn);
+        });
+        refresh(); contenedor.append(card);
     });
 }
 
@@ -292,9 +257,10 @@ window.abrirDetallesPorId = function(id) {
     const service = catalogoGlobal.find(item => Number(item.id) === Number(id));
     if (service) abrirModalDetalles(service);
 };
-window.abrirModalDetalles = function(servicio) {
+window.abrirModalDetalles = function(servicio, preferido = null) {
     const modal = document.getElementById('modal-detalles');
     let planes = VegaCatalog.planes(servicio);
+    if (preferido) planes.sort((a,b) => Number(b.cantidad === preferido.cantidad && b.unidad === preferido.unidad) - Number(a.cantidad === preferido.cantidad && a.unidad === preferido.unidad));
     document.getElementById('detalles-disponibilidad').innerHTML = htmlDisponibilidad(servicio);
 
     const img = document.getElementById('detalles-imagen');
@@ -487,8 +453,7 @@ function actualizarVistaCatalogo() {
     document.getElementById('catalogo-resumen').textContent = `${filtered.length} ${filtered.length === 1 ? 'producto' : 'productos'} · Elige la duración que prefieras`;
     document.querySelectorAll('.category-filters .pill').forEach(btn => btn.classList.toggle('active',btn.textContent.trim() === categoriaElegida));
     const offers = filtered.filter(s => VegaCatalog.limitada(s)).sort((a,b) => Date.parse(a.promocion_fin)-Date.parse(b.promocion_fin));
-    document.getElementById('ofertas-limitadas').hidden = !offers.length;
-    renderizarCatalogo(offers,'contenedor-ofertas');
+    renderizarOfertas(offers);
     firmaPromociones = catalogoGlobal.map(s => VegaCatalog.vigente(s)).join(',');
 }
 async function consultarPlan(plan) {
@@ -516,3 +481,59 @@ document.addEventListener('DOMContentLoaded', () => {
     setInterval(() => { if (!document.hidden) cargarCatalogo().catch(() => {}); }, 60000);
 });
 document.addEventListener('visibilitychange', () => { if (!document.hidden) cargarCatalogo().catch(() => {}); });
+
+let ofertasActuales = [], ofertaActual = 0, ofertasPausadas = !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+let ofertaHover = false, ofertaFocus = false;
+function renderizarOfertas(offers) {
+    const currentId = ofertasActuales[ofertaActual]?.id;
+    ofertasActuales = offers;
+    ofertaActual = Math.max(0, offers.findIndex(s => s.id === currentId));
+    const section = document.getElementById('ofertas-limitadas'), track = document.getElementById('contenedor-ofertas');
+    section.hidden = !offers.length; track.replaceChildren();
+    document.getElementById('ofertas-controles').hidden = offers.length < 2;
+    offers.forEach(s => {
+        const p = VegaCatalog.planes(s).find(p => p.promo !== null);
+        const slide = document.createElement('article'); slide.className = 'offer-slide';
+        slide.innerHTML = `${s.imagen_url ? `<img src="${h(VegaSecurity.imageUrl(s.imagen_url))}" alt="" class="offer-image" loading="lazy">` : '<span class="offer-image offer-placeholder" aria-hidden="true">✦</span>'}
+            <div class="offer-copy"><span class="offer-kicker">Precio especial · ${h(formatTiempo(p.cantidad,p.unidad))}</span><h3>${h(s.nombre)}</h3><p class="offer-stock">${h(VegaCatalog.stockTexto(s))}</p><span class="offer-clock" data-offer-end="${h(s.promocion_fin)}"><span>${h(VegaCatalog.tiempoRestante(s.promocion_fin))}</span></span></div>
+            <div class="offer-price"><strong>S/ ${p.total.toFixed(2)}</strong><del>S/ ${p.precio.toFixed(2)}</del></div><button class="offer-open">Ver oferta <span aria-hidden="true">↗</span></button>`;
+        slide.querySelector('.offer-open').onclick = () => abrirModalDetalles(s,p);
+        track.append(slide);
+    });
+    mostrarOferta();
+}
+function mostrarOferta() {
+    const track = document.getElementById('contenedor-ofertas');
+    track.style.transform = `translateX(-${ofertaActual*100}%)`;
+    [...track.children].forEach((slide,i) => { slide.inert = i !== ofertaActual; slide.setAttribute('aria-hidden',String(i !== ofertaActual)); });
+    document.getElementById('oferta-posicion').textContent = `${ofertaActual+1} / ${ofertasActuales.length}`;
+    const pause = document.getElementById('oferta-pausa');
+    pause.textContent = ofertasPausadas ? '▶' : 'Ⅱ';
+    pause.setAttribute('aria-label',ofertasPausadas ? 'Reanudar ofertas' : 'Pausar ofertas');
+}
+function avanzarOferta(delta) {
+    if (ofertasActuales.length < 2) return;
+    ofertaActual = (ofertaActual+delta+ofertasActuales.length)%ofertasActuales.length; mostrarOferta();
+}
+document.addEventListener('DOMContentLoaded', () => {
+    const section = document.getElementById('ofertas-limitadas');
+    document.getElementById('oferta-anterior').onclick = () => avanzarOferta(-1);
+    document.getElementById('oferta-siguiente').onclick = () => avanzarOferta(1);
+    document.getElementById('oferta-pausa').onclick = () => { ofertasPausadas = !ofertasPausadas; mostrarOferta(); };
+    section.addEventListener('mouseenter', () => { ofertaHover = true; });
+    section.addEventListener('mouseleave', () => { ofertaHover = false; });
+    section.addEventListener('focusin', () => { ofertaFocus = true; });
+    section.addEventListener('focusout', e => { ofertaFocus = section.contains(e.relatedTarget); });
+    let start = null, lastSwipe = 0;
+    const viewport = document.getElementById('ofertas-ventana');
+    viewport.addEventListener('pointerdown', e => { start = {x:e.clientX,y:e.clientY}; });
+    viewport.addEventListener('click', e => { if (Date.now()-lastSwipe < 400) { e.preventDefault(); e.stopPropagation(); } },true);
+    viewport.addEventListener('pointercancel', () => { start = null; });
+    viewport.addEventListener('pointerup', e => {
+        if (start && Math.abs(e.clientX-start.x)>45 && Math.abs(e.clientX-start.x)>Math.abs(e.clientY-start.y)) { lastSwipe = Date.now(); avanzarOferta(e.clientX<start.x?1:-1); }
+        start = null;
+    });
+    setInterval(() => {
+        if (!document.hidden && !section.hidden && !ofertasPausadas && !ofertaHover && !ofertaFocus && !document.querySelector('.modal:not(.oculto)')) avanzarOferta(1);
+    }, 6000);
+});

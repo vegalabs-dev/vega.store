@@ -13,7 +13,8 @@ const service = {id:1,nombre:attack,categoria:attack,etiqueta:attack,caracterist
 async function page(kind, {allowed=true, code=null}={}) {
   const html = readFileSync(kind === 'admin' ? 'admin.html' : 'index.html','utf8').replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi,'');
   const dom = new JSDOM(html, {url:'https://vegalabs-dev.github.io/vega.store/' + (kind==='admin'?'admin.html':'') + (code?'#acceso='+code:''),runScripts:'outside-only'});
-  const w = dom.window, calls = [], alerts = [], authCalls = [], rpcHandlers = {};
+  const w = dom.window, calls = [], alerts = [], authCalls = [], rpcHandlers = {}, intervals = [];
+  const originalInterval=w.setInterval.bind(w);w.setInterval=(fn,ms)=>{intervals.push({fn,ms});return originalInterval(fn,ms);};
   Object.defineProperty(w,'crypto',{value:webcrypto}); w.TextEncoder = TextEncoder;
   w.alert=x=>alerts.push(x); w.confirm=()=>true; w.open=()=>null;
   w.fetch=async()=>({json:async()=>({country_code:'PE'})});
@@ -42,10 +43,10 @@ async function page(kind, {allowed=true, code=null}={}) {
       };return query;
     }
   })};
-  for (const file of (kind==='admin' ? ['catalogo.js','security.js','clientes.js','admin.js'] : ['catalogo.js','security.js','main.js']))
+  for (const file of (kind==='admin' ? ['catalogo.js','security.js','clientes.js','admin.js','ventanas.js'] : ['catalogo.js','security.js','main.js','ventanas.js']))
     vm.runInContext(readFileSync(file,'utf8'),dom.getInternalVMContext(),{filename:file});
   await tick();
-  return {w,dom,calls,alerts,authCalls,data,rpcHandlers};
+  return {w,dom,calls,alerts,authCalls,data,rpcHandlers,intervals};
 }
 
 test('private code uses cryptographic entropy, SHA-256 and a fragment removed on entry', async t=>{
@@ -245,4 +246,42 @@ test('admin saves stock and Peru schedule with a stale-stock guard, without over
   w.editarServicioPorId(1);await w.guardarServicio();
   saved=calls.filter(c=>c.table==='servicios'&&c.op==='update').at(-1);
   assert.equal('stock' in saved.values,false);assert.equal('agotado' in saved.values,false);
+});
+
+test('offer carousel stays compact, preserves exact discounted plan, and supports navigation/pause',async t=>{
+  const {w,dom,data,intervals}=await page('store');t.after(()=>dom.window.close());
+  Object.defineProperty(w.document,'hidden',{value:false,configurable:true});
+  const offer={...service,nombre:'Oferta A',stock:3,promocion_inicio:new Date(Date.now()-3600000).toISOString(),promocion_fin:new Date(Date.now()+3600000).toISOString(),planes:[{cantidad:1,unidad:'meses',precio:2},{cantidad:6,unidad:'meses',precio:20,promo:10}]};
+  data.servicios=[offer,{...offer,id:2,nombre:'Oferta B'}];await w.cargarCatalogo();
+  const track=w.document.getElementById('contenedor-ofertas');
+  assert.equal(track.querySelectorAll('.card').length,0);assert.equal(track.children.length,2);
+  w.document.getElementById('oferta-siguiente').click();assert.equal(track.style.transform,'translateX(-100%)');
+  assert.equal(track.children[0].inert,true);assert.equal(track.children[1].inert,false);
+  w.document.getElementById('oferta-pausa').click();intervals.find(i=>i.ms===6000).fn();
+  assert.equal(track.style.transform,'translateX(-100%)');
+  w.document.getElementById('oferta-pausa').click();intervals.find(i=>i.ms===6000).fn();assert.equal(track.style.transform,'translateX(-0%)');
+  track.children[0].querySelector('.offer-open').click();
+  assert.match(w.document.getElementById('detalles-precio-box').textContent,/6 Meses/);
+  assert.match(w.document.getElementById('precio-dinamico-modal').textContent,/10.00/);
+  data.servicios=[offer];await w.cargarCatalogo();assert.equal(w.document.getElementById('ofertas-controles').hidden,true);
+});
+
+test('outside click and Escape close windows without removing private access; cancelling logout preserves it',async t=>{
+  const code='a'.repeat(48);const {w,dom}=await page('store',{code});t.after(()=>dom.window.close());
+  const panel=w.document.getElementById('modal-panel-cliente');
+  await tick();panel.querySelector('.customer-heading').click();assert.equal(panel.classList.contains('oculto'),false);
+  panel.click();assert.equal(panel.classList.contains('oculto'),true);assert.equal(w.VegaSecurity.loadCode(),code);
+  w.abrirMiCuenta();await tick();w.document.dispatchEvent(new w.KeyboardEvent('keydown',{key:'Escape',bubbles:true}));
+  assert.equal(panel.classList.contains('oculto'),true);assert.equal(w.VegaSecurity.loadCode(),code);
+  w.confirm=()=>false;w.cerrarSesionCliente();assert.equal(w.VegaSecurity.loadCode(),code);
+  w.confirm=()=>true;w.cerrarSesionCliente();assert.equal(w.VegaSecurity.loadCode(),null);
+  assert.ok(panel.querySelector('.customer-footer .logout-button'));assert.ok(panel.querySelector('button.cerrar-modal'));
+});
+
+test('admin logout requires confirmation and dismissing a window does not sign out',async t=>{
+  const {w,dom,authCalls}=await page('admin');t.after(()=>dom.window.close());
+  await w.mostrarPanel();w.confirm=()=>false;await w.cerrarSesion();assert.equal(authCalls.includes('signOut'),false);
+  w.abrirModal('modal-servicio');await tick();w.document.getElementById('modal-servicio').click();
+  assert.equal(w.document.getElementById('modal-servicio').classList.contains('show'),false);
+  assert.equal(authCalls.includes('signOut'),false);
 });

@@ -103,11 +103,11 @@ header {
 
 .card {
     background: var(--white); 
-    padding: 20px !important; 
+    padding: 20px; 
     border-radius: 24px; 
     box-shadow: 0 10px 30px rgba(0,0,0,0.04); 
-    width: 100% !important; 
-    max-width: 100% !important; 
+    width: 100%; 
+    max-width: 100%; 
     position: relative; 
     border: 1px solid #E5E7EB;
     display: flex;
@@ -287,17 +287,17 @@ button { padding: 14px 20px; border: none; border-radius: 12px; cursor: pointer;
     }
     
     .card {
-        padding: 15px !important;
+        padding: 15px;
         border-radius: 16px;
     }
 
     .card h2 {
-        font-size: 16px !important;
+        font-size: 16px;
         margin-bottom: 5px;
     }
 
     .card .price {
-        margin-bottom: 15px !important;
+        margin-bottom: 15px;
     }
 
     .precio-oferta, .card .price span[style*="font-size: 22px"] {
