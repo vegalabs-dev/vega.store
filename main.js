@@ -221,6 +221,7 @@ function generarBotonesCategorias(servicios) {
     contenedorFiltros.innerHTML = html;
 }
 
+const planesElegidos = new Map();
 function renderizarCatalogo(serviciosParaMostrar, target='contenedor-servicios') {
     const contenedor = document.getElementById(target);
     contenedor.innerHTML = '';
@@ -230,6 +231,9 @@ function renderizarCatalogo(serviciosParaMostrar, target='contenedor-servicios')
         const indexServicio = `${target}-${index}`;
         let planesOrdenados = VegaCatalog.planes(servicio);
         if (target === 'contenedor-ofertas') planesOrdenados = planesOrdenados.filter(p => p.promo !== null);
+        const selectionKey = `${target}:${servicio.id}`;
+        const selection = planesElegidos.get(selectionKey);
+        const selectedIndex = Math.max(0, planesOrdenados.findIndex(p => p.cantidad === selection?.cantidad && p.unidad === selection?.unidad));
 
         const generarHtmlPrecioLimpio = (plan) => {
             let pNorm = parseFloat(plan.precio); let pOfe = plan.promo ? parseFloat(plan.promo) : null;
@@ -239,7 +243,7 @@ function renderizarCatalogo(serviciosParaMostrar, target='contenedor-servicios')
 
         let pills = planesOrdenados.map((p, i) => {
             let t = p.cantidad == 0 ? 'Único' : formatTiempo(p.cantidad, p.unidad);
-            let activeStyle = i === 0 ? 'background:#111827; color:white; border:1px solid #111827;' : 'background:#F9FAFB; color:#6B7280; border:1px solid #E5E7EB;';
+            let activeStyle = i === selectedIndex ? 'background:#111827; color:white; border:1px solid #111827;' : 'background:#F9FAFB; color:#6B7280; border:1px solid #E5E7EB;';
             return `<button class="btn-plan-tarjeta" data-servicio="${indexServicio}" data-plan="${i}" style="padding:4px 10px; border-radius:6px; font-size:11px; font-weight:bold; cursor:pointer; transition:0.2s; ${activeStyle}">${h(t)}</button>`;
         }).join('');
         let htmlPlanesInteractivos = `<div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:15px;" id="contenedor-planes-${indexServicio}">${pills}</div>`;
@@ -255,7 +259,7 @@ function renderizarCatalogo(serviciosParaMostrar, target='contenedor-servicios')
             <h2 style="font-size:18px; margin-bottom:12px; line-height:1.2;">${h(servicio.nombre)}</h2>
             ${htmlDisponibilidad(servicio)}
             ${htmlPlanesInteractivos}
-            <div class="price" id="precio-tarjeta-${indexServicio}" style="margin-bottom:15px;">${generarHtmlPrecioLimpio(planesOrdenados[0])}</div>
+            <div class="price" id="precio-tarjeta-${indexServicio}" style="margin-bottom:15px;">${generarHtmlPrecioLimpio(planesOrdenados[selectedIndex])}</div>
             <div class="card-botones-mini" style="display:flex; gap:8px; margin-top:auto;">
                 <button class="btn-detalles" style="flex:1; background:#F3F4F6; color:#4B5563; border:none; padding:10px 5px; border-radius:8px; font-weight:bold; cursor:pointer; font-size:13px;" onclick="abrirDetallesPorId(${serviceId})">Detalles</button>
                 <button class="btn-primary" id="btn-comprar-tarjeta-${indexServicio}" style="flex:1; padding:10px 5px; font-size:13px;">Comprar</button>
@@ -266,7 +270,7 @@ function renderizarCatalogo(serviciosParaMostrar, target='contenedor-servicios')
         let btnComprar = card.querySelector(`#btn-comprar-tarjeta-${indexServicio}`);
         btnComprar.disabled = !VegaCatalog.disponible(servicio);
         if (btnComprar.disabled) btnComprar.textContent = 'Agotado';
-        btnComprar.onclick = () => prepararCompra({ ...servicio, ...planesOrdenados[0], nombre: servicio.nombre, tipo_ingreso: servicio.tipo_ingreso });
+        btnComprar.onclick = () => prepararCompra({ ...servicio, ...planesOrdenados[selectedIndex], nombre: servicio.nombre, tipo_ingreso: servicio.tipo_ingreso });
 
         if (planesOrdenados.length > 1) {
             const btns = card.querySelectorAll(`.btn-plan-tarjeta`);
@@ -275,6 +279,7 @@ function renderizarCatalogo(serviciosParaMostrar, target='contenedor-servicios')
                     btns.forEach(b => { b.style.background = '#F9FAFB'; b.style.color = '#6B7280'; b.style.border = '1px solid #E5E7EB'; });
                     e.target.style.background = '#111827'; e.target.style.color = 'white'; e.target.style.border = '1px solid #111827';
                     let planElegido = planesOrdenados[e.target.getAttribute('data-plan')];
+                    planesElegidos.set(selectionKey, {cantidad:planElegido.cantidad, unidad:planElegido.unidad});
                     document.getElementById(`precio-tarjeta-${indexServicio}`).innerHTML = generarHtmlPrecioLimpio(planElegido);
                     btnComprar.onclick = () => prepararCompra({ ...servicio, ...planElegido, nombre: servicio.nombre, tipo_ingreso: servicio.tipo_ingreso });
                 });

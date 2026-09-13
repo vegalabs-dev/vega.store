@@ -206,6 +206,9 @@ test('offers show discounted plans, sold-out controls are disabled, and filters 
   data.servicios=[offer,{...service,id:2,nombre:'Gemini',stock:0}];await w.cargarCatalogo();
   const ofertas=w.document.getElementById('ofertas-limitadas');assert.equal(ofertas.hidden,false);
   assert.match(ofertas.textContent,/S\/ 10.00/);assert.match(ofertas.textContent,/3 cupos disponibles/);
+  w.document.querySelectorAll('#contenedor-servicios .card')[0].querySelectorAll('.btn-plan-tarjeta')[1].click();
+  await w.cargarCatalogo();
+  assert.match(w.document.querySelector('#contenedor-servicios .price').textContent,/10.00/);
   const sold=w.document.querySelector('.is-sold-out');assert.ok(sold.querySelector('.btn-primary').disabled);
   w.abrirModalDetalles(data.servicios[1]);assert.equal(w.document.querySelector('#detalles-btn-comprar button').disabled,true);
   const ids=[...w.document.querySelectorAll('[id]')].map(x=>x.id);assert.equal(ids.length,new Set(ids).size);
