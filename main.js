@@ -24,7 +24,7 @@ function ensureAccessCode() {
     return accessCode;
 }
 window.addEventListener('unhandledrejection', event => {
-    event.preventDefault(); alert(event.reason?.message || 'No se pudo completar la operación. Inténtalo nuevamente.');
+    event.preventDefault(); VegaUI.toast(event.reason?.message || 'No se pudo completar la operación. Inténtalo nuevamente.');
 });
 
 let productoSeleccionado = { nombre: '', precio: 0, cantidad: 1, unidad: 'meses', tipo_ingreso: 'numero' };
@@ -34,7 +34,9 @@ const numeroWhatsApp = "51928293163";
 let userPhone = localStorage.getItem('vega_user_phone') || null;
 let userUsername = localStorage.getItem('vega_user_username') || null;
 let userName = localStorage.getItem('vega_user_name') || null;
-let paisCliente = 'PE';
+let paisCliente = null;
+let catalogoRaw=[];
+let cargandoCatalogo=null;
 
 const modalCompra = document.getElementById('modal-compra');
 const inputDatoCompra = document.getElementById('correo-compra');
@@ -50,19 +52,20 @@ const iti = window.intlTelInput(inputTel, {
 // =====================================
 // INICIO Y GEO
 // =====================================
-document.addEventListener('DOMContentLoaded', async () => {
+document.addEventListener('DOMContentLoaded', () => {
     actualizarBotonHeader();
-    try {
-        const respuesta = await fetch('https://ipapi.co/json/');
-        const datos = await respuesta.json();
-        if (datos.country_code) {
-            paisCliente = datos.country_code;
-            iti.setCountry(paisCliente.toLowerCase());
-        }
-    } catch (e) { console.log("No se pudo detectar IP, usando defecto."); }
-
+    VegaUI.loading(document.getElementById('contenedor-servicios'),6);
     cargarCatalogo();
-    if (accessCode) abrirMiCuenta();
+    if(accessCode)abrirMiCuenta();
+    const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),2500);
+    fetch('https://ipapi.co/json/',{signal:controller.signal}).then(r=>r.json()).then(data=>{
+        if(data.country_code && !paisCliente){paisCliente=data.country_code;iti.setCountry(paisCliente.toLowerCase());}
+    }).catch(()=>{}).finally(()=>{clearTimeout(timeout);const field=document.getElementById('pais-catalogo');
+        if(paisCliente){if(![...field.options].some(o=>o.value===paisCliente))field.add(new Option(paisCliente,paisCliente));field.value=paisCliente;}
+        else field.options[0].textContent='Selecciona tu país';
+        aplicarPaisCatalogo();
+    });
+    document.getElementById('pais-catalogo').onchange=e=>{paisCliente=e.target.value||null;aplicarPaisCatalogo();};
 });
 
 function actualizarBotonHeader() {
@@ -90,7 +93,7 @@ async function procesarLogin() {
         nextUsername = VegaSecurity.username(document.getElementById('login-usuario').value);
         if (!nextUsername) throw new Error('Indica tu usuario de WhatsApp.');
     } else {
-        if (!iti.isValidNumber()) return alert('Ingresa un número de WhatsApp válido para este país.');
+        if (!iti.isValidNumber()) return VegaUI.toast('Ingresa un número de WhatsApp válido para este país.');
         nextPhone = iti.getNumber();
     }
     userPhone = nextPhone; userUsername = nextUsername;
@@ -106,7 +109,7 @@ function usarEnlacePrivado() {
     const value = document.getElementById('enlace-privado-input').value.trim();
     let code = value;
     try { code = new URLSearchParams(new URL(value).hash.slice(1)).get('acceso'); } catch { /* Also accept a raw code. */ }
-    if (!VegaSecurity.validCode(code)) return alert('Pega el enlace privado completo que recibiste de VegaStore.');
+    if (!VegaSecurity.validCode(code)) return VegaUI.toast('Pega el enlace privado completo que recibiste de VegaStore.');
     accessCode = VegaSecurity.saveCode(code);
     document.getElementById('modal-acceso-privado').classList.add('oculto');
     document.getElementById('enlace-privado-input').value = '';
@@ -116,8 +119,8 @@ async function copiarMiEnlace() {
     await navigator.clipboard.writeText(VegaSecurity.privateLink(accessCode));
     document.getElementById('estado-copia-enlace').textContent = 'Enlace copiado. Guárdalo en un lugar privado.';
 }
-function cerrarSesionCliente() {
-    if (!confirm('¿Cerrar sesión en este dispositivo? Guarda tu enlace privado para volver a consultar tus servicios.')) return;
+async function cerrarSesionCliente() {
+    if (!await VegaUI.confirm('Guarda tu enlace privado para volver a consultar tus servicios desde este dispositivo.',{title:'Cerrar sesión',accept:'Cerrar sesión'})) return;
     VegaSecurity.forgetCode(); accessCode = null; privateClient = null; privateClientCode = null;
     for (const key of ['vega_user_phone','vega_user_username','vega_user_name']) localStorage.removeItem(key);
     userPhone = null; userUsername = null; userName = null;
@@ -142,38 +145,34 @@ window.switchPanelTab = function(tab) {
 }
 
 async function cargarMisServicios() {
-    const contenedor = document.getElementById('lista-mis-servicios');
-    contenedor.innerHTML = '<p style="text-align: center; color: #6b7280;">Buscando tus servicios...</p>';
-    const { data, error } = await clientForAccess().from('usuarios_canva').select('id,servicio,estado,fecha_inicio,fecha_fin,creado_en,meses,unidad').order('creado_en', { ascending: false });
-
-    if (error) { contenedor.textContent = 'No se pudieron consultar los servicios. Inténtalo nuevamente o contacta a soporte.'; return; }
-    if (!data || data.length === 0) { contenedor.innerHTML = '<p style="text-align: center; color: #6b7280;">Este enlace no tiene servicios disponibles. Si ya compraste, pide tu enlace privado por WhatsApp.</p>'; return; }
-
-    contenedor.innerHTML = '';
-    data.forEach(item => {
-        let estadoBadge = item.estado === 'Activo' ? '<span style="background:#D1FAE5; color:#059669; padding:4px 8px; border-radius:6px; font-size:11px; font-weight:bold;">✔️ Activo</span>' : '<span style="background:#FEF3C7; color:#D97706; padding:4px 8px; border-radius:6px; font-size:11px; font-weight:bold;">⏳ Pendiente</span>';
-        let infoTiempo = '';
-
-        if (item.estado === 'Activo') {
-            if (item.meses == 0 || !item.fecha_fin) { infoTiempo = '<span style="color:var(--primary); font-weight:bold; font-size:13px;">Acceso Permanente</span>'; }
-            else {
-                let hoy = new Date(); let fin = new Date(item.fecha_fin);
-                let dias = Math.ceil((fin.getTime() - hoy.getTime()) / (1000 * 3600 * 24));
-                if (dias > 0) infoTiempo = `<span style="color:#10B981; font-weight:bold; font-size:13px;">Quedan ${dias} días</span>`;
-                else infoTiempo = `<span style="color:#DC2626; font-weight:bold; font-size:13px;">Vencido</span>`;
-            }
+    const contenedor=document.getElementById('lista-mis-servicios'),code=accessCode;
+    VegaUI.loading(contenedor,2);
+    try{
+        const {data,error}=await VegaUI.read(clientForAccess().from('usuarios_canva').select('id,servicio,estado,fecha_inicio,fecha_fin,vigencia_inicio,ultima_ampliacion,creado_en,meses,unidad').order('creado_en',{ascending:false}));
+        if(code!==accessCode)return;
+        if(error)throw error;
+        contenedor.replaceChildren();contenedor.removeAttribute('aria-busy');
+        if(!data?.length){contenedor.innerHTML='<p class="empty-state">Este enlace no tiene servicios disponibles. Si ya compraste, pide tu enlace privado por WhatsApp.</p>';return;}
+        for(const item of data){
+            const state=VegaDates.status(item),card=document.createElement('article');card.className='customer-service';
+            card.innerHTML=`<div class="customer-service-top"><h3>${h(item.servicio)}</h3><span class="status-chip ${state==='Activo'?'active':'attention'}">${h(state)}</span></div><p class="current-duration">${h(VegaDates.label(item))}</p><p class="current-expiry">${item.fecha_fin?'Vigente hasta el <strong>'+h(VegaDates.format(item.fecha_fin))+'</strong>':h(VegaDates.permanent(item)?'Acceso permanente':'Vigencia pendiente de confirmar')}</p>${item.ultima_ampliacion?'<p class="last-extension">Última actualización: '+h(item.ultima_ampliacion)+'</p>':''}`;
+            const details=document.createElement('details');details.className='service-history';const summary=document.createElement('summary');summary.textContent='Ver historial';const list=document.createElement('div');details.append(summary,list);
+            let loaded=false;details.ontoggle=()=>{if(details.open&&!loaded){loaded=true;cargarHistorialPedido(item.id,list,clientForAccess());}};
+            card.append(details);contenedor.append(card);
         }
-        contenedor.innerHTML += `<div class="item-servicio-cliente"><div><h4 style="margin: 0 0 5px 0; font-size: 15px;">${h(item.servicio)}</h4><p style="margin: 0; font-size: 12px; color: #6B7280;">Contratado: ${new Date(item.creado_en).toLocaleDateString()}</p></div><div style="text-align: right;">${estadoBadge}<br><div style="margin-top: 5px;">${infoTiempo}</div></div></div>`;
-    });
+    }catch(e){if(code===accessCode)VegaUI.error(contenedor,'No pudimos consultar tus servicios. Reintenta o contacta a soporte.',cargarMisServicios);}
 }
 
 async function cargarPromociones() {
-    const contenedor = document.getElementById('lista-promociones');
+    const contenedor = document.getElementById('lista-promociones'),code=accessCode;
     contenedor.innerHTML = '<p style="text-align: center; color: #6b7280;">Buscando promociones...</p>';
     const { data: compras } = await clientForAccess().from('usuarios_canva').select('id').eq('estado', 'Activo');
+    if(code!==accessCode)return;
     let tieneCompras = compras && compras.length > 0;
     const { data, error } = await supabaseClient.from('promociones').select('*').eq('activo', true);
-    if (error || !data || data.length === 0) { contenedor.innerHTML = '<p style="text-align: center; color: #6b7280;">No hay promociones disponibles.</p>'; return; }
+    if(code!==accessCode)return;
+    if(error){VegaUI.error(contenedor,'No pudimos cargar las promociones.',cargarPromociones);return;}
+    if (!data || data.length === 0) { contenedor.innerHTML = '<p style="text-align: center; color: #6b7280;">No hay promociones disponibles.</p>'; return; }
 
     contenedor.innerHTML = '';
     data.forEach(promo => {
@@ -187,22 +186,25 @@ async function cargarPromociones() {
 // CARGAR CATÁLOGO Y RENDERIZAR
 // =====================================
 async function cargarCatalogo() {
-    const { data: servicios, error } = await supabaseClient.from('servicios').select('*').order('id', { ascending: true });
-    if (error) {
-        document.getElementById('catalogo-resumen').textContent = 'No pudimos actualizar la disponibilidad. Intenta recargar la página.';
-        return;
-    }
-
-    catalogoGlobal = (servicios || []).filter(s => {
-        if (!s.geo_tipo || s.geo_tipo === 'todos') return true;
-        let listaPaises = s.geo_paises ? s.geo_paises.split(',').map(p => p.trim().toUpperCase()) : [];
-        if (s.geo_tipo === 'solo') return listaPaises.includes(paisCliente);
-        if (s.geo_tipo === 'excepto') return !listaPaises.includes(paisCliente);
-        return true;
+    if(cargandoCatalogo)return cargandoCatalogo;
+    cargandoCatalogo=(async()=>{
+        const {data,error}=await VegaUI.read(supabaseClient.from('servicios').select('*').order('id',{ascending:true}));
+        if(error)throw error;
+        catalogoRaw=data||[];aplicarPaisCatalogo();
+    })();
+    try{await cargandoCatalogo;}catch(e){
+        document.getElementById('catalogo-resumen').textContent='No pudimos actualizar la disponibilidad.';
+        if(!catalogoRaw.length)VegaUI.error(document.getElementById('contenedor-servicios'),'No pudimos cargar el catálogo.',cargarCatalogo);
+    }finally{cargandoCatalogo=null;document.getElementById('contenedor-servicios').removeAttribute('aria-busy');}
+}
+function aplicarPaisCatalogo(){
+    catalogoGlobal=catalogoRaw.filter(s=>{
+        if(!s.geo_tipo||s.geo_tipo==='todos')return true;
+        if(!paisCliente)return false;
+        const countries=(s.geo_paises||'').split(',').map(p=>p.trim().toUpperCase());
+        return s.geo_tipo==='solo'?countries.includes(paisCliente):s.geo_tipo==='excepto'?!countries.includes(paisCliente):true;
     });
-
-    generarBotonesCategorias(catalogoGlobal);
-    actualizarVistaCatalogo();
+    generarBotonesCategorias(catalogoGlobal);actualizarVistaCatalogo();
 }
 
 function formatTiempo(c, u) {
@@ -335,7 +337,7 @@ window.prepararCompra = async function(plan) {
     ensureAccessCode();
     const { data: pendientes } = await clientForAccess().from('usuarios_canva').select('id').eq('estado', 'Pendiente');
     if (pendientes && pendientes.length >= 3) {
-        return alert("🛑 Tienes demasiadas solicitudes pendientes. Espera a que validemos tus pagos o contáctanos.");
+        return VegaUI.toast("🛑 Tienes demasiadas solicitudes pendientes. Espera a que validemos tus pagos o contáctanos.");
     }
 
     const precioFinal = plan.total;
@@ -390,7 +392,7 @@ document.getElementById('btn-otro-medio').addEventListener('click', async () => 
     const fresh = await consultarPlan(productoSeleccionado);
     if (!fresh) return;
     if (fresh.total !== productoSeleccionado.precio) {
-        alert('El precio cambió. Revisa el importe actualizado antes de generar el pedido.');
+        VegaUI.toast('El precio cambió. Revisa el importe actualizado antes de generar el pedido.');
         await prepararCompra(fresh); return;
     }
     const token = "TK-" + VegaSecurity.newCode().slice(0, 12).toUpperCase();
@@ -404,7 +406,7 @@ document.getElementById('btn-otro-medio').addEventListener('click', async () => 
     }]);
 
     if (error) {
-        alert("No se generó el pedido: " + error.message);
+        VegaUI.toast("No se generó el pedido: " + error.message);
         await cargarCatalogo();
         btn.innerText = `Generar Pedido y Pagar (S/ ${productoSeleccionado.precio.toFixed(2)})`; btn.disabled = false;
         return;
@@ -423,7 +425,7 @@ document.getElementById('btn-otro-medio').addEventListener('click', async () => 
     abrirMiCuenta();
     document.getElementById('modal-compra').classList.add('oculto');
     } catch (error) {
-        alert('No pudimos confirmar el pedido. Revisa Mis servicios antes de intentarlo otra vez.');
+        VegaUI.toast('No pudimos confirmar el pedido. Revisa Mis servicios antes de intentarlo otra vez.');
     } finally {
         button.disabled = false;
         button.innerText = `Generar Pedido y Pagar (S/ ${productoSeleccionado.precio.toFixed(2)})`;
@@ -457,15 +459,15 @@ function actualizarVistaCatalogo() {
     firmaPromociones = catalogoGlobal.map(s => VegaCatalog.vigente(s)).join(',');
 }
 async function consultarPlan(plan) {
-    if (!plan.id) { alert('Vuelve a seleccionar el producto desde el catálogo.'); return null; }
+    if (!plan.id) { VegaUI.toast('Vuelve a seleccionar el producto desde el catálogo.'); return null; }
     const {data,error} = await supabaseClient.from('servicios').select('*').eq('id',Number(plan.id));
-    if (error) { alert('No pudimos consultar la disponibilidad. Inténtalo de nuevo.'); return null; }
+    if (error) { VegaUI.toast('No pudimos consultar la disponibilidad. Inténtalo de nuevo.'); return null; }
     const product = data?.[0];
     if (!product || !VegaCatalog.disponible(product)) {
-        alert('Este producto está agotado o ya no está disponible.'); await cargarCatalogo(); return null;
+        VegaUI.toast('Este producto está agotado o ya no está disponible.'); await cargarCatalogo(); return null;
     }
     const choice = VegaCatalog.planes(product).find(p => p.cantidad === Number(plan.cantidad) && p.unidad === (plan.unidad || 'meses'));
-    if (!choice) { alert('Este plan cambió. Vuelve a elegirlo en el catálogo.'); await cargarCatalogo(); return null; }
+    if (!choice) { VegaUI.toast('Este plan cambió. Vuelve a elegirlo en el catálogo.'); await cargarCatalogo(); return null; }
     return {...product,...choice};
 }
 document.addEventListener('DOMContentLoaded', () => {

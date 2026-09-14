@@ -78,3 +78,31 @@ El acceso privado queda en un apartado desplegable. Cerrar sesión requiere conf
 Para una siguiente etapa: botón de redacción dentro del administrador, selección de producto y tono, función protegida en Supabase que verifique al propietario y limite las solicitudes, y Gemini Flash-Lite como proveedor inicial. La función leería solo los datos públicos del producto y devolvería un borrador editable; teléfonos, correos y enlaces privados se añadirían localmente después, cuando hicieran falta. La clave del proveedor se guardaría como secreto del servidor. La IA no decidiría precios, stock, fechas ni permisos y no enviaría mensajes automáticamente.
 
 La generación con IA todavía no está conectada: requiere elegir proveedor y configurar su clave y presupuesto. Referencias: [Gemini API](https://ai.google.dev/gemini-api/docs/pricing), [secretos de Edge Functions](https://supabase.com/docs/guides/functions/secrets).
+
+## Vigencia, historial y operaciones recuperables (13 de septiembre de 2026)
+
+Migración aplicada: `20260913204706_service_management_and_history.sql`.
+
+- Se conservan las fechas, compras originales, contactos, stock y enlaces privados existentes. La migración solo añade el inicio del período vigente, versión de edición y una referencia inicial en el historial. Las ampliaciones antiguas no se reconstruyen ni se presentan como regalos conocidos.
+- «Ampliar o renovar» permite sumar tiempo, comenzar hoy o reemplazar la duración desde el inicio del período. Las fechas se calculan en PostgreSQL con calendario y horario de Perú. Los meses se ajustan al último día válido y una renovación vencida parte de hoy.
+- Las ampliaciones y altas manuales usan identificadores de operación para que un reintento no duplique la venta. Las ampliaciones comprueban la versión y bloquean la fila para evitar sobrescribir un cambio concurrente. La activación calcula las fechas y descuenta stock dentro de la transacción.
+- «Archivar» conserva el servicio. «Restaurar» recupera el estado anterior: una solicitud rechazada vuelve a Pendiente. El rol del navegador no tiene DELETE en pedidos, clientes, productos ni promociones. El historial no admite actualizaciones ni borrados; los registros nuevos se escriben mediante triggers.
+- El historial público solo expone fechas, tipo y cantidad del cambio para los servicios autorizados por el enlace. No expone autor, datos de contacto, huellas de operación ni auditoría interna. Revocar el enlace también revoca su historial.
+- «Por atender» se deriva de la fecha actual de vencimiento; al ampliar se actualiza sin notificaciones obsoletas. «Marcar atendido» es una confirmación manual, no un comprobante de entrega de WhatsApp. No se ha configurado un emisor automático ni se envían mensajes desde las pruebas.
+- Los formularios advierten antes de descartar cambios. Las operaciones de guardado bloquean los controles correspondientes; los errores conservan los datos editados. Las consultas del catálogo y la geolocalización son independientes. Mientras el país no se resuelva solo se muestran productos sin restricción geográfica; también se puede elegir el país.
+
+### Asistente Gemini
+
+La función `vega-redactar` comprueba la sesión contra Supabase Auth y la lista de administradores antes de cualquier consulta o generación. Usa exclusivamente la clave pública de Supabase junto al JWT del propietario; no necesita `service_role`. El gateway `verify_jwt` está desactivado porque la función implementa esa autenticación y autorización de manera explícita. No retirar estas comprobaciones.
+
+La integración queda inactiva sin el secreto `GEMINI_API_KEY`. Antes de activarla, reemplazar la clave compartida en el chat y guardar la nueva en **Supabase → Edge Functions → Secrets**. No ponerla en HTML, JavaScript, commits ni mensajes de prueba. `GEMINI_MODEL` es opcional y por defecto usa `gemini-3.1-flash-lite`. El límite inicial es 20 borradores por hora y 100 por día; las alertas de facturación se configuran aparte en Google.
+
+Gemini recibe únicamente el nombre del servicio y el tipo de atajo. Genera una introducción opcional y el administrador decide si añadirla al mensaje. Las fechas, enlaces privados y contactos se conservan en el texto original del panel y no se envían al proveedor de IA. No hay envío automático de mensajes ni modificaciones de pedidos por IA.
+
+### Verificación y reversión
+
+Las 43 pruebas locales usan datos sintéticos. Cubren permisos, enlaces, inventario, meses de distinta longitud, renovaciones vencidas, reintentos, restauración de solicitudes, historial privado, avisos manuales y el endpoint de IA sin una clave real. Las huellas de las 13 compras, 13 fichas y del catálogo coincidieron antes y después de aplicar la migración.
+
+Las migraciones son aditivas; una reversión de interfaz puede conservar sus tablas. Una versión antigua que intente borrar solicitudes recibirá un error de permisos. No habilitar DELETE para hacer funcionar esa versión. El historial operativo no sustituye una copia de seguridad externa de la base. Las copias automáticas y una prueba de restauración completa deben comprobarse según el plan de Supabase antes de considerar resuelta la recuperación ante una pérdida total.
+
+El asesor de seguridad no añadió avisos con esta migración. Sigue pendiente la protección de contraseñas filtradas ya detectada en Auth: https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection.

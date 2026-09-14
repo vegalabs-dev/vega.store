@@ -1,0 +1,4 @@
+[functions.vega-redactar]
+# The function verifies the live Auth session and the owner allowlist itself.
+# This supports the project's current JWT signing keys without trusting decoded claims.
+verify_jwt = false

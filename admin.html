@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="referrer" content="no-referrer">
     <title>Panel Admin | VegaStore Premium</title>
-    <link rel="stylesheet" href="clientes.css?v=20260913-stock1">
+    <link rel="stylesheet" href="clientes.css?v=20260913-management1">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.116.0"></script>
     <style>
         /* =========================================
@@ -200,6 +200,7 @@
         .info-box p { margin: 0; color: #1E3A8A; font-size: 14px; line-height: 1.5; }
     </style>
     <link rel="stylesheet" href="catalogo.css?v=20260913-compact1">
+    <link rel="stylesheet" href="interfaz.css?v=20260913-management1">
 </head>
 <body>
 
@@ -237,17 +238,19 @@
             </div>
 
             <div class="tabs">
-                <button id="btn-tab-ventas" class="tab-btn active" onclick="switchTab('ventas')">💰 Clientes Activos</button>
-                <button id="btn-tab-fichas" class="tab-btn" onclick="switchTab('fichas')">👤 Fichas de clientes</button>
+                <button id="btn-tab-ventas" class="tab-btn" onclick="switchTab('ventas')">Servicios</button>
+                <button id="btn-tab-fichas" class="tab-btn active" onclick="switchTab('fichas')">Clientes</button>
+                <button id="btn-tab-seguimiento" class="tab-btn" onclick="switchTab('seguimiento')">Por atender</button>
                 <button id="btn-tab-solicitudes" class="tab-btn" onclick="switchTab('solicitudes')">🔔 Solicitudes</button>
                 <button id="btn-tab-catalogo" class="tab-btn" onclick="switchTab('catalogo')">📦 Catálogo</button>
-                <button id="btn-tab-papelera" class="tab-btn" onclick="switchTab('papelera')">🗑️ Papelera</button>
+                <button id="btn-tab-papelera" class="tab-btn" onclick="switchTab('papelera')">Archivados</button>
             </div>
 
+            <div id="admin-carga" class="loading-line" role="status" hidden>Actualizando tu panel…</div><div id="admin-error" class="load-error" hidden>No pudimos actualizar los datos. <button class="btn-gestionar" onclick="cargarDatosPrincipales()">Reintentar</button></div>
             <div class="stats-container">
                 <div class="stat-box">
                     <h3 id="stat-activos">0</h3>
-                    <p>Clientes Activos</p>
+                    <p>Servicios vigentes</p>
                 </div>
                 <div class="stat-box" style="background: linear-gradient(145deg, #FFFBEB, #FEF3C7); border-color: #FDE68A;">
                     <h3 id="stat-pendientes" style="color: #D97706;">0</h3>
@@ -255,8 +258,10 @@
                 </div>
             </div>
 
+            <div class="attention-cards"><button onclick="verSeguimiento('manana')"><strong id="stat-manana">0</strong><span>Vencen mañana →</span></button><button onclick="switchTab('catalogo')"><strong id="stat-agotados">0</strong><span>Productos agotados →</span></button></div>
+            <div id="tab-seguimiento" class="tab-content"><div class="section-heading"><div><h2>Por atender</h2><p>Prepara el aviso y envíalo desde WhatsApp. Marca atendido cuando hayas contactado al cliente.</p></div><select id="seguimiento-filtro" class="filtro-select" onchange="seguimientoFiltro=this.value;renderizarSeguimiento()"><option value="manana">Vencen mañana</option><option value="semana">Próximos 7 días</option><option value="vencidos">Vencidos</option></select></div><div id="lista-seguimiento"></div><p class="cliente-help">Horario de Perú. Los avisos se actualizan con cada ampliación. Abrir el chat no confirma la entrega.</p></div>
             <!-- PESTAÑA CLIENTES ACTIVOS -->
-            <div id="tab-ventas" class="tab-content active">
+            <div id="tab-ventas" class="tab-content">
                 <div class="filtros-admin">
                     <input type="text" id="buscador-clientes" class="search-box" placeholder="🔍 Buscar nombre, usuario, teléfono o correo..." oninput="filtrarClientes()">
                     <select id="filtro-servicio" class="filtro-select" onchange="filtrarClientes()"><option value="ALL">Todos los Servicios</option></select>
@@ -274,7 +279,7 @@
                 </div>
             </div>
 
-            <div id="tab-fichas" class="tab-content">
+            <div id="tab-fichas" class="tab-content active">
                 <div class="filtros-admin"><input id="buscador-fichas" class="search-box" placeholder="Buscar cliente por nombre, usuario o teléfono" oninput="renderizarFichas()"><button class="btn-primary" onclick="registroManual()">+ Registrar cliente y servicio</button></div>
                 <div id="lista-fichas" class="fichas-grid"></div>
             </div>
@@ -334,21 +339,9 @@
             <div class="input-group"><label for="gestion-correo">Correo para este servicio</label><input type="email" id="gestion-correo" placeholder="correo@ejemplo.com"><button class="btn-gestionar" onclick="guardarDatosContacto()">Guardar correo</button></div>
             <details class="cliente-link-box"><summary>Vincular este servicio a otra ficha</summary><p>Elige la ficha del cliente correcto. Su enlace anterior dejará de dar acceso a este servicio.</p><select id="gestion-ficha-destino" class="filtro-select"></select><button class="btn-gestionar" onclick="vincularServicioFicha()">Vincular servicio</button></details>
 
-            <h3 style="font-size: 14px; margin-top: 0; margin-bottom: 15px; color: var(--text-main); text-transform: uppercase; letter-spacing: 0.5px;">⚡ Acciones Rápidas</h3>
-            <div style="display: flex; gap: 12px; flex-wrap: wrap;">
-                <button class="btn-accion-gestion" style="background: #ECFDF5; color: #059669; border: 1px solid #A7F3D0;" onclick="darDiasExtra()">
-                    <span style="font-size: 24px;">🎁</span> Dar Días Extra
-                </button>
-                <button class="btn-accion-gestion" style="background: #EFF6FF; color: #2563EB; border: 1px solid #BFDBFE;" onclick="renovarServicio()">
-                    <span style="font-size: 24px;">🔄</span> Renovar
-                </button>
-                <button class="btn-accion-gestion" style="background: #F5F3FF; color: #7C3AED; border: 1px solid #DDD6FE;" onclick="cambiarServicio()">
-                    <span style="font-size: 24px;">🔀</span> Cambiar Plan
-                </button>
-                <button class="btn-accion-gestion" style="background: #FEF2F2; color: #DC2626; border: 1px solid #FECACA;" onclick="cancelarServicio()">
-                    <span style="font-size: 24px;">🚫</span> Cancelar
-                </button>
-            </div>
+            <div class="management-actions"><button class="btn-primary" onclick="abrirAmpliacion()">Ampliar o renovar</button><button class="btn-gestionar" onclick="abrirAmpliacion('regalo')">🎁 Regalar tiempo</button></div>
+            <details class="service-history"><summary>Historial del servicio</summary><div id="gestion-historial"></div></details>
+            <details class="service-history"><summary>Otras acciones</summary><div class="management-actions"><button class="btn-gestionar" onclick="cambiarServicio()">Cambiar producto</button><button class="btn-borrar" onclick="cancelarServicio()">Archivar servicio</button></div></details>
         </div>
     </div>
 
@@ -467,18 +460,30 @@
     <div id="modal-mensajes" class="modal"><div class="modal-content" style="max-width:650px;">
         <button type="button" aria-label="Cerrar ventana" class="cerrar-modal" onclick="cerrarModal('modal-mensajes')">&times;</button>
         <h2>💬 Mensaje para el cliente</h2><p id="mensaje-cliente" class="cliente-help"></p>
-        <div class="input-group"><label for="mensaje-atajo">Atajo de mensaje</label><select id="mensaje-atajo" class="filtro-select" onchange="prepararMensajeCliente()"><option value="enlace">Enlace de mis servicios</option><option value="activacion">Activación</option><option value="vencimiento">Recordatorio de vencimiento</option><option value="renovacion">Renovación</option></select></div>
-        <label for="mensaje-texto">Revisa o ajusta el mensaje</label><textarea id="mensaje-texto" class="mensaje-editor" oninput="actualizarDestinosMensaje()"></textarea>
+        <div class="input-group"><label for="mensaje-atajo">Atajo de mensaje</label><select id="mensaje-atajo" class="filtro-select" onchange="prepararMensajeCliente()"><option value="enlace">Enlace de mis servicios</option><option value="activacion">Activación</option><option value="vencimiento">Recordatorio de vencimiento</option><option value="renovacion">Renovación</option><option value="ampliacion">Aviso de ampliación</option></select></div>
+        <div class="message-ai"><button id="mensaje-ia" class="btn-gestionar" onclick="redactarConIA()" disabled>Redactar con IA</button><span id="mensaje-ia-estado" class="cliente-help">IA pendiente de activar</span></div><label for="mensaje-texto">Revisa o ajusta el mensaje</label><textarea id="mensaje-texto" class="mensaje-editor" oninput="actualizarDestinosMensaje()"></textarea>
         <div class="cliente-actions"><a id="mensaje-whatsapp" class="btn-primary" target="_blank" rel="noopener noreferrer">Abrir WhatsApp</a><a id="mensaje-elegir-chat" class="btn-gestionar" target="_blank" rel="noopener noreferrer">Elegir otro chat</a><button class="btn-gestionar" onclick="copiarMensajeCliente()">Copiar mensaje</button></div>
         <p id="mensaje-destino" class="cliente-help"></p><p id="mensaje-copiado" class="cliente-status" role="status"></p>
         <p class="cliente-help">El mensaje incluye su enlace privado. Comprueba el destinatario y pulsa Enviar dentro de WhatsApp.</p>
     </div></div>
 
+    <div id="modal-ampliacion" class="modal"><div class="modal-content" style="max-width:540px"><button class="cerrar-modal" aria-label="Cerrar ventana" type="button">×</button><h2>Ampliar o renovar</h2><p id="ampliacion-servicio" class="cliente-help"></p>
+        <div class="stock-form-grid"><div class="input-group"><label for="ampliacion-cantidad">Cantidad</label><input id="ampliacion-cantidad" type="number" min="1" step="1" oninput="actualizarVistaAmpliacion()"></div><div class="input-group"><label for="ampliacion-unidad">Unidad</label><select id="ampliacion-unidad" onchange="actualizarVistaAmpliacion()"><option value="dias">Días</option><option value="meses">Meses</option><option value="años">Años</option></select></div></div>
+        <div class="input-group"><label for="ampliacion-motivo">Motivo</label><select id="ampliacion-motivo"><option value="renovacion">Renovación</option><option value="regalo">Regalo</option><option value="correccion">Corrección</option></select></div>
+        <div class="input-group"><label for="ampliacion-modo">Cómo aplicar el tiempo</label><select id="ampliacion-modo" onchange="actualizarVistaAmpliacion()"><option value="sumar">Sumar al vencimiento · si venció, desde hoy</option><option value="desde_hoy">Comenzar un nuevo período hoy</option><option value="reemplazar">Reemplazar el plazo desde su inicio</option></select></div>
+        <p id="ampliacion-preview" class="expiry-preview" role="status"></p><button id="ampliacion-guardar" class="btn-primary" onclick="guardarAmpliacion()">Revisar y guardar</button>
+    </div></div>
+    <div id="modal-cambio-servicio" class="modal"><div class="modal-content" style="max-width:500px"><button class="cerrar-modal" aria-label="Cerrar ventana" type="button">×</button><h2>Cambiar producto</h2><p>La vigencia se conserva. Para cambiar la duración utiliza Ampliar o renovar.</p><label for="cambio-servicio">Nuevo producto</label><select id="cambio-servicio" class="filtro-select"></select><button class="btn-primary" onclick="guardarCambioServicio()">Revisar cambio</button></div></div>
+    <div id="modal-aprobacion" class="modal"><div class="modal-content" style="max-width:500px"><button class="cerrar-modal" aria-label="Cerrar ventana" type="button">×</button><h2>Vincular producto</h2><p>Elige el producto de esta solicitud para controlar su stock.</p><select id="aprobacion-producto" class="filtro-select" aria-label="Producto de la solicitud"></select><button class="btn-primary" onclick="confirmarProductoAprobacion()">Continuar</button></div></div>
     <script src="catalogo.js?v=20260913-stock1"></script>
-    <script src="security.js?v=20260913-stock1"></script>
-    <script src="clientes.js?v=20260913-stock1"></script>
-    <script src="admin.js?v=20260913-compact1"></script>
+    <script src="vigencia.js?v=20260913-management1"></script>
+    <script src="interfaz.js?v=20260913-management1"></script>
+    <script src="security.js?v=20260913-management1"></script>
+    <script src="clientes.js?v=20260913-management1"></script>
+    <script src="admin.js?v=20260913-management1"></script>
 
-    <script src="ventanas.js?v=20260913-compact1"></script>
+    <script src="historial.js?v=20260913-management1"></script>
+    <script src="gestion.js?v=20260913-management1"></script>
+    <script src="ventanas.js?v=20260913-management1"></script>
 </body>
 </html>

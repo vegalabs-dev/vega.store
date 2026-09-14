@@ -291,4 +291,70 @@ test('PostgreSQL enforces owner permissions, private links and restricted orders
     await denied(`select public.vega_registro_manual(null,'Fake',null,null,null,'Limited fixture',1,'meses',${stockId})`);
   });
 
+  await db.exec('reset role');
+  const beforeManagement=await rows('select id,fecha_fin,fecha_inicio,consulta_hash,cliente_consulta_hash,meses,unidad from public.usuarios_canva order by id');
+  await db.exec(readFileSync('supabase/migrations/20260913204706_service_management_and_history.sql','utf8'));
+  assert.deepEqual(await rows('select id,fecha_fin,fecha_inicio,consulta_hash,cliente_consulta_hash,meses,unidad from public.usuarios_canva order by id'),beforeManagement);
+  let managed, operation='11111111-1111-4111-8111-111111111111';
+  await t.test('manual sale retries preserve one order and one inventory debit',async()=>{
+    await role('authenticated',owner);
+    const params=[null,'Fixture member',null,'fixture_member',null,'External fixture',1,'meses',null,operation];
+    const q='select public.vega_registro_seguro($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) id';
+    managed=(await db.query(q,params)).rows[0].id;
+    assert.equal((await db.query(q,params)).rows[0].id,managed);
+    params[6]=2;await assert.rejects(db.query(q,params),/otros datos/);
+    assert.equal((await rows(`select count(*)::int n from public.vega_movimientos where operacion='${operation}'`))[0].n,1);
+  });
+  await t.test('month-end extension is atomic, audited, idempotent and rejects stale or invalid changes',async()=>{
+    await role('authenticated',owner);
+    await db.query("update public.usuarios_canva set fecha_inicio='2028-01-31',vigencia_inicio='2028-01-31',fecha_fin='2028-01-31' where id=$1",[managed]);
+    const p=(await rows(`select * from public.usuarios_canva where id=${managed}`))[0];
+    const args=[managed,1,'meses','sumar','regalo',p.version,'22222222-2222-4222-8222-222222222222'];
+    const q='select public.vega_actualizar_vigencia($1,$2,$3,$4,$5,$6,$7)::text ending';
+    const res=(await db.query(q,args)).rows[0];assert.equal(res.ending,'2028-02-29');
+    assert.equal((await db.query(q,args)).rows[0].ending,res.ending);
+    args[6]='33333333-3333-4333-8333-333333333333';await assert.rejects(db.query(q,args),/cambió/);
+    args[1]=-1;await assert.rejects(db.query(q,args),/duración/);
+    args[1]=101;args[2]='años';await assert.rejects(db.query(q,args),/duración/);
+    const changed=(await rows(`select * from public.usuarios_canva where id=${managed}`))[0];assert.equal(changed.meses,1);assert.match(changed.ultima_ampliacion,/1 mes/);
+    assert.equal((await rows(`select count(*)::int n from public.vega_movimientos where pedido_id=${managed} and tipo='regalo'`))[0].n,1);
+    await denied(`delete from public.usuarios_canva where id=${managed}`);
+    await denied(`delete from public.vega_movimientos where pedido_id=${managed}`);
+    await denied(`update public.vega_movimientos set tipo='fake' where pedido_id=${managed}`);
+    await assert.rejects(db.query(`insert into public.vega_movimientos(pedido_id,tipo,actor) values(${managed},'fake','${owner}')`),e=>e.code==='42501');
+  });
+  await t.test('expired renewal starts today; archive and restore preserve expiry and original status',async()=>{
+    await role('authenticated',owner);
+    await db.query("update public.usuarios_canva set fecha_inicio='2020-01-01',vigencia_inicio='2020-01-01',fecha_fin='2020-02-01' where id=$1",[managed]);
+    let p=(await rows(`select * from public.usuarios_canva where id=${managed}`))[0];
+    await db.query("select public.vega_actualizar_vigencia($1,1,'meses','sumar','renovacion',$2,$3)",[managed,p.version,'44444444-4444-4444-8444-444444444444']);
+    const correct=(await rows(`select vigencia_inicio=(now() at time zone 'America/Lima')::date start_ok,fecha_fin=((now() at time zone 'America/Lima')::date+interval '1 month')::date end_ok from public.usuarios_canva where id=${managed}`))[0];assert.equal(correct.start_ok,true);assert.equal(correct.end_ok,true);
+    p=(await rows(`select * from public.usuarios_canva where id=${managed}`))[0];
+    await db.query('select public.vega_archivar_servicio($1,$2,false)',[managed,p.version]);
+    const archived=(await rows(`select * from public.usuarios_canva where id=${managed}`))[0];assert.equal(archived.estado,'Cancelado');
+    await db.query('select public.vega_archivar_servicio($1,$2,true)',[managed,archived.version]);
+    const restored=(await rows(`select * from public.usuarios_canva where id=${managed}`))[0];assert.equal(restored.estado,'Activo');assert.deepEqual(restored.fecha_fin,p.fecha_fin);
+    let pending=(await rows("select * from public.usuarios_canva where estado='Pendiente' limit 1"))[0];
+    await db.query('select public.vega_archivar_servicio($1,$2,false)',[pending.id,pending.version]);
+    pending=(await rows(`select * from public.usuarios_canva where id=${pending.id}`))[0];
+    await db.query('select public.vega_archivar_servicio($1,$2,true)',[pending.id,pending.version]);
+    assert.equal((await rows(`select estado from public.usuarios_canva where id=${pending.id}`))[0].estado,'Pendiente');
+  });
+  await t.test('history is private, follows link revocation, and never exposes internal audit fields',async()=>{
+    await role('authenticated',owner);
+    const c=(await rows(`select c.* from public.vega_clientes c join public.usuarios_canva u on c.id=u.cliente_id where u.id=${managed}`))[0];
+    await role('anon',null,c.codigo_privado);
+    assert.ok((await rows(`select id,tipo from public.vega_movimientos where pedido_id=${managed}`)).length>0);
+    assert.equal((await rows(`select id from public.vega_movimientos where pedido_id<>${managed}`)).length,0);
+    await denied('select actor,detalle,solicitud_hash from public.vega_movimientos');
+    await denied('select * from public.vega_auditoria');
+    await denied(`select public.vega_archivar_servicio(${managed},0,false)`);
+    await role('authenticated',outsider);
+    assert.equal((await rows('select * from public.vega_movimientos')).length,0);
+    await denied(`select public.vega_actualizar_vigencia(${managed},1,'meses','sumar','regalo',0,gen_random_uuid())`);
+    await role('authenticated',owner);
+    await db.query('update public.vega_clientes set codigo_privado=$1 where id=$2',['1'.repeat(48),c.id]);
+    await role('anon',null,c.codigo_privado);assert.equal((await rows('select id from public.vega_movimientos')).length,0);
+  });
+
 });

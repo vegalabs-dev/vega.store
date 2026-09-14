@@ -6,10 +6,15 @@
     const visible = modal => !modal.classList.contains('oculto') && getComputedStyle(modal).display !== 'none';
     const focusable = modal => [...modal.querySelectorAll('button,a[href],input,select,textarea,summary,[tabindex="0"]')]
         .filter(el => !el.disabled && !el.closest('[hidden],[inert]') && el.getClientRects().length);
-    const close = modal => {
+    const closing=new WeakSet();
+    const close = async modal => {
+        if(closing.has(modal))return;
+        closing.add(modal);
+        try{if(!await VegaUI.canClose(modal))return;
         if (modal.id === 'modal-compra' && document.getElementById('btn-otro-medio')?.disabled) return;
         if (typeof window.cerrarModal === 'function') window.cerrarModal(modal.id);
         else modal.classList.add('oculto');
+        }finally{closing.delete(modal);}
     };
     const sync = () => {
         const top = modals.filter(visible).at(-1) || null;
@@ -17,7 +22,7 @@
         if (top === current) return;
         if (top) {
             if (!current) returnFocus = document.activeElement;
-            current = top;
+            current = top;VegaUI.clean(top);
             (focusable(top)[0] || top).focus({preventScroll:true});
         } else {
             current = null;
@@ -26,6 +31,7 @@
         }
     };
     modals.forEach(modal => {
+        modal.querySelectorAll('.cerrar-modal,.cerrar').forEach(button=>button.removeAttribute('onclick'));
         modal.setAttribute('role','dialog'); modal.setAttribute('aria-modal','true'); modal.tabIndex = -1;
         const heading = modal.querySelector('h2,h3');
         if (heading) { if (!heading.id) heading.id = modal.id+'-titulo'; modal.setAttribute('aria-labelledby',heading.id); }
@@ -37,7 +43,7 @@
         if (button?.closest('.modal')) close(button.closest('.modal'));
     });
     document.addEventListener('keydown', event => {
-        if (!current) return;
+        if (!current||document.querySelector('.vega-confirm-overlay')) return;
         if (event.key === 'Escape') { event.preventDefault(); close(current); }
         if (event.key === 'Tab') {
             const elements = focusable(current), first = elements[0], last = elements.at(-1);

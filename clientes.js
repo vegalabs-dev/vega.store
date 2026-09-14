@@ -1,5 +1,6 @@
 // Customer profile and message tools. WhatsApp links prepare drafts; they never send messages.
 let mensajeActual = null;
+let operacionManual=null;
 const codigoFicha = ficha => 'CL-' + ficha.id.slice(0, 8).toUpperCase();
 const nombreFicha = ficha => ficha.nombre || (ficha.whatsapp_usuario ? '@' + ficha.whatsapp_usuario : ficha.telefono) || codigoFicha(ficha);
 function textoBusquedaPedido(pedido) {
@@ -21,9 +22,11 @@ function renderizarFichas() {
     if (!fichas.length) { cont.textContent = 'No hay fichas que coincidan. Puedes registrar un cliente y su servicio.'; return; }
     for (const ficha of fichas) {
         const pedidos = pedidosGlobal.filter(p => p.cliente_id === ficha.id);
-        const card = document.createElement('article'); card.className = 'ficha-card';
-        card.innerHTML = `<h3>${h(nombreFicha(ficha))}</h3><p>${h(codigoFicha(ficha))}</p><p>${h(ficha.telefono || 'Sin teléfono')} ${h(ficha.whatsapp_usuario ? '· @'+ficha.whatsapp_usuario : '')}</p><p>${pedidos.length} servicio(s) · ${pedidos.filter(p=>p.estado==='Activo').length} activo(s)</p>`;
-        const button = document.createElement('button'); button.className='btn-gestionar'; button.textContent='Ver ficha'; button.onclick=()=>abrirFicha(ficha.id); card.append(button); cont.append(card);
+        const card=document.createElement('details');card.className='ficha-card';
+        card.innerHTML=`<summary><span><strong>${h(nombreFicha(ficha))}</strong><small>${h(codigoFicha(ficha))} · ${pedidos.length} servicio(s)</small></span><span class="ficha-count">${pedidos.filter(p=>VegaDates.status(p)==='Activo').length} activos</span></summary>`;
+        const list=document.createElement('div');list.className='ficha-resumen';
+        for(const p of pedidos){const row=document.createElement('div');row.className='ficha-servicio';row.innerHTML=`<div><strong>${h(p.servicio)}</strong><small>${h(VegaDates.label(p))} · ${h(VegaDates.status(p))}</small><small>${p.fecha_fin?'Hasta '+h(VegaDates.format(p.fecha_fin)):h(VegaDates.permanent(p)?'Permanente':'Sin fecha registrada')}</small></div>`;const btn=document.createElement('button');btn.className='btn-gestionar';btn.textContent='Gestionar';btn.onclick=()=>abrirGestionCliente(p.id);row.append(btn);list.append(row);}
+        const button=document.createElement('button');button.className='btn-gestionar';button.textContent='Ficha y contacto';button.onclick=()=>abrirFicha(ficha.id);list.append(button);card.append(list);cont.append(card);
     }
 }
 async function asegurarFichaPedido(id) {
@@ -49,7 +52,7 @@ function abrirFicha(id) {
     const cont=document.getElementById('ficha-servicios');cont.replaceChildren();
     for(const p of pedidosGlobal.filter(p=>p.cliente_id===id)){
         const row=document.createElement('div');row.className='ficha-servicio';
-        row.innerHTML=`<div><strong>${h(p.servicio)}</strong><small>${h(p.estado)} · ${p.meses==0?'Permanente':h(p.meses+' '+(p.unidad||'meses'))}</small><small>${h(p.correo||'')}${p.fecha_fin ? ' · Hasta '+h(p.fecha_fin) : ''}</small></div>`;
+        row.innerHTML=`<div><strong>${h(p.servicio)}</strong><small>${h(VegaDates.status(p))} · ${h(VegaDates.label(p))}</small><small>${h(p.correo||'')}${p.fecha_fin ? ' · Hasta '+h(p.fecha_fin) : ''}</small></div>`;
         const message=document.createElement('button');message.className='btn-gestionar';message.textContent='💬 Mensaje';message.onclick=()=>abrirMensajesCliente(p.id);row.append(message);
         if(p.estado==='Activo'){
             const manage=document.createElement('button');manage.className='btn-gestionar';manage.textContent='Gestionar';manage.onclick=()=>{cerrarModal('modal-ficha');abrirGestionCliente(p.id);};row.append(manage);
@@ -71,11 +74,11 @@ function datosContacto(prefix) {
 async function guardarFicha() {
     const id=document.getElementById('ficha-id').value;
     await verificarOperacion(supabaseClient.from('vega_clientes').update(datosContacto('ficha')).eq('id',id));
-    await cargarDatosPrincipales();abrirFicha(id);alert('Ficha guardada. El contacto se actualizó para todos sus servicios.');
+    await cargarDatosPrincipales();abrirFicha(id);VegaUI.toast('Ficha guardada. El contacto se actualizó para todos sus servicios.');
 }
 async function renovarEnlaceFicha() {
     const id=document.getElementById('ficha-id').value;
-    if(!confirm('¿Revocar los enlaces anteriores de este cliente y crear otro? Tendrás que compartirle el enlace nuevo.'))return;
+    if(!await VegaUI.confirm('¿Revocar los enlaces anteriores de este cliente y crear otro? Tendrás que compartirle el enlace nuevo.'))return;
     await verificarOperacion(supabaseClient.from('vega_clientes').update({codigo_privado:VegaSecurity.newCode()}).eq('id',id));
     mensajeActual=null;document.getElementById('mensaje-texto').value='';
     for(const key of ['mensaje-whatsapp','mensaje-elegir-chat'])document.getElementById(key).removeAttribute('href');
@@ -85,11 +88,12 @@ async function vincularServicioFicha() {
     const id=Number(document.getElementById('gestion-id').value), destino=document.getElementById('gestion-ficha-destino').value;
     if(!destino)throw new Error('Selecciona la ficha del cliente.');
     const ficha=fichasGlobal.find(f=>f.id===destino);
-    if(!ficha||!confirm('¿Vincular este servicio a '+nombreFicha(ficha)+'? Comprueba que pertenece a ese cliente.'))return;
+    if(!ficha||!await VegaUI.confirm('¿Vincular este servicio a '+nombreFicha(ficha)+'? Comprueba que pertenece a ese cliente.'))return;
     await verificarOperacion(supabaseClient.from('usuarios_canva').update({cliente_id:destino}).eq('id',id));
     await cargarDatosPrincipales();abrirFicha(destino);
 }
 function registroManual(clienteId='') {
+    operacionManual=crypto.randomUUID();
     cerrarModal('modal-ficha');cerrarModal('modal-mensajes');
     opcionesFichas('manual-ficha');document.getElementById('manual-ficha').value=clienteId;
     for(const field of ['nombre','telefono','usuario','correo','servicio'])document.getElementById('manual-'+field).value='';
@@ -118,14 +122,14 @@ async function guardarRegistroManual() {
     if(!servicio||!document.getElementById('manual-cantidad').value.trim()||!Number.isInteger(cantidad)||cantidad<0||cantidad>36500)throw new Error('Revisa el servicio y la duración.');
     if(!product && catalogoOpciones.some(s=>s.nombre===servicio))throw new Error('Este servicio pertenece al catálogo. Selecciona su producto para controlar el stock.');
     const correo=document.getElementById('manual-correo');if(correo.value&&!correo.checkValidity())throw new Error('Revisa el correo.');
-    btn.disabled=true;btn.textContent='Guardando...';
+    btn.disabled=true;btn.textContent='Guardando...';document.getElementById('modal-registro-manual').dataset.busy='true';
     try {
-        const {data:id}=await verificarOperacion(supabaseClient.rpc('vega_registro_manual',{
-            p_cliente_id:clienteId||null,p_nombre:contacto.nombre,p_telefono:contacto.telefono,p_usuario:contacto.whatsapp_usuario,
+        const {data:id}=await verificarOperacion(supabaseClient.rpc('vega_registro_seguro',{
+            p_operacion:operacionManual,p_cliente_id:clienteId||null,p_nombre:contacto.nombre,p_telefono:contacto.telefono,p_usuario:contacto.whatsapp_usuario,
             p_servicio_id:product?.id||null,p_correo:correo.value.trim()||null,p_servicio:servicio,p_cantidad:cantidad,p_unidad:document.getElementById('manual-unidad').value
         }));
         await cargarDatosPrincipales();cerrarModal('modal-registro-manual');await abrirMensajesCliente(Number(id),'activacion');
-    } finally {btn.disabled=false;btn.textContent='Guardar servicio activo';}
+    } finally {btn.disabled=false;btn.textContent='Guardar servicio activo';delete document.getElementById('modal-registro-manual').dataset.busy;}
 }
 async function abrirMensajesCliente(id,atajo='enlace') {
     const ficha=await asegurarFichaPedido(id);
@@ -133,17 +137,18 @@ async function abrirMensajesCliente(id,atajo='enlace') {
     mensajeActual={ficha,pedido};cerrarModal('modal-ficha');cerrarModal('modal-gestionar-cliente');
     document.getElementById('mensaje-cliente').textContent=nombreFicha(ficha)+' · '+pedido.servicio;
     document.getElementById('mensaje-atajo').value=atajo;
-    document.getElementById('mensaje-copiado').textContent='';prepararMensajeCliente();abrirModal('modal-mensajes');
+    document.getElementById('mensaje-copiado').textContent='';prepararMensajeCliente();abrirModal('modal-mensajes');comprobarIA();
 }
 function prepararMensajeCliente() {
     if(!mensajeActual)return;
     const {ficha,pedido:p}=mensajeActual, tipo=document.getElementById('mensaje-atajo').value;
     const saludo=ficha.nombre ? 'Hola '+ficha.nombre+' 👋' : 'Hola 👋';
-    const fecha=p.fecha_fin ? new Date(p.fecha_fin+'T12:00:00').toLocaleDateString('es-PE') : null;
+    const fecha=p.fecha_fin ? VegaDates.format(p.fecha_fin) : null;
     let cuerpo='Aquí tienes tu enlace privado para consultar tus servicios de VegaStore.';
-    if(tipo==='activacion')cuerpo=p.estado==='Activo' ? `Tu servicio de *${p.servicio}* está activo. ${fecha ? 'Vigente hasta el '+fecha+'.' : 'Tienes acceso permanente.'}` : `Tu solicitud de *${p.servicio}* está ${p.estado.toLowerCase()}. Te avisaremos cuando esté activa.`;
-    if(tipo==='vencimiento')cuerpo=fecha ? `Te recordamos que tu servicio de *${p.servicio}* ${p.fecha_fin < new Date().toISOString().slice(0,10) ? 'venció' : 'vence'} el *${fecha}*. Escríbenos si deseas renovarlo.` : `Tu servicio de *${p.servicio}* no tiene una fecha de vencimiento registrada. Puedes consultar su estado en tu enlace privado.`;
+    if(tipo==='activacion')cuerpo=VegaDates.status(p)==='Activo' ? `Tu servicio de *${p.servicio}* está activo. ${fecha ? 'Vigente hasta el '+fecha+'.' : (VegaDates.permanent(p)?'Tienes acceso permanente.':'Consulta su vigencia en tu panel.')}` : `Tu solicitud de *${p.servicio}* está ${p.estado.toLowerCase()}. Te avisaremos cuando esté activa.`;
+    if(tipo==='vencimiento')cuerpo=fecha ? `Te recordamos que tu servicio de *${p.servicio}* ${p.fecha_fin < VegaDates.today() ? 'venció' : 'vence'} el *${fecha}*. Escríbenos si deseas renovarlo.` : `Tu servicio de *${p.servicio}* no tiene una fecha de vencimiento registrada. Puedes consultar su estado en tu enlace privado.`;
     if(tipo==='renovacion')cuerpo=`¿Deseas renovar tu servicio de *${p.servicio}*? Escríbenos para coordinar el plan y el pago.${fecha ? ' La fecha de vencimiento registrada es '+fecha+'.' : ''}`;
+    if(tipo==='ampliacion')cuerpo=`Actualizamos tu servicio de *${p.servicio}*. ${p.ultima_ampliacion||''}${fecha?' · Vigente hasta el *'+fecha+'*.':''} Consulta el detalle en tu panel.`;
     document.getElementById('mensaje-texto').value=saludo+'\n\n'+cuerpo+'\n\n🔗 Mis servicios: '+VegaSecurity.privateLink(ficha.codigo_privado)+'\n\nGuarda este enlace en privado. — VegaStore';
     actualizarDestinosMensaje();
 }
@@ -165,4 +170,22 @@ async function copiarMensajeCliente() {
 
 function cambiarProductoManual() {
     document.getElementById('manual-servicio-libre').hidden = document.getElementById('manual-producto').value !== 'libre';
+}
+
+async function comprobarIA(){
+    if(!supabaseClient.functions)return;
+    try{const {data,error}=await supabaseClient.functions.invoke('vega-redactar',{body:{action:'estado'}});
+        const enabled=!error&&data?.enabled;document.getElementById('mensaje-ia').disabled=!enabled;document.getElementById('mensaje-ia-estado').textContent=enabled?'Borrador con revisión antes de enviar':'IA pendiente de activar';
+    }catch{document.getElementById('mensaje-ia').disabled=true;}
+}
+async function redactarConIA(){
+    if(!mensajeActual)return;const snapshot=mensajeActual,button=document.getElementById('mensaje-ia'),editor=document.getElementById('mensaje-texto'),original=editor.value;
+    button.disabled=true;button.textContent='Redactando…';
+    try{const {data,error}=await supabaseClient.functions.invoke('vega-redactar',{body:{pedido_id:Number(snapshot.pedido.id),tipo:document.getElementById('mensaje-atajo').value}});
+        if(error||!data?.intro)throw new Error(data?.error||'No pudimos generar el borrador. Puedes usar el mensaje original.');
+        if(mensajeActual!==snapshot||editor.value!==original){VegaUI.toast('El mensaje cambió mientras se redactaba. Se conserva tu edición.');return;}
+        if(!await VegaUI.confirm(data.intro,{title:'Introducción sugerida por IA',accept:'Añadir al mensaje'}))return;
+        if(mensajeActual!==snapshot||editor.value!==original)return;
+        editor.value=data.intro+'\n\n'+original;actualizarDestinosMensaje();VegaUI.toast('Borrador listo. Revisa el texto antes de enviarlo.');
+    }catch(e){VegaUI.toast(e.message,'error');}finally{button.disabled=false;button.textContent='Redactar con IA';}
 }

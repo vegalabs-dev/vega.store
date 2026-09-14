@@ -30,7 +30,7 @@ function mostrarErrorAdmin(error) {
     if (!adminAuthorized) {
         const box = document.getElementById('login-error');
         box.textContent = message; box.style.display = 'block';
-    } else alert(message);
+    } else VegaUI.toast(message,'error');
 }
 window.addEventListener('unhandledrejection', event => {
     event.preventDefault(); mostrarErrorAdmin(event.reason);
@@ -77,7 +77,7 @@ async function iniciarSesion() {
     finally { btn.innerText = 'Ingresar al Panel'; btn.disabled = false; }
 }
 async function cerrarSesion() {
-    if (!confirm('¿Cerrar sesión del panel de administración?')) return;
+    if (!await VegaUI.confirm('Podrás volver a entrar con tu cuenta de administrador.',{title:'Cerrar sesión',accept:'Cerrar sesión'})) return;
     await supabaseClient.auth.signOut(); window.location.reload();
 }
 async function mostrarPanel() {
@@ -97,41 +97,42 @@ async function mostrarPanel() {
 function switchTab(t) {
     document.querySelectorAll('.tab-content, .tab-btn').forEach(e => e.classList.remove('active'));
     document.getElementById('tab-' + t).classList.add('active'); document.getElementById('btn-tab-' + t).classList.add('active');
-    if(t === 'fichas') { cargarDatosPrincipales().then(renderizarFichas); }
-    else if(t === 'ventas') cargarDatosPrincipales();
-    else if(t === 'solicitudes') cargarDatosPrincipales();
+    if(['fichas','ventas','solicitudes','seguimiento'].includes(t)) cargarDatosPrincipales();
     else if(t === 'catalogo') cargarServicios();
     else if(t === 'papelera') cargarPapelera();
 }
 
 window.copiarTexto = function(texto) {
-    navigator.clipboard.writeText(texto).then(() => alert("Copiado: " + texto)).catch(() => alert("Error al copiar"));
+    navigator.clipboard.writeText(texto).then(() => VegaUI.toast("Copiado: " + texto)).catch(() => VegaUI.toast("Error al copiar"));
 }
 
 // ===== CARGAR DATOS PRINCIPALES =====
+let cargaAdmin=null;
 async function cargarDatosPrincipales() {
-    const { data: todos } = await verificarOperacion(supabaseClient.from('usuarios_canva').select('*').order('creado_en', { ascending: false }));
-    let todosLosRegistros = todos || [];
-    pedidosGlobal = todosLosRegistros;
-    const { data: fichas } = await verificarOperacion(supabaseClient.from('vega_clientes').select('*').order('creado_en', { ascending: false }));
-    fichasGlobal = fichas || [];
-
-    clientesGlobal = todosLosRegistros.filter(u => u.estado === 'Activo');
-    solicitudesGlobal = todosLosRegistros.filter(u => u.estado === 'Pendiente');
-
-    document.getElementById('stat-activos').innerText = clientesGlobal.length;
-    document.getElementById('stat-pendientes').innerText = solicitudesGlobal.length;
-
-    const { data: catalogo } = await verificarOperacion(supabaseClient.from('servicios').select('id,nombre,stock,agotado,activo').order('nombre', { ascending: true }));
-    catalogoOpciones = catalogo || [];
-
-    const selectServicios = document.getElementById('filtro-servicio');
-    selectServicios.innerHTML = '<option value="ALL">Todos los Servicios</option>';
-    if (catalogo) { catalogo.forEach(s => selectServicios.innerHTML += `<option value="${h(s.nombre)}">${h(s.nombre)}</option>`); }
-
-    filtrarClientes();
-    renderizarSolicitudes();
-    renderizarFichas();
+    if(cargaAdmin)return cargaAdmin;
+    cargaAdmin=(async()=>{
+        document.getElementById('admin-carga').hidden=false;
+        try {
+            const [orders,profiles,catalog,notices]=await Promise.all([
+                verificarOperacion(supabaseClient.from('usuarios_canva').select('id,cliente_id,servicio_id,servicio,estado,meses,unidad,fecha_inicio,fecha_fin,vigencia_inicio,ultima_ampliacion,version,fecha_cancelacion,estado_previo,creado_en,telefono,correo,nombre_cliente,whatsapp_usuario,precio_acordado,token,num_operacion').order('creado_en',{ascending:false})),
+                verificarOperacion(supabaseClient.from('vega_clientes').select('*').order('creado_en',{ascending:false})),
+                verificarOperacion(supabaseClient.from('servicios').select('id,nombre,stock,agotado,activo').order('nombre',{ascending:true})),
+                verificarOperacion(supabaseClient.from('vega_avisos_manuales').select('pedido_id,fecha_fin,tipo'))
+            ]);
+            if(!adminAuthorized)return;
+            pedidosGlobal=orders.data||[];fichasGlobal=profiles.data||[];catalogoOpciones=catalog.data||[];avisosGlobal=notices.data||[];
+            clientesGlobal=pedidosGlobal.filter(p=>p.estado==='Activo');solicitudesGlobal=pedidosGlobal.filter(p=>p.estado==='Pendiente');
+            document.getElementById('stat-activos').textContent=clientesGlobal.filter(p=>VegaDates.status(p)==='Activo').length;
+            document.getElementById('stat-pendientes').textContent=solicitudesGlobal.length;
+            const select=document.getElementById('filtro-servicio'),value=select.value;
+            select.replaceChildren(new Option('Todos los servicios','ALL'));for(const item of catalogoOpciones)select.add(new Option(item.nombre,item.nombre));
+            if([...select.options].some(o=>o.value===value))select.value=value;
+            filtrarClientes();renderizarSolicitudes();renderizarFichas();renderizarSeguimiento();
+            document.getElementById('admin-error').hidden=true;
+        }catch(error){document.getElementById('admin-error').hidden=false;throw error;}
+        finally{document.getElementById('admin-carga').hidden=true;}
+    })();
+    try{return await cargaAdmin;}finally{cargaAdmin=null;}
 }
 
 function filtrarClientes() {
@@ -155,16 +156,10 @@ function renderizarTablaClientes(clientes) {
     if(clientes.length === 0) return tabla.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 40px; color: var(--text-muted);">No hay clientes activos.</td></tr>';
 
     clientes.forEach(user => {
-        let diasRestantes = 0; let estadoReal = 'Activo';
-        if (user.fecha_fin) {
-            let hoy = new Date(); let fin = new Date(user.fecha_fin);
-            diasRestantes = Math.ceil((fin.getTime() - hoy.getTime()) / (1000 * 3600 * 24));
-            if (diasRestantes <= 0) estadoReal = 'Vencido';
-        }
-
-        let badge = estadoReal === 'Vencido' ? 'badge-vencido' : 'badge-activo';
-        let tiempoTxt = user.meses == 0 ? "Pago Único" : `${user.meses || 1} ${user.unidad || 'Meses'}`;
-        let fechaFinShow = user.fecha_fin ? user.fecha_fin : (user.meses == 0 ? '<strong style="color:var(--primary)">Permanente</strong>' : '---');
+        const estadoReal=VegaDates.status(user);
+        const badge=estadoReal==='Activo'?'badge-activo':'badge-vencido';
+        const tiempoTxt=VegaDates.label(user);
+        const fechaFinShow=VegaDates.permanent(user)?'Permanente':h(VegaDates.format(user.fecha_fin));
 
         let numWhatsApp = user.telefono ? user.telefono.replace(/[^+0-9]/g, '') : null;
         let emailCliente = user.correo;
@@ -218,39 +213,31 @@ async function aprobarPago(id) {
     if (!user) return;
     let servicioId = user.servicio_id;
     if (!servicioId) {
-        const opciones = catalogoOpciones.filter(s => s.activo !== false);
-        const choice = prompt('Selecciona el producto para descontar el cupo:\n'+opciones.map((s,i)=>`${i+1}. ${s.nombre} (#${s.id}) · ${VegaCatalog.stockTexto(s)}`).join('\n'));
-        if (choice === null) return;
-        servicioId = opciones[Number(choice)-1]?.id;
-        if (!servicioId) throw new Error('Selecciona un producto válido.');
+        pendienteAprobar=id;
+        const select=document.getElementById('aprobacion-producto');select.replaceChildren(new Option('Selecciona el producto',''));
+        for(const s of catalogoOpciones.filter(s=>s.activo!==false)){const opt=new Option(s.nombre+' · '+VegaCatalog.stockTexto(s),s.id);opt.disabled=!VegaCatalog.disponible(s);select.append(opt);}
+        abrirModal('modal-aprobacion');return;
     }
-    let cantidad = parseInt(user.meses) || 0; let unidad = user.unidad || 'meses';
-    let inicioStr = new Date().toISOString().split('T')[0]; let finStr = null;
-    if (cantidad > 0) {
-        let fin = new Date(); if(unidad === 'dias') fin.setDate(fin.getDate() + cantidad); else if(unidad === 'años') fin.setFullYear(fin.getFullYear() + cantidad); else fin.setMonth(fin.getMonth() + cantidad);
-        finStr = fin.toISOString().split('T')[0];
-    }
-    await asegurarFichaPedido(id);
-    await verificarOperacion(supabaseClient.from('usuarios_canva').update({ estado: 'Activo', servicio_id: servicioId, fecha_inicio: inicioStr, fecha_fin: finStr }).eq('id', id).eq('estado', 'Pendiente'));
-    cargarDatosPrincipales();
+    const cantidad=Number(user.meses)||0,unidad=user.unidad||'meses';
+    const inicioStr=VegaDates.today(),finStr=cantidad>0?VegaDates.add(inicioStr,cantidad,unidad):null;
+    if(!await VegaUI.confirm(`Activar ${user.servicio}. ${finStr?'Vigente hasta '+VegaDates.format(finStr):'Permanente'}.`,{title:'Confirmar activación',accept:'Activar servicio'}))return;
+    await verificarOperacion(supabaseClient.rpc('vega_activar_pedido',{p_id:Number(id),p_servicio_id:Number(servicioId),p_version:user.version}));
+    await cargarDatosPrincipales();VegaUI.toast('Servicio activado.');
 }
 
-async function rechazarSolicitud(id) {
-    if(confirm("¿Rechazar y eliminar esta solicitud?")) {
-        await verificarOperacion(supabaseClient.from('usuarios_canva').delete().eq('id', id)); cargarDatosPrincipales();
-    }
-}
+async function rechazarSolicitud(id) { await archivarPedido(id); }
 
 // ===== SÚPER MODAL DE GESTIÓN =====
 function abrirGestionCliente(id) {
     let user = pedidosGlobal.find(u => u.id === id);
     if (!user) return;
     document.getElementById('gestion-id').value = user.id;
-    document.getElementById('gestion-servicio-titulo').innerText = `${user.servicio} (${user.meses == 0 ? 'Permanente' : user.meses + ' ' + (user.unidad || 'meses')})`;
+    document.getElementById('gestion-servicio-titulo').innerText = `${user.servicio} · ${VegaDates.label(user)}`;
 
     document.getElementById('gestion-correo').value = user.correo || '';
     opcionesFichas('gestion-ficha-destino', false);
     document.getElementById('gestion-ficha-destino').value = user.cliente_id || '';
+    cargarHistorialPedido(id,document.getElementById('gestion-historial'));
     abrirModal('modal-gestionar-cliente');
 }
 
@@ -259,51 +246,13 @@ async function guardarDatosContacto() {
     let cor = document.getElementById('gestion-correo').value.trim();
     if (cor && !document.getElementById('gestion-correo').checkValidity()) throw new Error('Revisa el correo.');
     await verificarOperacion(supabaseClient.from('usuarios_canva').update({ correo: cor || null }).eq('id', id));
-    alert('Correo guardado para este servicio.'); await cargarDatosPrincipales();
+    VegaUI.toast('Correo guardado para este servicio.'); await cargarDatosPrincipales();
 }
 
-async function darDiasExtra() {
-    let id = document.getElementById('gestion-id').value;
-    let user = clientesGlobal.find(u => u.id == id);
-    if (!user.fecha_fin) return alert("Es permanente.");
-    let dias = prompt("¿Cuántos días extra sumar?");
-    if (dias && !isNaN(dias)) {
-        let nuevaFecha = new Date(user.fecha_fin); nuevaFecha.setDate(nuevaFecha.getDate() + parseInt(dias));
-        await verificarOperacion(supabaseClient.from('usuarios_canva').update({ fecha_fin: nuevaFecha.toISOString().split('T')[0] }).eq('id', id));
-        alert("Días sumados."); cerrarModal('modal-gestionar-cliente'); cargarDatosPrincipales();
-    }
-}
-
-async function renovarServicio() {
-    let id = document.getElementById('gestion-id').value;
-    let user = clientesGlobal.find(u => u.id == id);
-    if (user.meses == 0) return alert("Es Permanente.");
-    if (confirm(`¿Renovar ${user.servicio} por ${user.meses} ${user.unidad || 'meses'} más?`)) {
-        let nuevaFecha = new Date(user.fecha_fin || new Date());
-        let c = parseInt(user.meses); let u = user.unidad || 'meses';
-        if(u === 'dias') nuevaFecha.setDate(nuevaFecha.getDate() + c); else if(u === 'años') nuevaFecha.setFullYear(nuevaFecha.getFullYear() + c); else nuevaFecha.setMonth(nuevaFecha.getMonth() + c);
-        await verificarOperacion(supabaseClient.from('usuarios_canva').update({ estado: 'Activo', fecha_fin: nuevaFecha.toISOString().split('T')[0] }).eq('id', id));
-        alert("Renovado."); cerrarModal('modal-gestionar-cliente'); cargarDatosPrincipales();
-    }
-}
-
-async function cambiarServicio() {
-    let id = document.getElementById('gestion-id').value;
-    let opcionesStr = catalogoOpciones.map((s, i) => `${i+1}. ${s.nombre} (#${s.id}) · ${VegaCatalog.stockTexto(s)}`).join('\n');
-    let eleccion = prompt(`NÚMERO del nuevo servicio:\n\n${opcionesStr}`);
-    if (eleccion && !isNaN(eleccion) && catalogoOpciones[parseInt(eleccion) - 1]) {
-        await verificarOperacion(supabaseClient.from('usuarios_canva').update({ servicio: catalogoOpciones[parseInt(eleccion) - 1].nombre, servicio_id: catalogoOpciones[parseInt(eleccion) - 1].id }).eq('id', id));
-        alert("Cambiado."); cerrarModal('modal-gestionar-cliente'); cargarDatosPrincipales();
-    }
-}
-
-async function cancelarServicio() {
-    let id = document.getElementById('gestion-id').value;
-    if (confirm("¿Mover a Papelera?")) {
-        await verificarOperacion(supabaseClient.from('usuarios_canva').update({ estado: 'Cancelado', fecha_cancelacion: new Date().toISOString() }).eq('id', id));
-        cerrarModal('modal-gestionar-cliente'); cargarDatosPrincipales();
-    }
-}
+function darDiasExtra(){abrirAmpliacion('regalo');}
+function renovarServicio(){abrirAmpliacion('renovacion');}
+function cambiarServicio(){abrirCambioServicio();}
+async function cancelarServicio(){await archivarPedido(document.getElementById('gestion-id').value);}
 
 // ===== PAPELERA =====
 async function cargarPapelera() {
@@ -322,9 +271,7 @@ async function cargarPapelera() {
         </tr>`;
     });
 }
-async function restaurarDePapelera(id) {
-    if(confirm("¿Restaurar a Activos?")) { await verificarOperacion(supabaseClient.from('usuarios_canva').update({ estado: 'Activo', fecha_cancelacion: null }).eq('id', id)); cargarPapelera(); }
-}
+async function restaurarDePapelera(id) {await archivarPedido(id,true);}
 
 // ===== CATÁLOGO Y GEO =====
 function toggleGeoInput() {
@@ -386,7 +333,7 @@ async function subirImagen(input) {
     const file = input.files[0];
     if (!file) return;
     if (!['image/png','image/jpeg','image/webp','image/gif','image/avif'].includes(file.type) || file.size > 5 * 1024 * 1024) {
-        alert('Elige una imagen PNG, JPG, WebP, GIF o AVIF de hasta 5 MB.'); return;
+        VegaUI.toast('Elige una imagen PNG, JPG, WebP, GIF o AVIF de hasta 5 MB.'); return;
     }
 
     const statusText = document.getElementById('upload-status');
@@ -451,6 +398,7 @@ function editarServicio(serv) {
 }
 
 async function guardarServicio() {
+    const saveButton=document.getElementById('btn-guardar-servicio');if(saveButton.disabled)return;
     let id = document.getElementById('serv-id').value;
     let nombre = document.getElementById('serv-nombre').value.trim();
     let catInput = document.getElementById('serv-categoria').value.trim();
@@ -470,7 +418,7 @@ async function guardarServicio() {
     }
     if (planesGuardar.length !== document.querySelectorAll('.plan-row').length) throw new Error('Completa o elimina los planes vacíos.');
     const opciones = leerOpcionesStock(planesGuardar);
-    if(!nombre || planesGuardar.length === 0) return alert("Faltan datos. El servicio necesita nombre y al menos 1 precio.");
+    if(!nombre || planesGuardar.length === 0) return VegaUI.toast("Faltan datos. El servicio necesita nombre y al menos 1 precio.");
 
     const datos = {
         nombre: nombre, categoria: catInput ? catInput.charAt(0).toUpperCase() + catInput.slice(1).toLowerCase() : null, tipo_ingreso: document.getElementById('serv-tipo-ingreso').value,
@@ -480,6 +428,8 @@ async function guardarServicio() {
         ...opciones, planes: planesGuardar, precio: planesGuardar[0].precio, precio_promocional: planesGuardar[0].promo
     };
 
+    saveButton.disabled=true;document.getElementById('modal-servicio').dataset.busy='true';
+    try{
     if (id) {
         const previous = serviciosAdminGlobal.find(s => Number(s.id) === Number(id));
         if (!previous) throw new Error('Recarga el catálogo antes de guardar.');
@@ -490,10 +440,11 @@ async function guardarServicio() {
         const {data:saved} = await verificarOperacion(request.select('id'));
         if (!saved?.length) throw new Error('El stock cambió mientras editabas. Cierra este formulario y vuelve a abrir el producto para revisar la cantidad actual.');
     } else await verificarOperacion(supabaseClient.from('servicios').insert([datos]));
-    cerrarModal('modal-servicio'); cargarServicios();
+    cerrarModal('modal-servicio'); await cargarServicios();
+    }finally{saveButton.disabled=false;delete document.getElementById('modal-servicio').dataset.busy;}
 }
 
-async function borrarServicio(id) { if (confirm("¿Ocultar este producto de la tienda? Sus ventas se conservarán. Puedes volver a mostrarlo desde Editar.")) { await verificarOperacion(supabaseClient.from('servicios').update({activo:false}).eq('id', id)); cargarServicios(); } }
+async function borrarServicio(id) { if (await VegaUI.confirm("¿Ocultar este producto de la tienda? Sus ventas se conservarán. Puedes volver a mostrarlo desde Editar.")) { await verificarOperacion(supabaseClient.from('servicios').update({activo:false}).eq('id', id)); cargarServicios(); } }
 
 async function abrirSeguridad() {
     abrirModal('modal-seguridad');
@@ -541,4 +492,12 @@ function resumenPromocion(s) {
     if (!s.promocion_inicio) return '';
     const estado = Date.now() < Date.parse(s.promocion_inicio) ? 'Programada' : Date.now() >= Date.parse(s.promocion_fin) ? 'Finalizada' : 'Oferta activa';
     return `${estado}: ${VegaCatalog.fechaPeru(s.promocion_inicio)} → ${VegaCatalog.fechaPeru(s.promocion_fin)} (Perú)`;
+}
+
+let pendienteAprobar=null;
+async function confirmarProductoAprobacion(){
+    const id=pendienteAprobar,servicioId=Number(document.getElementById('aprobacion-producto').value);
+    if(!id||!servicioId)throw new Error('Selecciona el producto.');
+    const p=solicitudesGlobal.find(x=>x.id===id);if(!p)return;
+    p.servicio_id=servicioId;cerrarModal('modal-aprobacion');await aprobarPago(id);
 }

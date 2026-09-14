@@ -43,8 +43,9 @@ async function page(kind, {allowed=true, code=null}={}) {
       };return query;
     }
   })};
-  for (const file of (kind==='admin' ? ['catalogo.js','security.js','clientes.js','admin.js','ventanas.js'] : ['catalogo.js','security.js','main.js','ventanas.js']))
+  for (const file of (kind==='admin' ? ['catalogo.js','vigencia.js','interfaz.js','security.js','clientes.js','admin.js','historial.js','gestion.js','ventanas.js'] : ['catalogo.js','vigencia.js','interfaz.js','security.js','main.js','historial.js','ventanas.js']))
     vm.runInContext(readFileSync(file,'utf8'),dom.getInternalVMContext(),{filename:file});
+  w.VegaUI.confirm=async()=>w.confirm();w.VegaUI.toast=x=>alerts.push(x);
   await tick();
   return {w,dom,calls,alerts,authCalls,data,rpcHandlers,intervals};
 }
@@ -89,9 +90,9 @@ test('store preserves malicious catalogue values as text and requests private co
   const customerRead=calls.find(c=>c.table==='usuarios_canva');
   assert.equal(customerRead.options.global.headers['x-vega-access'],code);
   assert.equal(customerRead.options.auth.persistSession,false);
-  assert.equal(customerRead.columns,'id,servicio,estado,fecha_inicio,fecha_fin,creado_en,meses,unidad');
+  assert.equal(customerRead.columns,'id,servicio,estado,fecha_inicio,fecha_fin,vigencia_inicio,ultima_ampliacion,creado_en,meses,unidad');
   assert.equal(customerRead.filters.some(f=>f[1]==='telefono'),false);
-  w.cerrarSesionCliente();
+  await w.cerrarSesionCliente();
   assert.equal(w.VegaSecurity.loadCode(),null);
 });
 
@@ -168,7 +169,7 @@ test('manual username-only registration calls the atomic RPC then prepares activ
   w.registroManual();
   w.document.getElementById('manual-nombre').value='María';w.document.getElementById('manual-usuario').value='@maria_test';
   w.document.getElementById('manual-producto').value='libre';w.document.getElementById('manual-servicio').value='Canva Pro';
-  rpcHandlers.vega_registro_manual=async args=>{
+  rpcHandlers.vega_registro_seguro=async args=>{
     assert.equal(args.p_telefono,null);assert.equal(args.p_usuario,'maria_test');assert.equal(args.p_nombre,'María');assert.equal(args.p_cantidad,1);
     data.vega_clientes=[{...customer,nombre:'María'}];data.usuarios_canva=[activeOrder];return {data:99,error:null};
   };
@@ -270,18 +271,57 @@ test('outside click and Escape close windows without removing private access; ca
   const code='a'.repeat(48);const {w,dom}=await page('store',{code});t.after(()=>dom.window.close());
   const panel=w.document.getElementById('modal-panel-cliente');
   await tick();panel.querySelector('.customer-heading').click();assert.equal(panel.classList.contains('oculto'),false);
-  panel.click();assert.equal(panel.classList.contains('oculto'),true);assert.equal(w.VegaSecurity.loadCode(),code);
-  w.abrirMiCuenta();await tick();w.document.dispatchEvent(new w.KeyboardEvent('keydown',{key:'Escape',bubbles:true}));
+  panel.click();await tick();assert.equal(panel.classList.contains('oculto'),true);assert.equal(w.VegaSecurity.loadCode(),code);
+  w.abrirMiCuenta();await tick();w.document.dispatchEvent(new w.KeyboardEvent('keydown',{key:'Escape',bubbles:true}));await tick();
   assert.equal(panel.classList.contains('oculto'),true);assert.equal(w.VegaSecurity.loadCode(),code);
-  w.confirm=()=>false;w.cerrarSesionCliente();assert.equal(w.VegaSecurity.loadCode(),code);
-  w.confirm=()=>true;w.cerrarSesionCliente();assert.equal(w.VegaSecurity.loadCode(),null);
+  w.confirm=()=>false;await w.cerrarSesionCliente();assert.equal(w.VegaSecurity.loadCode(),code);
+  w.confirm=()=>true;await w.cerrarSesionCliente();assert.equal(w.VegaSecurity.loadCode(),null);
   assert.ok(panel.querySelector('.customer-footer .logout-button'));assert.ok(panel.querySelector('button.cerrar-modal'));
 });
 
 test('admin logout requires confirmation and dismissing a window does not sign out',async t=>{
   const {w,dom,authCalls}=await page('admin');t.after(()=>dom.window.close());
   await w.mostrarPanel();w.confirm=()=>false;await w.cerrarSesion();assert.equal(authCalls.includes('signOut'),false);
-  w.abrirModal('modal-servicio');await tick();w.document.getElementById('modal-servicio').click();
+  w.abrirModal('modal-servicio');await tick();w.document.getElementById('modal-servicio').click();await tick();
   assert.equal(w.document.getElementById('modal-servicio').classList.contains('show'),false);
   assert.equal(authCalls.includes('signOut'),false);
+});
+
+
+test('current service duration, status and dates replace the original purchase label',async t=>{
+ const {w,dom,data}=await page('store',{code:'a'.repeat(48)});t.after(()=>dom.window.close());
+ data.usuarios_canva=[{id:1,servicio:'Fixture',estado:'Activo',meses:1,unidad:'meses',fecha_inicio:'2028-01-31',vigencia_inicio:'2028-01-31',fecha_fin:'2029-01-31',ultima_ampliacion:'+11 meses'},
+ {id:2,servicio:'Expired',estado:'Activo',meses:1,fecha_fin:'2000-01-01'}, {id:3,servicio:'Missing',estado:'Activo',meses:1}];
+ await w.cargarMisServicios();const cards=w.document.querySelectorAll('.customer-service');
+ assert.match(cards[0].textContent,/1 año/);assert.match(cards[0].textContent,/11 meses/);assert.doesNotMatch(cards[0].textContent,/Quedan/);
+ assert.equal(cards[1].querySelector('.status-chip').textContent,'Vencido');assert.equal(cards[2].querySelector('.status-chip').textContent,'Revisar fecha');assert.doesNotMatch(cards[2].textContent,/permanente/i);
+ assert.equal(w.VegaDates.add('2028-01-31',1,'meses'),'2028-02-29');assert.equal(w.VegaDates.add('2028-02-29',1,'años'),'2029-02-28');
+});
+
+test('extension form sends a stable operation ID and server version then prepares its notice',async t=>{
+ const {w,dom,data,calls,rpcHandlers}=await page('admin');t.after(()=>dom.window.close());
+ const p={id:22,cliente_id:'12345678-1234-4234-8234-123456789012',servicio:'Fixture',estado:'Activo',meses:1,unidad:'meses',fecha_inicio:'2028-01-31',fecha_fin:'2028-02-29',version:3};
+ data.usuarios_canva=[p];data.vega_clientes=[{id:p.cliente_id,nombre:'Fixture',codigo_privado:'b'.repeat(48)}];
+ await w.mostrarPanel();w.abrirGestionCliente(p.id);w.abrirAmpliacion('regalo');
+ w.document.getElementById('ampliacion-cantidad').value='1';w.document.getElementById('ampliacion-unidad').value='años';w.actualizarVistaAmpliacion();
+ assert.match(w.document.getElementById('ampliacion-preview').textContent,/2029/);
+ rpcHandlers.vega_actualizar_vigencia=args=>{p.fecha_fin='2029-02-28';p.ultima_ampliacion='+1 año';return {data:p.fecha_fin,error:null};};
+ await w.guardarAmpliacion();const call=calls.find(c=>c.rpc==='vega_actualizar_vigencia');assert.equal(call.args.p_version,3);assert.equal(call.args.p_motivo,'regalo');assert.match(call.args.p_operacion,/^[a-f0-9-]{36}$/);
+ assert.equal(w.document.getElementById('mensaje-atajo').value,'ampliacion');assert.match(w.document.getElementById('mensaje-texto').value,/1 año/);
+});
+
+test('tomorrow follow-up recomputes after renewal and opening WhatsApp never marks delivery',async t=>{
+ const {w,dom,data,calls}=await page('admin');t.after(()=>dom.window.close());
+ const p={id:23,cliente_id:'12345678-1234-4234-8234-123456789012',servicio:'Fixture',estado:'Activo',meses:1,fecha_fin:w.VegaDates.add(w.VegaDates.today(),1,'dias')};
+ data.usuarios_canva=[p];data.vega_clientes=[{id:p.cliente_id,nombre:'Fixture',codigo_privado:'b'.repeat(48)}];await w.mostrarPanel();
+ assert.equal(w.document.querySelectorAll('.follow-up-row').length,1);await w.abrirMensajesCliente(p.id,'vencimiento');
+ assert.equal(calls.filter(c=>c.table==='vega_avisos_manuales'&&c.op!=='select').length,0);
+ p.fecha_fin=w.VegaDates.add(p.fecha_fin,1,'meses');await w.cargarDatosPrincipales();assert.equal(w.document.querySelectorAll('.follow-up-row').length,0);
+});
+
+test('outside dismissal protects unsaved fields while a saved read-only window closes',async t=>{
+ const {w,dom}=await page('admin');t.after(()=>dom.window.close());await w.mostrarPanel();w.registroManual();await tick();
+ const modal=w.document.getElementById('modal-registro-manual');w.document.getElementById('manual-nombre').value='Unsaved';w.confirm=()=>false;
+ modal.click();await tick();assert.equal(modal.classList.contains('show'),true);
+ w.confirm=()=>true;modal.click();await tick();assert.equal(modal.classList.contains('show'),false);
 });
