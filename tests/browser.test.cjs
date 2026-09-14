@@ -15,7 +15,7 @@ async function page(kind, {allowed=true, code=null}={}) {
   const dom = new JSDOM(html, {url:'https://vegalabs-dev.github.io/vega.store/' + (kind==='admin'?'admin.html':'') + (code?'#acceso='+code:''),runScripts:'outside-only'});
   const w = dom.window, calls = [], alerts = [], authCalls = [], rpcHandlers = {}, intervals = [];
   const originalInterval=w.setInterval.bind(w);w.setInterval=(fn,ms)=>{intervals.push({fn,ms});return originalInterval(fn,ms);};
-  Object.defineProperty(w,'crypto',{value:webcrypto}); w.TextEncoder = TextEncoder;
+  Object.defineProperty(w,'crypto',{value:webcrypto}); w.TextEncoder = TextEncoder; w.TextDecoder = TextDecoder;
   w.alert=x=>alerts.push(x); w.confirm=()=>true; w.open=()=>null;
   w.fetch=async()=>({json:async()=>({country_code:'PE'})});
   w.navigator.clipboard={writeText:async()=>{}};
@@ -43,7 +43,7 @@ async function page(kind, {allowed=true, code=null}={}) {
       };return query;
     }
   })};
-  for (const file of (kind==='admin' ? ['catalogo.js','vigencia.js','interfaz.js','security.js','clientes.js','admin.js','historial.js','gestion.js','ventanas.js'] : ['catalogo.js','vigencia.js','interfaz.js','security.js','main.js','historial.js','ventanas.js']))
+  for (const file of (kind==='admin' ? ['catalogo.js','vigencia.js','interfaz.js','security.js','clientes.js','admin.js','historial.js','gestion.js','respaldo.js','respaldo-panel.js','ventanas.js'] : ['catalogo.js','vigencia.js','interfaz.js','security.js','main.js','historial.js','ventanas.js']))
     vm.runInContext(readFileSync(file,'utf8'),dom.getInternalVMContext(),{filename:file});
   w.VegaUI.confirm=async()=>w.confirm();w.VegaUI.toast=x=>alerts.push(x);
   await tick();
@@ -324,4 +324,23 @@ test('outside dismissal protects unsaved fields while a saved read-only window c
  const modal=w.document.getElementById('modal-registro-manual');w.document.getElementById('manual-nombre').value='Unsaved';w.confirm=()=>false;
  modal.click();await tick();assert.equal(modal.classList.contains('show'),true);
  w.confirm=()=>true;modal.click();await tick();assert.equal(modal.classList.contains('show'),false);
+});
+
+
+test('backup form never sends passwords, exports plaintext or downloads after logout',async t=>{
+  const {w,dom,calls,rpcHandlers}=await page('admin');t.after(()=>dom.window.close());
+  await w.mostrarPanel();w.abrirRespaldo();
+  const byId=id=>w.document.getElementById(id);
+  const pass='Local password fixture 1234';
+  byId('respaldo-clave').value=pass;byId('respaldo-repetir').value='Not the same password';
+  byId('respaldo-crear').dispatchEvent(new w.Event('submit',{cancelable:true}));
+  assert.equal(calls.some(x=>x.rpc==='vega_exportar_datos'),false);
+  byId('respaldo-repetir').value=pass;
+  let resolve;rpcHandlers.vega_exportar_datos=()=>new Promise(r=>resolve=r);
+  let downloads=0;w.URL.createObjectURL=()=>{downloads++;return 'blob:fixture';};
+  byId('respaldo-crear').dispatchEvent(new w.Event('submit',{cancelable:true}));await tick();
+  const call=calls.find(x=>x.rpc==='vega_exportar_datos');assert.equal(call.args,undefined);
+  w.dispatchEvent(new w.Event('vega:logout'));resolve({data:'not returned to a signed-out user',error:null});await tick();
+  assert.equal(downloads,0);assert.equal(byId('respaldo-clave').value,'');assert.equal(byId('respaldo-resultado').textContent,'');
+  assert.equal(JSON.stringify(calls).includes(pass),false);
 });

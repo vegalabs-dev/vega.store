@@ -200,7 +200,7 @@
         .info-box p { margin: 0; color: #1E3A8A; font-size: 14px; line-height: 1.5; }
     </style>
     <link rel="stylesheet" href="catalogo.css?v=20260913-compact1">
-    <link rel="stylesheet" href="interfaz.css?v=20260913-management1">
+    <link rel="stylesheet" href="interfaz.css?v=20260914-backup1">
 </head>
 <body>
 
@@ -232,6 +232,7 @@
                     <p style="margin-top: 5px; color: var(--text-muted); font-size: 14px;">Gestión y Control de Ventas</p>
                 </div>
                 <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+                    <button class="btn-gestionar" onclick="abrirRespaldo()">Respaldo</button>
                     <button class="btn-gestionar" style="background:#FFFBEB; color:#D97706; border-color:#FDE68A;" onclick="abrirSeguridad()">🛡️ Accesos</button>
                     <button class="btn-borrar" style="background:#F3F4F6; color:#4B5563; border: 1px solid #E5E7EB;" onclick="cerrarSesion()">Cerrar Sesión</button>
                 </div>
@@ -475,15 +476,39 @@
     </div></div>
     <div id="modal-cambio-servicio" class="modal"><div class="modal-content" style="max-width:500px"><button class="cerrar-modal" aria-label="Cerrar ventana" type="button">×</button><h2>Cambiar producto</h2><p>La vigencia se conserva. Para cambiar la duración utiliza Ampliar o renovar.</p><label for="cambio-servicio">Nuevo producto</label><select id="cambio-servicio" class="filtro-select"></select><button class="btn-primary" onclick="guardarCambioServicio()">Revisar cambio</button></div></div>
     <div id="modal-aprobacion" class="modal"><div class="modal-content" style="max-width:500px"><button class="cerrar-modal" aria-label="Cerrar ventana" type="button">×</button><h2>Vincular producto</h2><p>Elige el producto de esta solicitud para controlar su stock.</p><select id="aprobacion-producto" class="filtro-select" aria-label="Producto de la solicitud"></select><button class="btn-primary" onclick="confirmarProductoAprobacion()">Continuar</button></div></div>
+    <div id="modal-respaldo" class="modal"><div class="modal-content backup-panel">
+        <button type="button" aria-label="Cerrar ventana" class="cerrar-modal">&times;</button>
+        <h2>Copia de tus datos</h2>
+        <p class="cliente-help">Guarda una copia protegida de clientes, servicios, catálogo e historial. Elige una contraseña larga y consérvala: no podremos recuperarla.</p>
+        <form id="respaldo-crear">
+            <div class="backup-fields">
+                <div class="input-group"><label for="respaldo-clave">Contraseña de la copia</label><input id="respaldo-clave" type="password" minlength="12" maxlength="256" autocomplete="new-password" required placeholder="Al menos 12 caracteres"></div>
+                <div class="input-group"><label for="respaldo-repetir">Repetir contraseña</label><input id="respaldo-repetir" type="password" minlength="12" maxlength="256" autocomplete="new-password" required></div>
+            </div>
+            <button type="submit" class="btn-primary">Descargar copia cifrada</button>
+        </form>
+        <details class="backup-check"><summary>Comprobar una copia guardada</summary>
+            <p class="cliente-help">Comprueba que puedes abrir el archivo con su contraseña. No lo sube ni modifica tu base de datos.</p>
+            <form id="respaldo-comprobar">
+                <div class="input-group"><label for="respaldo-archivo">Archivo .vega</label><input id="respaldo-archivo" type="file" accept=".vega" required></div>
+                <div class="input-group"><label for="respaldo-clave-archivo">Contraseña del archivo</label><input id="respaldo-clave-archivo" type="password" minlength="12" maxlength="256" autocomplete="new-password" required></div>
+                <button type="submit" class="btn-gestionar">Comprobar archivo</button>
+            </form>
+        </details>
+        <div id="respaldo-resultado" class="backup-result" role="status" aria-live="polite"></div>
+        <p class="cliente-help backup-scope">Incluye los enlaces privados de tus clientes. Conserva el archivo fuera de GitHub. Guarda las imágenes y la configuración de Supabase por separado; esta copia conserva las direcciones de las imágenes. La restauración de datos requiere revisión antes de aplicarse.</p>
+    </div></div>
     <script src="catalogo.js?v=20260913-stock1"></script>
     <script src="vigencia.js?v=20260913-management1"></script>
     <script src="interfaz.js?v=20260913-management1"></script>
     <script src="security.js?v=20260913-management1"></script>
     <script src="clientes.js?v=20260913-management1"></script>
-    <script src="admin.js?v=20260913-management1"></script>
+    <script src="admin.js?v=20260914-backup1"></script>
 
     <script src="historial.js?v=20260913-management1"></script>
     <script src="gestion.js?v=20260913-management1"></script>
+    <script src="respaldo.js?v=20260914-backup1"></script>
+    <script src="respaldo-panel.js?v=20260914-backup1"></script>
     <script src="ventanas.js?v=20260913-management1"></script>
 </body>
 </html>

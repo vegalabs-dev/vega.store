@@ -16,6 +16,7 @@ supabaseClient.auth.getSession().then(({ data: { session } }) => {
 supabaseClient.auth.onAuthStateChange((event, session) => {
     if (!session) {
         adminAuthorized = false;
+        window.dispatchEvent(new Event('vega:logout'));
         clientesGlobal = []; solicitudesGlobal = []; pedidosGlobal = []; fichasGlobal = []; mensajeActual = null;
         document.querySelectorAll('.modal').forEach(modal => { modal.style.display='none'; modal.classList.remove('show'); });
         for (const id of ['ficha-enlace','mensaje-texto']) document.getElementById(id).value='';

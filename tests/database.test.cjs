@@ -357,4 +357,44 @@ test('PostgreSQL enforces owner permissions, private links and restricted orders
     await role('anon',null,c.codigo_privado);assert.equal((await rows('select id from public.vega_movimientos')).length,0);
   });
 
+  await db.exec('reset role');
+  const backupMigration=readdirSync('supabase/migrations').find(f=>f.endsWith('_encrypted_management_backup.sql'));
+  await db.exec(readFileSync('supabase/migrations/'+backupMigration,'utf8'));
+  await t.test('management export denies guests, private links and unrelated accounts',async()=>{
+    await role('anon');await denied('select public.vega_exportar_datos()');
+    await role('anon',null,codeA);await denied('select public.vega_exportar_datos()');
+    await role('authenticated',outsider);await denied('select public.vega_exportar_datos()');
+    await db.exec('reset role');
+    assert.equal((await rows("select prosecdef from pg_proc where oid='public.vega_exportar_datos()'::regprocedure"))[0].prosecdef,false);
+  });
+  await t.test('encrypted snapshot restores all management rows, stock and private links into isolated tables',async()=>{
+    const backup=require('../respaldo.js');
+    await role('authenticated',owner);
+    // More than PostgREST's normal page size: the RPC must never silently truncate.
+    await db.exec("insert into public.vega_clientes(nombre) select 'Bulk fixture '||n from generate_series(1,1005) n");
+    const raw=(await rows('select public.vega_exportar_datos() value'))[0].value;
+    const encrypted=await backup.encrypt(raw,'Synthetic backup password only');
+    const recovered=await backup.decrypt(encrypted,'Synthetic backup password only');
+    assert.equal(recovered.text,raw);
+    const data=JSON.parse(recovered.text).tables;
+    assert.ok(data.vega_clientes.length>1000);
+    await db.exec('reset role; create schema restore_check');
+    for(const name of Object.keys(data))await db.exec(`create table restore_check.${name} (like public.${name} including all)`);
+    await db.exec(`
+      alter table restore_check.usuarios_canva add foreign key(cliente_id) references restore_check.vega_clientes(id);
+      alter table restore_check.usuarios_canva add foreign key(servicio_id) references restore_check.servicios(id);
+      alter table restore_check.vega_movimientos add foreign key(pedido_id) references restore_check.usuarios_canva(id);
+      alter table restore_check.vega_avisos_manuales add foreign key(pedido_id) references restore_check.usuarios_canva(id);
+    `);
+    for(const name of ['servicios','vega_clientes','usuarios_canva','promociones','vega_movimientos','vega_avisos_manuales','vega_auditoria','admin_accesos']){
+      const columns=(await db.query("select column_name from information_schema.columns where table_schema='restore_check' and table_name=$1 and is_generated='NEVER' order by ordinal_position",[name])).rows.map(r=>'"'+r.column_name+'"').join(',');
+      await db.query(`insert into restore_check.${name} (${columns}) overriding system value select ${columns} from jsonb_populate_recordset(null::restore_check.${name},$1::jsonb)`,[JSON.stringify(data[name])]);
+      const matches=(await rows(`select not exists ((select to_jsonb(t) from public.${name} t except all select to_jsonb(t) from restore_check.${name} t) union all (select to_jsonb(t) from restore_check.${name} t except all select to_jsonb(t) from public.${name} t)) matches`))[0].matches;
+      assert.equal(matches,true,name+' restored exactly');
+    }
+    // Restoring data does not call the live sale/stock/gift triggers.
+    assert.deepEqual(await rows('select id,stock,stock_version from restore_check.servicios order by id'),await rows('select id,stock,stock_version from public.servicios order by id'));
+    await db.exec('drop schema restore_check cascade');
+  });
+
 });
