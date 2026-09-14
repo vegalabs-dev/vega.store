@@ -106,3 +106,27 @@ Las 43 pruebas locales usan datos sintéticos. Cubren permisos, enlaces, inventa
 Las migraciones son aditivas; una reversión de interfaz puede conservar sus tablas. Una versión antigua que intente borrar solicitudes recibirá un error de permisos. No habilitar DELETE para hacer funcionar esa versión. El historial operativo no sustituye una copia de seguridad externa de la base. Las copias automáticas y una prueba de restauración completa deben comprobarse según el plan de Supabase antes de considerar resuelta la recuperación ante una pérdida total.
 
 El asesor de seguridad no añadió avisos con esta migración. Sigue pendiente la protección de contraseñas filtradas ya detectada en Auth: https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection.
+
+## Copias cifradas de los datos de gestión
+
+Migración `20260914022137_encrypted_management_backup.sql`, aplicada el 14 de septiembre de 2026. Las huellas de los 14 servicios contratados, 14 fichas y el catálogo coincidieron antes y después. Las 48 pruebas locales pasaron y el asesor no añadió avisos de seguridad.
+
+El botón **Respaldo** crea un archivo `.vega` protegido con una contraseña elegida por el propietario. La contraseña no se transmite al servidor ni se guarda en el navegador. Se usa AES-256-GCM con PBKDF2-SHA256, 600 000 iteraciones, sal aleatoria de 16 bytes y un IV aleatorio de 12 bytes por archivo. La autenticación de GCM detecta cambios del archivo y contraseñas incorrectas. Una contraseña olvidada no se puede recuperar.
+
+`vega_exportar_datos` comprueba la lista privada de administradores, mantiene `SECURITY INVOKER` y respeta RLS. Rechaza visitantes, enlaces de clientes y cuentas ajenas. Obtiene las ocho tablas públicas de gestión en una misma instantánea, incluyendo registros archivados y ocultos. No depende de los filtros ni del límite de filas que carga el panel. Retorna el JSON como texto para conservar su representación exacta antes de cifrar. Si supera 20 MB, falla explícitamente; no entrega una copia parcial.
+
+El archivo contiene contactos y códigos privados de los clientes. Solo se ofrece una descarga cifrada, después de comprobar el descifrado. La acción **Comprobar una copia guardada** descifra localmente y comprueba el formato, las relaciones y los recuentos; no sube el archivo y no modifica la base. Cerrar sesión cancela cualquier descarga pendiente y limpia los campos. El navegador no puede confirmar que el usuario haya guardado el archivo: debe conservarlo fuera del repositorio y verificarlo después de descargarlo.
+
+Esta copia es de **datos de gestión**, no del proyecto completo: excluye Auth, políticas, funciones, esquemas privados, configuración, secretos y archivos binarios de Storage. Conserva las URLs de las imágenes. El código y las migraciones están versionados en GitHub, pero esto no sustituye un respaldo completo de la base ni de Storage. Las copias antiguas pueden contener enlaces posteriormente revocados; cualquier recuperación debe comparar las revocaciones posteriores antes de reactivar accesos.
+
+### Recuperación comprobada y límites
+
+La prueba local cifra una instantánea con más de 1 000 fichas sintéticas, la descifra y la inserta en tablas aisladas con el mismo esquema y relaciones. Excluye las columnas calculadas de la inserción y comprueba la igualdad de todas las filas, incluidos códigos, fechas, stock e historial. Las tablas aisladas no ejecutan los triggers de ventas, evitando nuevos descuentos o ampliaciones. Se comprueban también contraseñas erróneas, archivos alterados, copias incompletas y cierre de sesión durante la descarga.
+
+Para una recuperación real, primero descifrar y revisar la copia en un entorno privado aislado. Comparar con el estado actual, conservar una copia previa y aprobar los cambios exactos antes de escribir en producción. Si se restauran IDs explícitos en una base nueva, ajustar después las secuencias de identidad. No desactivar RLS ni importar todas las filas por los formularios de ventas: sus triggers tienen efectos comerciales. No se ha hecho una restauración del proyecto de producción ni una copia externa automática.
+
+Se comprobó el 14 de septiembre de 2026 que la organización utiliza el plan gratuito. Los respaldos automáticos y la protección contra contraseñas filtradas de Supabase requieren un plan superior; no se cambió la suscripción. Para una copia completa en Free, Supabase recomienda exportar mediante su CLI y mantener una copia externa; los objetos de Storage deben copiarse por separado: [documentación de respaldos](https://supabase.com/docs/guides/platform/backups).
+
+## Canales de WhatsApp
+
+El propietario confirmó que el número público actual de la tienda utiliza WhatsApp normal y tiene otro número en WhatsApp Business. Se conserva el soporte público y los atajos manuales actuales. La aplicación Business por sí sola no configura la API: el número Business, la cuenta de Meta, sus credenciales y una plantilla de aviso deben configurarse antes de activar un emisor automático. No hay un bot conectado ni envíos automáticos habilitados. No se han enviado mensajes a clientes desde este trabajo.
