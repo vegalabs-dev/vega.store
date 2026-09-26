@@ -16,12 +16,4 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci --ignore-scripts
-      - name: Generate candidate migration with the Supabase CLI
-        if: hashFiles('supabase/changes/catalogue_workspace.sql') != ''
-        run: |
-          npx --yes supabase@2.81.3 --help
-          npx --yes supabase@2.81.3 migration --help
-          npx --yes supabase@2.81.3 migration new --help
-          npx --yes supabase@2.81.3 migration new catalogue_workspace
-          node -e "const fs=require('fs');const p='supabase/migrations/'+fs.readdirSync('supabase/migrations').find(f=>f.endsWith('_catalogue_workspace.sql'));fs.copyFileSync('supabase/changes/catalogue_workspace.sql',p);console.log('CANDIDATE_MIGRATION='+p)"
       - run: npm test

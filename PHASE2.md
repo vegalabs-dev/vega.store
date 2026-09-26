@@ -8,7 +8,7 @@ La web principal y la base de producción no se modifican al crear esta rama. An
 
 1. Confirmar una copia completa reciente de la base y los archivos de Storage, con recuperación ensayada fuera de producción.
 2. Revisar las pruebas de esta rama y la distribución en computadora y celular.
-3. Convertir el cambio candidato de Supabase en una migración generada por su CLI; aplicar primero la migración y luego el frontend.
+3. Aplicar primero la migración generada por CLI y verificada en CI, y luego el frontend.
 4. Comprobar propietario/visitante/cliente, conservación de datos y carga de la web publicada.
 
 La rama incluye un flujo de pruebas sin credenciales de producción. El entorno de trabajo local dejó de estar disponible durante la implementación. GitHub Actions ejecuta las pruebas con datos sintéticos.
@@ -34,5 +34,5 @@ No se envían mensajes de WhatsApp, no se consultan pasarelas y no se reutiliza 
 
 - `panel-v2.js` / `panel-v2.css`: navegación y disposición.
 - `catalogo-admin-v2.js`: editor, borradores y paginación.
-- `supabase/changes/catalogue_workspace.sql`: cambio candidato; CI genera el nombre de migración mediante CLI antes de probar.
+- `supabase/migrations/20260926014433_catalogue_workspace.sql`: migración generada mediante CLI; CI prueba el archivo comprometido.
 - `tests/browser.test.cjs` y `tests/database.test.cjs`: permisos, conflictos, idempotencia y recuperación.

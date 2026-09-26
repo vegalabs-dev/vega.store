@@ -12,6 +12,7 @@ el('titulo-modal-servicio').textContent='Nuevo producto';
 const nav=document.createElement('div');nav.className='editor-nav';nav.setAttribute('role','tablist');nav.setAttribute('aria-label','Editor de producto');
 const workspace=document.createElement('div');workspace.className='editor-workspace';
 const form=document.createElement('div');form.className='editor-form';
+workspace.append(form);content.append(nav,workspace);
 const groups=['Presentación','Planes y precios','Disponibilidad','Publicación'].map((name,index)=>{
  const field=document.createElement('section');field.className='editor-group';field.id='editor-group-'+index;field.hidden=index!==0;field.setAttribute('role','tabpanel');field.setAttribute('aria-labelledby','editor-tab-'+index);
  const b=document.createElement('button');b.type='button';b.id='editor-tab-'+index;b.textContent=name;b.setAttribute('role','tab');b.setAttribute('aria-controls',field.id);b.setAttribute('aria-selected',String(index===0));b.onclick=()=>showStep(index);nav.append(b);form.append(field);return field;

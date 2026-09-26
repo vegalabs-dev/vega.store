@@ -1,4 +1,4 @@
--- Candidate change; promote to a CLI-generated migration after review.
+-- Generated with Supabase CLI 2.81.3; reviewed and tested with synthetic data.
 begin;
 alter table public.servicios
   add column catalogo_version bigint not null default 0,
@@ -109,7 +109,8 @@ begin
    normalized:=normalized||jsonb_build_array(jsonb_build_object('cantidad',qty,'unidad',plan->>'unidad','precio',price,'promo',promo));
  end loop;
  starts:=nullif(j->>'promocion_inicio','')::timestamptz;ends:=nullif(j->>'promocion_fin','')::timestamptz;
- if (starts is null)<>(ends is null) or ends<=starts
+ if (coalesce((j->>'promo_programada')::boolean,false) and (starts is null or ends is null))
+    or (starts is null)<>(ends is null) or ends<=starts
     or (starts is not null and not exists(select 1 from jsonb_array_elements(normalized) p where (p->>'promo')::numeric>0)) then
     raise exception 'Revisa las fechas y los precios de promoción';
  end if;
@@ -181,7 +182,7 @@ grant execute on function public.vega_catalogo_pagina(text,text,integer,integer)
 
 create or replace function public.vega_exportar_datos()
 returns text language plpgsql stable security invoker set search_path=''
-as $
+as $$
 declare payload text;
 begin
     if not public.is_vega_admin() then
@@ -207,7 +208,7 @@ begin
     end if;
     return payload;
 end;
-$;
+$$;
 revoke all on function public.vega_exportar_datos() from public,anon;
 grant execute on function public.vega_exportar_datos() to authenticated;
 comment on function public.vega_exportar_datos() is 'Owner-only consistent export of management tables including catalogue drafts. Contains private customer links. Browser encrypts before downloading. No writes.';

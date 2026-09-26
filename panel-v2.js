@@ -25,8 +25,8 @@ const link=document.createElement('a');link.href='./';link.className='btn-gestio
 const sidebar=document.createElement('aside');sidebar.className='admin-sidebar';
 const layout=document.createElement('div');layout.className='admin-layout';
 const subnav=document.createElement('div');subnav.className='panel-subnav';subnav.hidden=true;
-subnav.append(byId('btn-tab-ventas'),byId('btn-tab-papelera'));
 byId('btn-tab-ventas').textContent='Servicios contratados';byId('btn-tab-papelera').textContent='Archivados';
+subnav.append(byId('btn-tab-ventas'),byId('btn-tab-papelera'));
 const profilesButton=button('btn-clientes-fichas','Fichas de clientes','fichas');subnav.prepend(profilesButton);
 nav.prepend(button('btn-tab-inicio','Inicio','inicio'));
 byId('btn-tab-fichas').textContent='Clientes';byId('btn-tab-solicitudes').textContent='Pedidos';
