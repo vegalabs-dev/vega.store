@@ -1,0 +1,27 @@
+name: VegaStore checks
+on:
+  pull_request:
+  push:
+    branches: ['codex/fase-2-panel-catalogo']
+permissions:
+  contents: read
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - name: Generate candidate migration with the Supabase CLI
+        if: hashFiles('supabase/changes/catalogue_workspace.sql') != ''
+        run: |
+          npx --yes supabase@2.81.3 --help
+          npx --yes supabase@2.81.3 migration --help
+          npx --yes supabase@2.81.3 migration new --help
+          npx --yes supabase@2.81.3 migration new catalogue_workspace
+          node -e "const fs=require('fs');const p='supabase/migrations/'+fs.readdirSync('supabase/migrations').find(f=>f.endsWith('_catalogue_workspace.sql'));fs.copyFileSync('supabase/changes/catalogue_workspace.sql',p);console.log('CANDIDATE_MIGRATION='+p)"
+      - run: npm test

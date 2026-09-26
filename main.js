@@ -229,7 +229,7 @@ function renderizarCatalogo(serviciosParaMostrar) {
     const contenedor = document.getElementById('contenedor-servicios');
     contenedor.replaceChildren();
     if (!serviciosParaMostrar.length) { contenedor.innerHTML = '<p class="catalog-empty">No hay productos que coincidan con estos filtros.</p>'; return; }
-    serviciosParaMostrar.forEach(servicio => {
+    VegaCatalog.ordenar(serviciosParaMostrar).forEach(servicio => {
         const plans = VegaCatalog.planes(servicio);
         const key = `contenedor-servicios:${servicio.id}`, choice = planesElegidos.get(key);
         let selected = plans.find(p => p.cantidad === choice?.cantidad && p.unidad === choice?.unidad) || plans[0];
@@ -239,6 +239,7 @@ function renderizarCatalogo(serviciosParaMostrar) {
             <span class="stock-badge ${available ? '' : 'sold-out'}">${h(VegaCatalog.stockTexto(servicio))}</span>
             <div class="product-plans" role="group" aria-label="Duración de ${h(servicio.nombre)}"></div>
             <div class="product-bottom"><div class="price"></div><div class="product-actions"><button class="btn-detalles">Detalles</button><button class="btn-primary">${available ? 'Comprar' : 'Agotado'}</button></div></div>`;
+        if (!available) { const seal=document.createElement('span');seal.className='catalogue-sold-out-seal';seal.textContent='Agotado';seal.setAttribute('aria-hidden','true');card.querySelector('.product-media').append(seal); }
         card.querySelector('.product-media').onclick = card.querySelector('.btn-detalles').onclick = () => abrirModalDetalles(servicio, selected);
         const buy = card.querySelector('.btn-primary'); buy.disabled = !available;
         buy.onclick = () => prepararCompra({...servicio,...selected});

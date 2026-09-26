@@ -389,3 +389,58 @@ test('style is saved explicitly, reloads across drafts and late chat responses c
   assert.equal(w.document.getElementById('ia-recargar-estilo').disabled,false);
   w.dispatchEvent(new w.Event('vega:logout'));assert.equal(w.document.getElementById('ia-estilo').value,'');assert.equal(w.document.getElementById('ia-conversacion').textContent,'');
 });
+
+
+test('phase 2 navigation retains all management screens and labels the editor groups',async t=>{
+ const {w,dom}=await page('admin');t.after(()=>dom.window.close());
+ for(const file of ['panel-v2.js','catalogo-admin-v2.js'])vm.runInContext(readFileSync(file,'utf8'),dom.getInternalVMContext(),{filename:file});
+ assert.equal(w.document.querySelectorAll('.admin-nav .tab-btn').length,6);
+ for(const id of ['tab-ventas','tab-fichas','tab-solicitudes','tab-papelera','tab-seguimiento','tab-catalogo'])assert.ok(w.document.getElementById(id));
+ assert.equal(w.document.querySelectorAll('.editor-group').length,4);
+ assert.ok(w.document.querySelector('#editor-group-1 #contenedor-planes'));
+ assert.ok(w.document.querySelector('#editor-group-2 #serv-stock'));
+ assert.ok(w.document.querySelector('#editor-group-3 #serv-activo'));
+ w.abrirModalServicio();
+ assert.equal(w.document.getElementById('titulo-modal-servicio').textContent,'Nuevo producto');
+});
+
+test('phase 2 saves private drafts before publishing and preserves failed edits',async t=>{
+ const {w,dom,rpcHandlers,calls}=await page('admin');t.after(()=>dom.window.close());
+ for(const file of ['panel-v2.js','catalogo-admin-v2.js'])vm.runInContext(readFileSync(file,'utf8'),dom.getInternalVMContext(),{filename:file});
+ await w.mostrarPanel();
+ const byId=id=>w.document.getElementById(id);
+ w.abrirModalServicio();byId('serv-nombre').value='Draft title';
+ byId('contenedor-planes').querySelector('.plan-precio').value='10';
+ rpcHandlers.vega_catalogo_borrador=args=>({data:{id:args.p_id,producto_id:null,datos:args.p_datos,version:args.p_esperada+1,producto_version:null,stock_version:null},error:null});
+ rpcHandlers.vega_catalogo_publicar=()=>({data:null,error:{message:'Concurrent change'}});
+ byId('editor-guardar-borrador').click();await tick();
+ assert.equal(calls.filter(c=>c.rpc==='vega_catalogo_publicar').length,0);
+ assert.match(byId('editor-estado').textContent,/guardado/);
+ await assert.rejects(w.guardarServicio(),/Concurrent change/);
+ assert.equal(byId('serv-nombre').value,'Draft title');
+ assert.match(byId('editor-estado').textContent,/borrador se conserva/);
+ assert.equal(byId('editor-guardar-borrador').disabled,false);
+ w.dispatchEvent(new w.Event('vega:logout'));
+ assert.equal(byId('serv-nombre').value,'');
+});
+
+test('phase 2 catalogue uses server paging and escaped names',async t=>{
+ const {w,dom,rpcHandlers,calls}=await page('admin');t.after(()=>dom.window.close());
+ for(const file of ['panel-v2.js','catalogo-admin-v2.js'])vm.runInContext(readFileSync(file,'utf8'),dom.getInternalVMContext(),{filename:file});
+ await w.mostrarPanel();
+ rpcHandlers.vega_catalogo_pagina=args=>({data:{version:2,items:[{...service,posicion:0,catalogo_version:0}],total:25,drafts:[],draft_total:0},error:null});
+ await w.cargarServicios();
+ assert.equal(w.document.querySelector('#tabla-servicios img[onerror]'),null);
+ assert.match(w.document.getElementById('tabla-servicios').textContent,/onerror/);
+ w.document.getElementById('catalogue-next').click();await tick();
+ assert.equal(calls.filter(c=>c.rpc==='vega_catalogo_pagina').at(-1).args.p_pagina,1);
+ assert.equal(calls.filter(c=>c.rpc==='vega_catalogo_pagina').at(-1).args.p_tamano,12);
+});
+
+test('catalogue priority keeps featured sold-out products after all available products',async t=>{
+ const {w,dom}=await page('store');t.after(()=>dom.window.close());
+ const ordered=w.VegaCatalog.ordenar([{id:1,activo:true,agotado:true,destacado:true,posicion:0},
+ {id:2,activo:true,stock:5,posicion:4},{id:3,activo:true,stock:1,destacado:true,posicion:8},
+ {id:4,activo:true,stock:2,posicion:1}]);
+ assert.equal(ordered.map(x=>x.id).join(','),'3,4,2,1');
+});

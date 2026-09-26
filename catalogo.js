@@ -2,6 +2,11 @@
 // Shared display rules; Supabase independently validates price and inventory.
 window.VegaCatalog = Object.freeze({
     disponible(s) { return s.activo !== false && !s.agotado && (s.stock == null || Number(s.stock) > 0); },
+    ordenar(items) {
+        return [...items].sort((a,b) => Number(this.disponible(b))-Number(this.disponible(a)) ||
+            Number(!!b.destacado)-Number(!!a.destacado) ||
+            (Number(a.posicion ?? 1000000)-Number(b.posicion ?? 1000000)) || Number(a.id)-Number(b.id));
+    },
     stockTexto(s) {
         if (s.activo === false) return 'Oculto';
         if (!this.disponible(s)) return 'Agotado';
