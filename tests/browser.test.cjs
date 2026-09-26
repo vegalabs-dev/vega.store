@@ -13,7 +13,7 @@ const service = {id:1,nombre:attack,categoria:attack,etiqueta:attack,caracterist
 async function page(kind, {allowed=true, code=null}={}) {
   const html = readFileSync(kind === 'admin' ? 'admin.html' : 'index.html','utf8').replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi,'');
   const dom = new JSDOM(html, {url:'https://vegalabs-dev.github.io/vega.store/' + (kind==='admin'?'admin.html':'') + (code?'#acceso='+code:''),runScripts:'outside-only'});
-  const w = dom.window, calls = [], alerts = [], authCalls = [], rpcHandlers = {}, intervals = [];
+  const w = dom.window, calls = [], alerts = [], authCalls = [], rpcHandlers = {}, functionHandlers = {}, intervals = [];
   const originalInterval=w.setInterval.bind(w);w.setInterval=(fn,ms)=>{intervals.push({fn,ms});return originalInterval(fn,ms);};
   Object.defineProperty(w,'crypto',{value:webcrypto}); w.TextEncoder = TextEncoder; w.TextDecoder = TextDecoder;
   w.alert=x=>alerts.push(x); w.confirm=()=>true; w.open=()=>null;
@@ -25,6 +25,7 @@ async function page(kind, {allowed=true, code=null}={}) {
     auth:{getSession:async()=>({data:{session:null}}),onAuthStateChange:()=>{},getUser:async()=>({data:{user:{id:'fixture'}}}),
       signInWithPassword:async()=>({error:null}),signOut:async()=>{authCalls.push('signOut');}},
     rpc:async(name,args)=>{authCalls.push(name); calls.push({rpc:name,args}); return rpcHandlers[name] ? rpcHandlers[name](args) : {data:allowed,error:null};},
+    functions:{invoke:async(name,args)=>{calls.push({fn:name,body:args.body});return functionHandlers[name]?functionHandlers[name](args.body):{data:{enabled:false},error:null};}},
     from(table){
       const call={table,options,op:'select',filters:[]};calls.push(call);
       const query={
@@ -43,11 +44,11 @@ async function page(kind, {allowed=true, code=null}={}) {
       };return query;
     }
   })};
-  for (const file of (kind==='admin' ? ['catalogo.js','vigencia.js','interfaz.js','security.js','clientes.js','admin.js','historial.js','gestion.js','respaldo.js','respaldo-panel.js','ventanas.js'] : ['catalogo.js','vigencia.js','interfaz.js','security.js','main.js','historial.js','ventanas.js']))
+  for (const file of (kind==='admin' ? ['catalogo.js','vigencia.js','interfaz.js','security.js','mensaje-formato.js','clientes.js','admin.js','historial.js','gestion.js','respaldo.js','respaldo-panel.js','chat-mensajes.js','ventanas.js'] : ['catalogo.js','vigencia.js','interfaz.js','security.js','main.js','historial.js','ventanas.js']))
     vm.runInContext(readFileSync(file,'utf8'),dom.getInternalVMContext(),{filename:file});
   w.VegaUI.confirm=async()=>w.confirm();w.VegaUI.toast=x=>alerts.push(x);
   await tick();
-  return {w,dom,calls,alerts,authCalls,data,rpcHandlers,intervals};
+  return {w,dom,calls,alerts,authCalls,data,rpcHandlers,functionHandlers,intervals};
 }
 
 test('private code uses cryptographic entropy, SHA-256 and a fragment removed on entry', async t=>{
@@ -343,4 +344,48 @@ test('backup form never sends passwords, exports plaintext or downloads after lo
   w.dispatchEvent(new w.Event('vega:logout'));resolve({data:'not returned to a signed-out user',error:null});await tick();
   assert.equal(downloads,0);assert.equal(byId('respaldo-clave').value,'');assert.equal(byId('respaldo-resultado').textContent,'');
   assert.equal(JSON.stringify(calls).includes(pass),false);
+});
+
+
+test('AI chat protects customer fields, previews safely and applies only after review',async t=>{
+  const {w,dom,data,rpcHandlers,functionHandlers,calls}=await page('admin');t.after(()=>dom.window.close());
+  const code='c'.repeat(48),customer='Private Customer';
+  data.vega_clientes=[{id:'00000000-0000-4000-8000-000000000001',nombre:customer,telefono:'+51999999999',codigo_privado:code}];
+  data.usuarios_canva=[{id:1,cliente_id:data.vega_clientes[0].id,servicio:'Canva Pro',estado:'Activo',meses:1,fecha_inicio:'2026-09-01',fecha_fin:'2026-10-01'}];
+  rpcHandlers.vega_estilo_mensajes=()=>({data:{estilo:'Breve y amable',version:1}});
+  let version=1;functionHandlers['vega-redactar']=body=>({data:body.action==='estado'?{enabled:true}:{respuesta:'Listo para revisar.',mensaje:'*Propuesta* '+version+'\n'+body.borrador,sticker:'gracias'}});
+  await w.mostrarPanel();await w.abrirMensajesCliente(1,'vencimiento');await tick();
+  w.confirm=()=>false;assert.equal(await w.VegaUI.canClose(w.document.getElementById('modal-mensajes')),true);
+  const editor=w.document.getElementById('mensaje-texto'),original=editor.value,form=w.document.getElementById('ia-formulario'),input=w.document.getElementById('ia-instruccion');
+  input.value='Más breve y amable';form.dispatchEvent(new w.Event('submit',{cancelable:true}));await tick();
+  const call=calls.find(c=>c.fn&&c.body.action==='chat');assert.ok(call);assert.doesNotMatch(JSON.stringify(call.body),new RegExp(code+'|Private Customer|51999999999'));
+  assert.match(call.body.borrador,/\[\[ENLACE_PRIVADO\]\]/);assert.equal(editor.value,original);
+  w.document.querySelector('[data-apply]').click();assert.match(editor.value,/Propuesta/);assert.ok(editor.value.includes(code));
+  input.value='Otro ajuste';version=2;form.dispatchEvent(new w.Event('submit',{cancelable:true}));await tick();
+  const candidate=[...w.document.querySelectorAll('[data-apply]')].at(-1);editor.value='Manual edit';candidate.click();assert.equal(editor.value,'Manual edit');
+  assert.ok(w.document.querySelector('.sticker-tip').textContent.includes('dentro de WhatsApp'));
+});
+
+test('style is saved explicitly, reloads across drafts and late chat responses cannot cross customers',async t=>{
+  const {w,dom,data,rpcHandlers,functionHandlers,calls}=await page('admin');t.after(()=>dom.window.close());
+  data.vega_clientes=[{id:'00000000-0000-4000-8000-000000000001',nombre:'Fixture',codigo_privado:'d'.repeat(48)}];
+  data.usuarios_canva=[{id:1,cliente_id:data.vega_clientes[0].id,servicio:'Test',estado:'Activo',meses:1}];
+  let style={estilo:'',version:0},resolve;
+  rpcHandlers.vega_estilo_mensajes=args=>{if(args?.p_estilo!==undefined)style={estilo:args.p_estilo,version:style.version+1};return {data:style};};
+  functionHandlers['vega-redactar']=body=>body.action==='estado'?{data:{enabled:true}}:new Promise(r=>resolve=r);
+  await w.mostrarPanel();await w.abrirMensajesCliente(1);await tick();
+  const input=w.document.getElementById('ia-instruccion');input.value='Usa pocos emojis';w.document.getElementById('ia-recordar').click();await tick();assert.equal(style.estilo,'Usa pocos emojis');
+  w.document.getElementById('ia-formulario').dispatchEvent(new w.Event('submit',{cancelable:true}));await tick();
+  w.prepararMensajeCliente();resolve({data:{respuesta:'Stale reply',mensaje:'Wrong customer',sticker:'ninguno'}});await tick();
+  assert.doesNotMatch(w.document.getElementById('ia-conversacion').textContent,/Stale reply|Wrong customer/);
+  await w.comprobarIA();await tick();assert.equal(w.document.getElementById('ia-estilo').value,'Usa pocos emojis');
+  w.document.getElementById('ia-estilo').value='';w.document.getElementById('ia-guardar-estilo').click();await tick();assert.equal(style.estilo,'');
+  assert.equal(calls.some(c=>c.table&&['usuarios_canva','vega_clientes'].includes(c.table)&&c.op!=='select'),false);
+  let loaded;rpcHandlers.vega_estilo_mensajes=()=>new Promise(r=>loaded=r);
+  await w.comprobarIA();w.VegaChat.reset();loaded({data:{estilo:'Persistent style',version:4}});await tick();
+  assert.equal(w.document.getElementById('ia-estilo').value,'Persistent style');
+  rpcHandlers.vega_estilo_mensajes=()=>({error:{message:'temporary failure'}});
+  w.document.getElementById('ia-recargar-estilo').click();await tick();
+  assert.equal(w.document.getElementById('ia-recargar-estilo').disabled,false);
+  w.dispatchEvent(new w.Event('vega:logout'));assert.equal(w.document.getElementById('ia-estilo').value,'');assert.equal(w.document.getElementById('ia-conversacion').textContent,'');
 });

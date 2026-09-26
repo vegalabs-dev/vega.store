@@ -141,6 +141,7 @@ async function abrirMensajesCliente(id,atajo='enlace') {
 }
 function prepararMensajeCliente() {
     if(!mensajeActual)return;
+    window.VegaChat?.reset();
     const {ficha,pedido:p}=mensajeActual, tipo=document.getElementById('mensaje-atajo').value;
     const saludo=ficha.nombre ? 'Hola '+ficha.nombre+' 👋' : 'Hola 👋';
     const fecha=p.fecha_fin ? VegaDates.format(p.fecha_fin) : null;
@@ -154,6 +155,7 @@ function prepararMensajeCliente() {
 }
 function actualizarDestinosMensaje() {
     if(!mensajeActual)return;
+    window.VegaChat?.updatePreview();
     const text=encodeURIComponent(document.getElementById('mensaje-texto').value);
     const ficha=mensajeActual.ficha, phone=ficha.telefono ? ficha.telefono.replace(/\D/g,'') : '';
     const share='https://wa.me/?text='+text, target=document.getElementById('mensaje-whatsapp');
@@ -172,20 +174,4 @@ function cambiarProductoManual() {
     document.getElementById('manual-servicio-libre').hidden = document.getElementById('manual-producto').value !== 'libre';
 }
 
-async function comprobarIA(){
-    if(!supabaseClient.functions)return;
-    try{const {data,error}=await supabaseClient.functions.invoke('vega-redactar',{body:{action:'estado'}});
-        const enabled=!error&&data?.enabled;document.getElementById('mensaje-ia').disabled=!enabled;document.getElementById('mensaje-ia-estado').textContent=enabled?'Borrador con revisión antes de enviar':'IA pendiente de activar';
-    }catch{document.getElementById('mensaje-ia').disabled=true;}
-}
-async function redactarConIA(){
-    if(!mensajeActual)return;const snapshot=mensajeActual,button=document.getElementById('mensaje-ia'),editor=document.getElementById('mensaje-texto'),original=editor.value;
-    button.disabled=true;button.textContent='Redactando…';
-    try{const {data,error}=await supabaseClient.functions.invoke('vega-redactar',{body:{pedido_id:Number(snapshot.pedido.id),tipo:document.getElementById('mensaje-atajo').value}});
-        if(error||!data?.intro)throw new Error(data?.error||'No pudimos generar el borrador. Puedes usar el mensaje original.');
-        if(mensajeActual!==snapshot||editor.value!==original){VegaUI.toast('El mensaje cambió mientras se redactaba. Se conserva tu edición.');return;}
-        if(!await VegaUI.confirm(data.intro,{title:'Introducción sugerida por IA',accept:'Añadir al mensaje'}))return;
-        if(mensajeActual!==snapshot||editor.value!==original)return;
-        editor.value=data.intro+'\n\n'+original;actualizarDestinosMensaje();VegaUI.toast('Borrador listo. Revisa el texto antes de enviarlo.');
-    }catch(e){VegaUI.toast(e.message,'error');}finally{button.disabled=false;button.textContent='Redactar con IA';}
-}
+function comprobarIA(){return window.VegaChat?.open();}

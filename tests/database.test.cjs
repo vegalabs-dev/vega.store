@@ -397,4 +397,23 @@ test('PostgreSQL enforces owner permissions, private links and restricted orders
     await db.exec('drop schema restore_check cascade');
   });
 
+  await db.exec('reset role');
+  const styleMigration=readdirSync('supabase/migrations').find(f=>f.endsWith('_message_style_preferences.sql'));
+  await db.exec(readFileSync('supabase/migrations/'+styleMigration,'utf8'));
+  await t.test('style preferences are private, persistent, clearable and reject stale updates',async()=>{
+    await role('anon');await denied('select public.vega_estilo_mensajes()');
+    await role('authenticated',outsider);await denied("select public.vega_estilo_mensajes('fake',0)");
+    assert.equal((await rows('select * from vega_private.ia_preferencias')).length,0);
+    await role('authenticated',owner);
+    assert.deepEqual((await rows('select public.vega_estilo_mensajes() prefs'))[0].prefs,{estilo:'',version:0});
+    const save=(await rows("select public.vega_estilo_mensajes('Breve y amable',0) prefs"))[0].prefs;
+    assert.deepEqual(save,{estilo:'Breve y amable',version:1});
+    await assert.rejects(db.query("select public.vega_estilo_mensajes('Stale',0)"),e=>e.code==='40001');
+    await assert.rejects(db.query("select public.vega_estilo_mensajes(repeat('x',2001),1)"),/2000/);
+    await denied(`update vega_private.ia_preferencias set actor='${outsider}'`);
+    await role('authenticated',outsider);assert.equal((await rows('select * from vega_private.ia_preferencias')).length,0);
+    await role('authenticated',owner);assert.equal((await rows('select public.vega_estilo_mensajes() prefs'))[0].prefs.estilo,'Breve y amable');
+    assert.deepEqual((await rows("select public.vega_estilo_mensajes('',1) prefs"))[0].prefs,{estilo:'',version:2});
+  });
+
 });

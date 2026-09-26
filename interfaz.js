@@ -31,11 +31,18 @@
     const snapshots=new WeakMap();
     const values=modal=>JSON.stringify([...modal.querySelectorAll('input:not([type=hidden]),select,textarea')].filter(e=>!e.readOnly).map(e=>[e.id,e.type==='checkbox'?e.checked:e.value]));
     const clean=modal=>snapshots.set(modal,values(modal));
+    const cleanField=(modal,field)=>{
+        if(!snapshots.has(modal))return;
+        const baseline=JSON.parse(snapshots.get(modal));
+        const item=baseline.find(([id])=>id===field.id);
+        if(item)item[1]=field.type==='checkbox'?field.checked:field.value;
+        snapshots.set(modal,JSON.stringify(baseline));
+    };
     async function canClose(modal){
         if(modal.dataset.busy==='true'){toast('Espera a que termine de guardarse.');return false;}
         if(snapshots.has(modal)&&snapshots.get(modal)!==values(modal))return window.VegaUI.confirm('Tienes cambios sin guardar en esta ventana.',{title:'¿Descartar cambios?',accept:'Descartar cambios',danger:true});
         return true;
     }
-    window.VegaUI={toast,confirm,loading,error,read,clean,canClose};
+    window.VegaUI={toast,confirm,loading,error,read,clean,cleanField,canClose};
     window.addEventListener('offline',()=>toast('Sin conexión. Espera a reconectar antes de guardar cambios.','error'));
 })();

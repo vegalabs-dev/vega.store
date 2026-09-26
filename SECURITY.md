@@ -73,11 +73,11 @@ El catálogo usa tarjetas pequeñas con imagen, disponibilidad, duración y prec
 
 El acceso privado queda en un apartado desplegable. Cerrar sesión requiere confirmación tanto en la tienda como en el administrador. La X, Escape y tocar el fondo cierran la ventana sin cerrar sesión; las ventanas controlan el foco del teclado. Las comprobaciones usan datos sintéticos y no generan ventas reales.
 
-## Propuesta de redacción con IA (sin activar)
+## Propuesta inicial de redacción con IA (referencia histórica)
 
 Para una siguiente etapa: botón de redacción dentro del administrador, selección de producto y tono, función protegida en Supabase que verifique al propietario y limite las solicitudes, y Gemini Flash-Lite como proveedor inicial. La función leería solo los datos públicos del producto y devolvería un borrador editable; teléfonos, correos y enlaces privados se añadirían localmente después, cuando hicieran falta. La clave del proveedor se guardaría como secreto del servidor. La IA no decidiría precios, stock, fechas ni permisos y no enviaría mensajes automáticamente.
 
-La generación con IA todavía no está conectada: requiere elegir proveedor y configurar su clave y presupuesto. Referencias: [Gemini API](https://ai.google.dev/gemini-api/docs/pricing), [secretos de Edge Functions](https://supabase.com/docs/guides/functions/secrets).
+Esta propuesta inicial fue sustituida por la integración descrita más adelante; su activación requiere una clave y un presupuesto configurados en el proveedor. Referencias: [Gemini API](https://ai.google.dev/gemini-api/docs/pricing), [secretos de Edge Functions](https://supabase.com/docs/guides/functions/secrets).
 
 ## Vigencia, historial y operaciones recuperables (13 de septiembre de 2026)
 
@@ -97,7 +97,7 @@ La función `vega-redactar` comprueba la sesión contra Supabase Auth y la lista
 
 La integración queda inactiva sin el secreto `GEMINI_API_KEY`. Antes de activarla, reemplazar la clave compartida en el chat y guardar la nueva en **Supabase → Edge Functions → Secrets**. No ponerla en HTML, JavaScript, commits ni mensajes de prueba. `GEMINI_MODEL` es opcional y por defecto usa `gemini-3.1-flash-lite`. El límite inicial es 20 borradores por hora y 100 por día; las alertas de facturación se configuran aparte en Google.
 
-Gemini recibe únicamente el nombre del servicio y el tipo de atajo. Genera una introducción opcional y el administrador decide si añadirla al mensaje. Las fechas, enlaces privados y contactos se conservan en el texto original del panel y no se envían al proveedor de IA. No hay envío automático de mensajes ni modificaciones de pedidos por IA.
+La primera versión generaba únicamente una introducción a partir del nombre del servicio y el tipo de atajo. El chat del 16 de septiembre amplía ese contexto de forma explícita, como se describe abajo. Se mantiene la compatibilidad con solicitudes de esa primera versión. No hay envío automático de mensajes ni modificaciones de pedidos por IA.
 
 ### Verificación y reversión
 
@@ -130,3 +130,20 @@ Se comprobó el 14 de septiembre de 2026 que la organización utiliza el plan gr
 ## Canales de WhatsApp
 
 El propietario confirmó que el número público actual de la tienda utiliza WhatsApp normal y tiene otro número en WhatsApp Business. Se conserva el soporte público y los atajos manuales actuales. La aplicación Business por sí sola no configura la API: el número Business, la cuenta de Meta, sus credenciales y una plantilla de aviso deben configurarse antes de activar un emisor automático. No hay un bot conectado ni envíos automáticos habilitados. No se han enviado mensajes a clientes desde este trabajo.
+
+
+## Chat de redacción y preferencias (16 de septiembre de 2026)
+
+Migración aplicada: `20260916205800_message_style_preferences.sql`. El asesor de seguridad no añadió avisos: conserva únicamente la advertencia de contraseñas filtradas descrita arriba.
+
+El compositor de mensajes permite conversar con Gemini sobre un borrador, ver una propuesta y aplicarla mediante **Usar este mensaje**. La aplicación no envía el mensaje: el propietario revisa el destinatario y pulsa Enviar en WhatsApp. Los emojis forman parte del texto. Los stickers son sugerencias para elegir manualmente en WhatsApp; no se adjuntan desde la web. Una barra permite aplicar negrita con un asterisco, cursiva, tachado, citas y código, con una vista previa aproximada que escapa HTML.
+
+**Recordar indicación** guarda una regla de estilo, de forma explícita, en `vega_private.ia_preferencias`. Cada administrador autorizado solo puede leer y modificar su propia fila. La función `vega_estilo_mensajes` usa RLS y SECURITY INVOKER, comprueba la autorización y exige una versión para evitar sobrescrituras entre ventanas. Las preferencias admiten hasta 2000 caracteres, se sincronizan con el servidor y pueden borrarse vaciando el campo y guardando. No se guarda el historial de conversación en la base. La copia cifrada de datos de gestión excluye estas preferencias, porque están en un esquema privado.
+
+Gemini recibe el nombre público del servicio, el tipo de atajo, las preferencias guardadas, la solicitud actual, el borrador y hasta seis turnos recientes del mismo chat. Antes del envío, los campos conocidos de la ficha (nombre, contacto, fechas, plazo y enlace privado, entre otros) se sustituyen localmente por marcadores. Se detectan y rechazan patrones comunes de contactos, enlaces y claves que queden sin sustituir. Esto no garantiza identificar cualquier dato privado escrito libremente: evitar incluirlo en las instrucciones o preferencias. Los valores reales se reinsertan localmente al mostrar la propuesta. No se registra el cuerpo de las solicitudes en la función.
+
+El servidor valida el JSON de salida, conserva los marcadores esenciales y las cifras del borrador y rechaza marcadores desconocidos. Estas comprobaciones no verifican todas las afirmaciones que pueda generar un modelo: el propietario debe revisar el significado antes de enviar. La respuesta no cambia pedidos, precios, stock ni fechas. El límite compartido sigue siendo 20 solicitudes por hora y 100 al día; los intentos fallidos tras reservar cuota también cuentan. La función usa únicamente el JWT del propietario y la clave pública de Supabase.
+
+Una propuesta tardía se descarta al cambiar de cliente, de atajo, cerrar la ventana o salir de la sesión. Aplicar una propuesta no sobrescribe ediciones realizadas mientras se generaba. Iniciar otro chat conserva las preferencias guardadas y borra el historial temporal. La lectura automática de preferencias no provoca una falsa advertencia de cambios sin guardar.
+
+Las 53 pruebas locales pasan con datos sintéticos. Cubren permisos y versiones de preferencias, borrado del estilo, privacidad de las solicitudes, formato seguro, validación de respuestas, cuota, fallos de configuración y respuestas tardías. Las respuestas de Gemini se simulan en las pruebas; no equivalen a una generación real con una clave activa. La activación sigue requiriendo un secreto `GEMINI_API_KEY` válido, nuevo y guardado solo en Supabase, como se indica arriba.
