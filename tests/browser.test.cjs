@@ -24,7 +24,7 @@ async function page(kind, {allowed=true, code=null}={}) {
   w.supabase={createClient:(url,key,options={})=>({
     auth:{getSession:async()=>({data:{session:null}}),onAuthStateChange:()=>{},getUser:async()=>({data:{user:{id:'fixture'}}}),
       signInWithPassword:async()=>({error:null}),signOut:async()=>{authCalls.push('signOut');}},
-    rpc:async(name,args)=>{authCalls.push(name); calls.push({rpc:name,args}); return rpcHandlers[name] ? rpcHandlers[name](args) : {data:allowed,error:null};},
+    rpc:async(name,args)=>{authCalls.push(name); calls.push({rpc:name,args}); return rpcHandlers[name] ? rpcHandlers[name](args) : name==='vega_panel_pagina' ? {data:{version:2,profiles:[],orders:[],notices:[],catalog:data.servicios,total:0,stats:{}},error:null} : {data:allowed,error:null};},
     functions:{invoke:async(name,args)=>{calls.push({fn:name,body:args.body});return functionHandlers[name]?functionHandlers[name](args.body):{data:{enabled:false},error:null};}},
     from(table){
       const call={table,options,op:'select',filters:[]};calls.push(call);
@@ -393,7 +393,7 @@ test('style is saved explicitly, reloads across drafts and late chat responses c
 
 test('phase 2 navigation retains all management screens and labels the editor groups',async t=>{
  const {w,dom}=await page('admin');t.after(()=>dom.window.close());
- for(const file of ['panel-v2.js','catalogo-admin-v2.js'])vm.runInContext(readFileSync(file,'utf8'),dom.getInternalVMContext(),{filename:file});
+ for(const file of ['panel-v2.js','panel-datos-v2.js','catalogo-admin-v2.js'])vm.runInContext(readFileSync(file,'utf8'),dom.getInternalVMContext(),{filename:file});
  assert.equal(w.document.querySelectorAll('.admin-nav .tab-btn').length,6);
  for(const id of ['tab-ventas','tab-fichas','tab-solicitudes','tab-papelera','tab-seguimiento','tab-catalogo'])assert.ok(w.document.getElementById(id));
  assert.equal(w.document.querySelectorAll('.editor-group').length,4);
@@ -406,7 +406,7 @@ test('phase 2 navigation retains all management screens and labels the editor gr
 
 test('phase 2 saves private drafts before publishing and preserves failed edits',async t=>{
  const {w,dom,rpcHandlers,calls}=await page('admin');t.after(()=>dom.window.close());
- for(const file of ['panel-v2.js','catalogo-admin-v2.js'])vm.runInContext(readFileSync(file,'utf8'),dom.getInternalVMContext(),{filename:file});
+ for(const file of ['panel-v2.js','panel-datos-v2.js','catalogo-admin-v2.js'])vm.runInContext(readFileSync(file,'utf8'),dom.getInternalVMContext(),{filename:file});
  await w.mostrarPanel();
  const byId=id=>w.document.getElementById(id);
  w.abrirModalServicio();byId('serv-nombre').value='Draft title';
@@ -426,7 +426,7 @@ test('phase 2 saves private drafts before publishing and preserves failed edits'
 
 test('phase 2 catalogue uses server paging and escaped names',async t=>{
  const {w,dom,rpcHandlers,calls}=await page('admin');t.after(()=>dom.window.close());
- for(const file of ['panel-v2.js','catalogo-admin-v2.js'])vm.runInContext(readFileSync(file,'utf8'),dom.getInternalVMContext(),{filename:file});
+ for(const file of ['panel-v2.js','panel-datos-v2.js','catalogo-admin-v2.js'])vm.runInContext(readFileSync(file,'utf8'),dom.getInternalVMContext(),{filename:file});
  await w.mostrarPanel();
  rpcHandlers.vega_catalogo_pagina=args=>({data:{version:2,items:[{...service,posicion:0,catalogo_version:0}],total:25,drafts:[],draft_total:0},error:null});
  await w.cargarServicios();
@@ -443,4 +443,42 @@ test('catalogue priority keeps featured sold-out products after all available pr
  {id:2,activo:true,stock:5,posicion:4},{id:3,activo:true,stock:1,destacado:true,posicion:8},
  {id:4,activo:true,stock:2,posicion:1}]);
  assert.equal(ordered.map(x=>x.id).join(','),'3,4,2,1');
+});
+
+
+test('management reads only the requested page and details remain available outside it',async t=>{
+ const {w,dom,rpcHandlers,calls}=await page('admin');t.after(()=>dom.window.close());
+ for(const file of ['panel-v2.js','panel-datos-v2.js','catalogo-admin-v2.js'])vm.runInContext(readFileSync(file,'utf8'),dom.getInternalVMContext(),{filename:file});
+ const profile={id:'10000000-0000-4000-8000-000000000111',nombre:'Page customer',codigo_privado:'a'.repeat(48)};
+ const order={id:9999,cliente_id:profile.id,servicio:'Example',estado:'Activo',meses:0,fecha_fin:null};
+ rpcHandlers.vega_panel_pagina=args=>({data:{version:2,total:37,profiles:args.p_vista==='fichas'?[profile]:[],orders:args.p_vista==='fichas'?[order]:[],notices:[],catalog:[],stats:{activos:2000,pendientes:14,manana:3,agotados:2}},error:null});
+ rpcHandlers.vega_panel_detalle=()=>({data:{profiles:[profile],orders:[order]},error:null});
+ await w.mostrarPanel();w.switchTab('fichas');await tick();
+ assert.match(w.document.getElementById('lista-fichas').textContent,/Page customer/);
+ assert.equal(w.document.getElementById('stat-activos').textContent,'2000');
+ w.document.getElementById('page-next-fichas').click();await tick();
+ assert.equal(calls.filter(c=>c.rpc==='vega_panel_pagina').at(-1).args.p_pagina,1);
+ await w.abrirFicha(profile.id);
+ assert.match(w.document.getElementById('ficha-servicios').textContent,/Example/);
+ assert.equal(calls.some(c=>c.rpc==='vega_panel_detalle'&&c.args.p_cliente_id===profile.id),true);
+ const batchReads=calls.filter(c=>['usuarios_canva','vega_clientes'].includes(c.table)&&c.op==='select');
+ assert.equal(batchReads.length,0);
+ w.dispatchEvent(new w.Event('vega:logout'));
+ assert.equal(w.document.getElementById('lista-fichas').textContent,'');
+});
+
+test('uncertain publication retries the same operation without creating another draft',async t=>{
+ const {w,dom,rpcHandlers,calls}=await page('admin');t.after(()=>dom.window.close());
+ for(const file of ['panel-v2.js','panel-datos-v2.js','catalogo-admin-v2.js'])vm.runInContext(readFileSync(file,'utf8'),dom.getInternalVMContext(),{filename:file});
+ await w.mostrarPanel();w.abrirModalServicio();
+ w.document.getElementById('serv-nombre').value='Retry fixture';
+ w.document.querySelector('.plan-precio').value='12';
+ rpcHandlers.vega_catalogo_borrador=args=>({data:{id:args.p_id,version:1,producto_id:null,producto_version:null,stock_version:null,datos:args.p_datos},error:null});
+ let attempt=0;rpcHandlers.vega_catalogo_publicar=()=>++attempt===1?Promise.reject(new Error('Network lost')):{data:{id:70,repetida:true},error:null};
+ rpcHandlers.vega_catalogo_pagina=()=>({data:{version:2,items:[],total:0,drafts:[],draft_total:0},error:null});
+ await assert.rejects(w.guardarServicio(),/Network lost/);
+ await w.guardarServicio();
+ assert.equal(calls.filter(c=>c.rpc==='vega_catalogo_borrador').length,1);
+ const publications=calls.filter(c=>c.rpc==='vega_catalogo_publicar');
+ assert.equal(publications.length,2);assert.equal(publications[0].args.p_id,publications[1].args.p_id);
 });

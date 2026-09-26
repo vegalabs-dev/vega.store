@@ -10,9 +10,13 @@ let fichasGlobal = [];
 let solicitudesGlobal = [];
 let catalogoOpciones = [];
 
-supabaseClient.auth.getSession().then(({ data: { session } }) => {
-    if (session) mostrarPanel().catch(mostrarErrorAdmin);
-});
+function iniciarPanelGuardado() {
+    supabaseClient.auth.getSession().then(({data:{session}})=>{
+        if(session)mostrarPanel().catch(mostrarErrorAdmin);
+    }).catch(mostrarErrorAdmin);
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',iniciarPanelGuardado,{once:true});
+else queueMicrotask(iniciarPanelGuardado);
 supabaseClient.auth.onAuthStateChange((event, session) => {
     if (!session) {
         adminAuthorized = false;

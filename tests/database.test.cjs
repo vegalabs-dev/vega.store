@@ -504,4 +504,23 @@ test('PostgreSQL enforces owner permissions, private links and restricted orders
     assert.throws(()=>backup.inspect(JSON.stringify(broken)),/producto/);
   });
 
+  await t.test('management pagination returns exact global counts and bounded profile pages above 1000 rows',async()=>{
+    await role('authenticated',owner);
+    const first=(await rows("select public.vega_panel_pagina('fichas','','ALL','RECIENTES',0,12,'manana') value"))[0].value;
+    const second=(await rows("select public.vega_panel_pagina('fichas','','ALL','RECIENTES',1,12,'manana') value"))[0].value;
+    assert.ok(first.total>1000);assert.equal(first.profiles.length,12);assert.equal(second.profiles.length,12);
+    assert.equal(first.profiles.some(a=>second.profiles.some(b=>a.id===b.id)),false);
+    const expected=(await rows("select count(*)::int n from public.usuarios_canva where estado='Pendiente'"))[0].n;
+    assert.equal(first.stats.pendientes,expected);
+    const search=(await rows("select public.vega_panel_buscar_fichas('Bulk fixture 1005') value"))[0].value;
+    assert.equal(search.length,1);
+    const detail=(await db.query('select public.vega_panel_detalle($1,null) value',[search[0].id])).rows[0].value;
+    assert.equal(detail.profiles[0].id,search[0].id);
+  });
+  await t.test('management search, details and pages deny non-owners',async()=>{
+    await role('anon');await denied('select public.vega_panel_pagina()');await denied('select public.vega_panel_buscar_fichas()');
+    await role('authenticated',outsider);await denied('select public.vega_panel_pagina()');
+    await denied('select public.vega_panel_detalle(null,1)');await denied('select public.vega_panel_buscar_fichas()');
+  });
+
 });

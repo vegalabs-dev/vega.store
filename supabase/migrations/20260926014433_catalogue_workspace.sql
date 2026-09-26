@@ -213,5 +213,96 @@ revoke all on function public.vega_exportar_datos() from public,anon;
 grant execute on function public.vega_exportar_datos() to authenticated;
 comment on function public.vega_exportar_datos() is 'Owner-only consistent export of management tables including catalogue drafts. Contains private customer links. Browser encrypts before downloading. No writes.';
 
+
+-- Paged management reads. Only the verified owner may call these functions.
+create index if not exists usuarios_canva_estado_creado_idx on public.usuarios_canva(estado,creado_en desc,id);
+create index if not exists usuarios_canva_activo_fin_idx on public.usuarios_canva(fecha_fin,id) where estado='Activo';
+create index if not exists vega_clientes_creado_idx on public.vega_clientes(creado_en desc,id);
+
+create function public.vega_panel_pagina(p_vista text default 'inicio',p_busqueda text default '',
+ p_servicio text default 'ALL',p_orden text default 'RECIENTES',p_pagina integer default 0,
+ p_tamano integer default 12,p_seguimiento text default 'manana') returns jsonb
+language plpgsql stable security invoker set search_path='' as $$
+declare today date:=(now() at time zone 'America/Lima')::date; result jsonb;
+begin
+ if not public.is_vega_admin() then raise exception 'Acceso restringido' using errcode='42501'; end if;
+ if p_vista is null or p_vista not in ('inicio','fichas','ventas','solicitudes','papelera','seguimiento')
+   or p_busqueda is null or length(p_busqueda)>120 or p_pagina is null or p_pagina not between 0 and 100000
+   or p_tamano is null or p_tamano not between 1 and 50
+   or p_seguimiento is null or p_seguimiento not in ('manana','semana','vencidos')
+   or p_orden is null or p_orden not in ('RECIENTES','VENCIMIENTO') then raise exception 'Filtro inválido'; end if;
+ with profile_filter as (
+   select c.* from public.vega_clientes c where p_vista='fichas' and
+     (p_busqueda='' or strpos(lower(concat_ws(' ',c.nombre,c.telefono,c.whatsapp_usuario,'CL-'||left(c.id::text,8))),lower(p_busqueda))>0)
+ ), profile_page as (
+   select * from profile_filter order by creado_en desc,id limit p_tamano offset p_pagina*p_tamano
+ ), order_filter as (
+   select u.* from public.usuarios_canva u left join public.vega_clientes c on c.id=u.cliente_id
+   where ((p_vista='ventas' and u.estado='Activo') or (p_vista='solicitudes' and u.estado='Pendiente')
+     or (p_vista='papelera' and u.estado='Cancelado')
+     or (p_vista='seguimiento' and u.estado='Activo' and
+       ((p_seguimiento='manana' and u.fecha_fin=today+1) or
+        (p_seguimiento='semana' and u.fecha_fin between today and today+7) or
+        (p_seguimiento='vencidos' and u.fecha_fin<today))))
+     and (coalesce(p_servicio,'ALL')='ALL' or u.servicio=p_servicio)
+     and (p_busqueda='' or strpos(lower(concat_ws(' ',u.correo,u.telefono,u.nombre_cliente,u.whatsapp_usuario,
+       c.nombre,c.telefono,c.whatsapp_usuario,'CL-'||left(c.id::text,8))),lower(p_busqueda))>0)
+ ), order_page as (
+   select * from order_filter order by
+     case when p_orden='VENCIMIENTO' or p_vista='seguimiento' then fecha_fin end asc nulls last,
+     case when p_vista='papelera' then fecha_cancelacion end desc nulls last,
+     creado_en desc,id limit p_tamano offset p_pagina*p_tamano
+ ), shown_orders as (
+   select * from order_page union all
+   select u.* from public.usuarios_canva u join profile_page c on c.id=u.cliente_id
+ ), shown_profiles as (
+   select * from profile_page union
+   select c.* from public.vega_clientes c where c.id in (select cliente_id from shown_orders)
+ )
+ select jsonb_build_object('version',2,
+   'orders',coalesce((select jsonb_agg(to_jsonb(u)-'consulta_hash' order by case when p_orden='VENCIMIENTO' or p_vista='seguimiento' then u.fecha_fin end asc nulls last, case when p_vista='papelera' then u.fecha_cancelacion end desc nulls last, u.creado_en desc,u.id) from shown_orders u),'[]'::jsonb),
+   'profiles',coalesce((select jsonb_agg(to_jsonb(c) order by c.creado_en desc,c.id) from shown_profiles c),'[]'::jsonb),
+   'notices',coalesce((select jsonb_agg(to_jsonb(a)) from public.vega_avisos_manuales a where a.pedido_id in(select id from shown_orders)),'[]'::jsonb),
+   'catalog',coalesce((select jsonb_agg(jsonb_build_object('id',s.id,'nombre',s.nombre,'stock',s.stock,'agotado',s.agotado,'activo',s.activo) order by s.nombre,s.id) from public.servicios s),'[]'::jsonb),
+   'total',case when p_vista='fichas' then (select count(*) from profile_filter) else (select count(*) from order_filter) end,
+   'stats',jsonb_build_object(
+     'activos',(select count(*) from public.usuarios_canva where estado='Activo' and (fecha_fin>=today or (meses=0 and fecha_fin is null))),
+     'pendientes',(select count(*) from public.usuarios_canva where estado='Pendiente'),
+     'manana',(select count(*) from public.usuarios_canva where estado='Activo' and fecha_fin=today+1),
+     'agotados',(select count(*) from public.servicios where activo and (agotado or stock=0))
+   )) into result;
+ return result;
+end $$;
+revoke all on function public.vega_panel_pagina(text,text,text,text,integer,integer,text) from public,anon;
+grant execute on function public.vega_panel_pagina(text,text,text,text,integer,integer,text) to authenticated;
+
+create function public.vega_panel_detalle(p_cliente_id uuid default null,p_pedido_id bigint default null) returns jsonb
+language plpgsql stable security invoker set search_path='' as $$
+declare c_id uuid:=p_cliente_id;
+begin
+ if not public.is_vega_admin() then raise exception 'Acceso restringido' using errcode='42501'; end if;
+ if (p_cliente_id is null)=(p_pedido_id is null) then raise exception 'Indica cliente o servicio'; end if;
+ if p_pedido_id is not null then select cliente_id into c_id from public.usuarios_canva where id=p_pedido_id; end if;
+ return jsonb_build_object(
+  'profiles',coalesce((select jsonb_agg(to_jsonb(c)) from public.vega_clientes c where c.id=c_id),'[]'::jsonb),
+  'orders',coalesce((select jsonb_agg(to_jsonb(u)-'consulta_hash' order by u.creado_en desc,u.id) from public.usuarios_canva u where u.cliente_id=c_id or u.id=p_pedido_id),'[]'::jsonb)
+ );
+end $$;
+revoke all on function public.vega_panel_detalle(uuid,bigint) from public,anon;
+grant execute on function public.vega_panel_detalle(uuid,bigint) to authenticated;
+
+create function public.vega_panel_buscar_fichas(p_busqueda text default '') returns jsonb
+language plpgsql stable security invoker set search_path='' as $$
+begin
+ if not public.is_vega_admin() then raise exception 'Acceso restringido' using errcode='42501'; end if;
+ if p_busqueda is null or length(p_busqueda)>120 then raise exception 'Búsqueda demasiado larga'; end if;
+ return (select coalesce(jsonb_agg(to_jsonb(c)),'[]'::jsonb) from
+  (select id,nombre,telefono,whatsapp_usuario from public.vega_clientes
+   where p_busqueda='' or strpos(lower(concat_ws(' ',nombre,telefono,whatsapp_usuario,'CL-'||left(id::text,8))),lower(p_busqueda))>0
+   order by creado_en desc,id limit 30) c);
+end $$;
+revoke all on function public.vega_panel_buscar_fichas(text) from public,anon;
+grant execute on function public.vega_panel_buscar_fichas(text) to authenticated;
+
 notify pgrst,'reload schema';
 commit;

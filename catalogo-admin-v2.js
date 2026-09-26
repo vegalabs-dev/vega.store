@@ -4,7 +4,7 @@
 const el=id=>document.getElementById(id),modal=el('modal-servicio');
 if(!modal)return;
 let query='',filter='todos',page=0,request=0,ready=false,epoch=0,timer;
-let editing=null,stockTouched=false;
+let editing=null,stockTouched=false,publicationPending=null;
 const originals={create:window.abrirModalServicio,edit:window.editarServicio,upload:window.subirImagen};
 const content=modal.querySelector('.modal-content');
 content.classList.add('product-editor');
@@ -75,7 +75,7 @@ function rawData(){
 }
 function fresh(product=null){
  editing={id:crypto.randomUUID(),producto_id:product?.id??null,version:0,producto_version:product?.catalogo_version??null,stock_version:product?.stock_version??null};
- stockTouched=!product;el('serv-destacado').checked=!!product?.destacado;el('serv-posicion').value=product?.posicion??1000000;
+ publicationPending=null;stockTouched=!product;el('serv-destacado').checked=!!product?.destacado;el('serv-posicion').value=product?.posicion??1000000;
  el('titulo-modal-servicio').textContent=product?'Editar producto':'Nuevo producto';
  el('editor-estado').textContent='Los cambios se guardan primero como borrador.';imageMarker.value=product?.imagen_url||'';
  showStep(0);previewCard();VegaUI.clean(modal);
@@ -83,7 +83,7 @@ function fresh(product=null){
 window.abrirModalServicio=function(){originals.create();fresh();};
 window.editarServicio=function(product){originals.edit(product);fresh(product);};
 window.editarServicioPorId=function(id){const p=serviciosAdminGlobal.find(x=>Number(x.id)===Number(id));if(p)window.editarServicio(p);};
-el('editor-duplicar').onclick=()=>{if(!editing)return;editing={id:crypto.randomUUID(),producto_id:null,version:0,producto_version:null,stock_version:null};stockTouched=true;el('serv-id').value='';el('serv-nombre').value+=' · copia';el('serv-activo').checked=false;el('titulo-modal-servicio').textContent='Duplicar producto';el('editor-estado').textContent='Copia sin publicar. Guarda el borrador para continuar después.';previewCard();};
+el('editor-duplicar').onclick=()=>{if(!editing)return;publicationPending=null;editing={id:crypto.randomUUID(),producto_id:null,version:0,producto_version:null,stock_version:null};stockTouched=true;el('serv-id').value='';el('serv-nombre').value+=' · copia';el('serv-activo').checked=false;el('titulo-modal-servicio').textContent='Duplicar producto';el('editor-estado').textContent='Copia sin publicar. Guarda el borrador para continuar después.';previewCard();};
 function busy(on){
  if(on){modal.dataset.busy='true';modal.querySelectorAll('button,input,select,textarea').forEach(n=>{n.dataset.editorDisabled=String(n.disabled);n.disabled=true;});}
  else {delete modal.dataset.busy;modal.querySelectorAll('[data-editor-disabled]').forEach(n=>{n.disabled=n.dataset.editorDisabled==='true';delete n.dataset.editorDisabled;});}
@@ -98,6 +98,7 @@ async function persist(){
 }
 async function saveDraft(){
  if(modal.dataset.busy==='true')return;
+ if(publicationPending)throw new Error('Primero confirma la publicación con Reintentar o revisa el catálogo antes de cambiar este borrador.');
  busy(true);
  try{const data=await persist();if(data){el('editor-estado').textContent='Borrador guardado. La versión publicada no cambió.';VegaUI.toast('Borrador guardado.');}}
  finally{busy(false);}
@@ -107,11 +108,14 @@ window.guardarServicio=async function(){
  if(!await VegaUI.confirm('Publicar actualizará este producto en la tienda. Las ventas anteriores conservarán sus condiciones.',{title:'Publicar producto',accept:'Publicar cambios'}))return;
  busy(true);
  const run=epoch;
- try{const draft=await persist();if(!draft)return;
+ try{
+ if(publicationPending&&publicationPending.snapshot!==JSON.stringify(rawData()))throw new Error('Hay una publicación por confirmar. Revisa el catálogo antes de cambiar este borrador.');
+ const draft=publicationPending||await persist();if(!draft)return;
+ publicationPending={id:draft.id,version:draft.version,snapshot:JSON.stringify(rawData())};
  await verificarOperacion(supabaseClient.rpc('vega_catalogo_publicar',{p_id:draft.id,p_version:draft.version}));
  if(run!==epoch||!adminAuthorized)return;
- delete modal.dataset.busy;VegaUI.clean(modal);cerrarModal('modal-servicio');editing=null;VegaUI.toast('Producto publicado.');await load();
- }catch(e){if(run===epoch)el('editor-estado').textContent='No se publicó. Tu borrador se conserva. '+(e.message||'Reintenta.');throw e;}
+ delete modal.dataset.busy;VegaUI.clean(modal);cerrarModal('modal-servicio');editing=null;publicationPending=null;VegaUI.toast('Producto publicado.');await load();
+ }catch(e){if(run===epoch)el('editor-estado').textContent='No pudimos confirmar la publicación. Tu borrador se conserva. '+(e.message||'Reintenta.');throw e;}
  finally{busy(false);}
 };
 window.subirImagen=async function(input){if(modal.dataset.busy==='true')return;busy(true);try{await originals.upload(input);imageMarker.value=el('serv-imagen-url').value;previewCard();}finally{busy(false);}};
@@ -121,7 +125,7 @@ plans.addEventListener('click',()=>queueMicrotask(previewCard));
 async function openDraft(draft){
  const p=draft.datos;
  originals.edit({...p,id:draft.producto_id||'',stock:p.stock_modo==='ilimitado'?null:p.stock,planes:p.planes||[]});
- editing=draft;stockTouched=!!p.stock_modificado;
+ publicationPending=null;editing=draft;stockTouched=!!p.stock_modificado;
  el('serv-destacado').checked=!!p.destacado;el('serv-posicion').value=p.posicion??1000000;
  el('serv-promo-programada').checked=!!p.promo_programada;togglePromoInput();
  el('titulo-modal-servicio').textContent='Continuar borrador';el('editor-estado').textContent='Borrador guardado; aún no está publicado.';
@@ -161,5 +165,5 @@ async function load(){
  finally{if(run===request)table.removeAttribute('aria-busy');}
 }
 window.cargarServicios=()=>load();
-window.addEventListener('vega:logout',()=>{epoch++;request++;clearTimeout(timer);editing=null;stockTouched=false;ready=false;query='';filter='todos';page=0;serviciosAdminGlobal=[];el('tabla-servicios').replaceChildren();el('editor-tarjeta').replaceChildren();modal.querySelectorAll('input,textarea').forEach(n=>{if(n.type!=='checkbox')n.value='';});plans.replaceChildren();el('editor-estado').textContent='';});
+window.addEventListener('vega:logout',()=>{epoch++;request++;clearTimeout(timer);editing=null;publicationPending=null;stockTouched=false;ready=false;query='';filter='todos';page=0;serviciosAdminGlobal=[];el('tabla-servicios').replaceChildren();el('editor-tarjeta').replaceChildren();modal.querySelectorAll('input,textarea').forEach(n=>{if(n.type!=='checkbox')n.value='';});plans.replaceChildren();el('editor-estado').textContent='';});
 })();

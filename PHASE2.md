@@ -1,6 +1,6 @@
 # Fase 2 — Panel y catálogo en revisión
 
-Esta rama conserva el chat IA preparado anteriormente y añade la reorganización del panel, editor en cuatro grupos, vista previa, duplicación, borradores privados en Supabase, publicación transaccional, orden configurable y consulta paginada del catálogo (12 productos por página).
+Esta rama conserva el chat IA preparado anteriormente y añade la reorganización del panel, editor en cuatro grupos, vista previa, duplicación, borradores privados en Supabase, publicación transaccional, orden configurable y consulta paginada del catálogo y de la gestión de clientes y servicios (12 registros por página).
 
 ## Publicación pendiente
 
@@ -26,13 +26,16 @@ La rama incluye un flujo de pruebas sin credenciales de producción. El entorno 
 
 ## Alcance pendiente de la fase
 
-El catálogo incorpora paginación y búsqueda en servidor. Las listas históricas de clientes/servicios conservan su comportamiento existente y todavía requieren su propia paginación en servidor; esta rama no afirma resolver ese punto. Los ajustes de contacto/pagos/monedas corresponden a la fase 3.
+Catálogo, fichas, servicios contratados, pedidos, archivados y seguimiento consultan páginas en el servidor. Los contadores globales son independientes de la página visible. Los detalles de una ficha se cargan al abrirla y la búsqueda permite seleccionar clientes fuera de la página actual. Los ajustes de contacto/pagos/monedas corresponden a la fase 3.
+
+Continúan pendientes la revisión visual en navegador real y el respaldo completo antes de publicar. Las pruebas DOM no sustituyen esa revisión.
 
 No se envían mensajes de WhatsApp, no se consultan pasarelas y no se reutiliza la clave de Gemini compartida en el chat.
 
 ## Archivos principales
 
 - `panel-v2.js` / `panel-v2.css`: navegación y disposición.
+- `panel-datos-v2.js`: páginas y búsqueda de clientes/servicios, con detalle bajo demanda.
 - `catalogo-admin-v2.js`: editor, borradores y paginación.
 - `supabase/migrations/20260926014433_catalogue_workspace.sql`: migración generada mediante CLI; CI prueba el archivo comprometido.
 - `tests/browser.test.cjs` y `tests/database.test.cjs`: permisos, conflictos, idempotencia y recuperación.
