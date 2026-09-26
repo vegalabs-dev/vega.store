@@ -42,7 +42,11 @@ window.addEventListener('unhandledrejection', event => {
 });
 async function verificarOperacion(request) {
     const result = await request;
-    if (result.error) throw new Error('No se guardó la operación: ' + result.error.message);
+    if (result.error) {
+        const error = new Error('No se guardó la operación: ' + result.error.message);
+        error.code = result.error.code;
+        throw error;
+    }
     return result;
 }
 

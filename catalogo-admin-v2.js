@@ -50,7 +50,15 @@ el('catalogue-search').oninput=()=>{clearTimeout(timer);timer=setTimeout(()=>{qu
 el('catalogue-filter').onchange=()=>{filter=el('catalogue-filter').value;page=0;load().catch(mostrarErrorAdmin);};
 el('catalogue-prev').onclick=()=>{page=Math.max(0,page-1);load().catch(mostrarErrorAdmin);};
 el('catalogue-next').onclick=()=>{page++;load().catch(mostrarErrorAdmin);};
-function showStep(index){groups.forEach((g,i)=>g.hidden=i!==index);nav.querySelectorAll('button').forEach((b,i)=>b.setAttribute('aria-selected',String(i===index)));}
+function showStep(index){groups.forEach((g,i)=>g.hidden=i!==index);nav.querySelectorAll('button').forEach((b,i)=>{b.setAttribute('aria-selected',String(i===index));b.tabIndex=i===index?0:-1;});}
+nav.addEventListener('keydown',event=>{
+ const buttons=[...nav.querySelectorAll('button')],index=buttons.indexOf(event.target);
+ if(index<0||!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;
+ event.preventDefault();const next=event.key==='Home'?0:event.key==='End'?buttons.length-1:(index+(event.key==='ArrowRight'?1:-1)+buttons.length)%buttons.length;
+ showStep(next);buttons[next].focus();
+});
+content.querySelectorAll('label').forEach(label=>{const control=label.nextElementSibling;if(!label.htmlFor&&control?.matches('input[id],select[id],textarea[id]'))label.htmlFor=control.id;});
+el('serv-imagen-file').setAttribute('aria-label','Imagen del producto');
 function previewCard(){
  const name=el('serv-nombre').value||'Nombre del producto',img=VegaSecurity.imageUrl(el('serv-imagen-url').value);
  const first=plans.querySelector('.plan-row'),price=Number(first?.querySelector('.plan-precio').value||0);
@@ -75,7 +83,7 @@ function rawData(){
 }
 function fresh(product=null){
  editing={id:crypto.randomUUID(),producto_id:product?.id??null,version:0,producto_version:product?.catalogo_version??null,stock_version:product?.stock_version??null};
- publicationPending=null;stockTouched=!product;el('serv-destacado').checked=!!product?.destacado;el('serv-posicion').value=product?.posicion??1000000;
+ publicationPending=null;save.textContent='Revisar y publicar';stockTouched=!product;el('serv-destacado').checked=!!product?.destacado;el('serv-posicion').value=product?.posicion??1000000;
  el('titulo-modal-servicio').textContent=product?'Editar producto':'Nuevo producto';
  el('editor-estado').textContent='Los cambios se guardan primero como borrador.';imageMarker.value=product?.imagen_url||'';
  showStep(0);previewCard();VegaUI.clean(modal);
@@ -98,7 +106,7 @@ async function persist(){
 }
 async function saveDraft(){
  if(modal.dataset.busy==='true')return;
- if(publicationPending)throw new Error('Primero confirma la publicación con Reintentar o revisa el catálogo antes de cambiar este borrador.');
+ if(publicationPending)throw new Error('Primero usa Reintentar publicación o revisa el catálogo antes de cambiar este borrador.');
  busy(true);
  try{const data=await persist();if(data){el('editor-estado').textContent='Borrador guardado. La versión publicada no cambió.';VegaUI.toast('Borrador guardado.');}}
  finally{busy(false);}
@@ -115,7 +123,15 @@ window.guardarServicio=async function(){
  await verificarOperacion(supabaseClient.rpc('vega_catalogo_publicar',{p_id:draft.id,p_version:draft.version}));
  if(run!==epoch||!adminAuthorized)return;
  delete modal.dataset.busy;VegaUI.clean(modal);cerrarModal('modal-servicio');editing=null;publicationPending=null;VegaUI.toast('Producto publicado.');await load();
- }catch(e){if(run===epoch)el('editor-estado').textContent='No pudimos confirmar la publicación. Tu borrador se conserva. '+(e.message||'Reintenta.');throw e;}
+ }catch(e){
+ if(run===epoch){
+ const rejected=/^(22|23|40|P0|42501$)/.test(e.code||'');
+ if(rejected)publicationPending=null;
+ save.textContent=publicationPending?'Reintentar publicación':'Revisar y publicar';
+ el('editor-estado').textContent=(rejected?'No se publicó. Corrige lo indicado; tu borrador se conserva. ':'No pudimos confirmar la publicación. Tu borrador se conserva. ')+(e.message||'Reintenta.');
+ }
+ throw e;
+ }
  finally{busy(false);}
 };
 window.subirImagen=async function(input){if(modal.dataset.busy==='true')return;busy(true);try{await originals.upload(input);imageMarker.value=el('serv-imagen-url').value;previewCard();}finally{busy(false);}};
@@ -125,7 +141,7 @@ plans.addEventListener('click',()=>queueMicrotask(previewCard));
 async function openDraft(draft){
  const p=draft.datos;
  originals.edit({...p,id:draft.producto_id||'',stock:p.stock_modo==='ilimitado'?null:p.stock,planes:p.planes||[]});
- publicationPending=null;editing=draft;stockTouched=!!p.stock_modificado;
+ publicationPending=null;save.textContent='Revisar y publicar';editing=draft;stockTouched=!!p.stock_modificado;
  el('serv-destacado').checked=!!p.destacado;el('serv-posicion').value=p.posicion??1000000;
  el('serv-promo-programada').checked=!!p.promo_programada;togglePromoInput();
  el('titulo-modal-servicio').textContent='Continuar borrador';el('editor-estado').textContent='Borrador guardado; aún no está publicado.';

@@ -11,7 +11,17 @@ La web principal y la base de producción no se modifican al crear esta rama. An
 3. Aplicar primero la migración generada por CLI y verificada en CI, y luego el frontend.
 4. Comprobar propietario/visitante/cliente, conservación de datos y carga de la web publicada.
 
-La rama incluye un flujo de pruebas sin credenciales de producción. El entorno de trabajo local dejó de estar disponible durante la implementación. GitHub Actions ejecuta las pruebas con datos sintéticos.
+La rama incluye un flujo de pruebas sin credenciales de producción. El entorno local se recuperó y ejecuta las mismas pruebas que GitHub Actions, con datos sintéticos.
+
+## Validación del 26 de septiembre de 2026
+
+- 70 pruebas locales aprobadas: permisos, enlaces privados, stock, ampliaciones, borradores, publicación repetida, errores de conexión, corrección de datos rechazados, paginación, respaldo cifrado, IA y navegación por teclado.
+- Paginación verificada con más de 1.000 fichas sintéticas. Esta comprobación no equivale a una prueba de usuarios concurrentes.
+- La revisión visual sigue pendiente: el navegador de revisión rechazó la apertura de archivos locales por su política de acceso. No se ha certificado el diseño en computadora ni en celular.
+- La consulta de migraciones de producción confirma que `catalogue_workspace` todavía no está aplicada. No se modificaron datos reales durante estas pruebas.
+- El asesor de seguridad de la base actual informa que la protección frente a contraseñas filtradas está desactivada. [Referencia oficial de Supabase](https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection). Este resultado corresponde a la base actual, no certifica la migración pendiente ni sustituye una auditoría.
+
+El resultado de ejecución de GitHub Actions para cada revisión se encuentra en el PR. Antes de publicar, usar siempre el resultado del último commit.
 
 ## Reglas
 
@@ -19,6 +29,7 @@ La rama incluye un flujo de pruebas sin credenciales de producción. El entorno 
 - Publicar bloquea la fila, compara la versión editorial y, si se tocó stock, su versión.
 - El stock no editado conserva ventas concurrentes.
 - Repetir una publicación confirmada no duplica el producto.
+- Si la conexión se corta, Reintentar publicación reutiliza la misma operación. Si el servidor rechaza un dato, el editor permite corregirlo y volver a publicar.
 - Duplicar comienza un producto oculto sin copiar ventas.
 - Los planes, las imágenes existentes y la duración real de los servicios se conservan.
 - Disponible y destacado primero; posición menor antes; agotados al final.

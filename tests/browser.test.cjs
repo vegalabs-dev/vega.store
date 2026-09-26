@@ -477,8 +477,42 @@ test('uncertain publication retries the same operation without creating another 
  let attempt=0;rpcHandlers.vega_catalogo_publicar=()=>++attempt===1?Promise.reject(new Error('Network lost')):{data:{id:70,repetida:true},error:null};
  rpcHandlers.vega_catalogo_pagina=()=>({data:{version:2,items:[],total:0,drafts:[],draft_total:0},error:null});
  await assert.rejects(w.guardarServicio(),/Network lost/);
+ assert.equal(w.document.getElementById('btn-guardar-servicio').textContent,'Reintentar publicación');
  await w.guardarServicio();
  assert.equal(calls.filter(c=>c.rpc==='vega_catalogo_borrador').length,1);
  const publications=calls.filter(c=>c.rpc==='vega_catalogo_publicar');
  assert.equal(publications.length,2);assert.equal(publications[0].args.p_id,publications[1].args.p_id);
+});
+
+test('a rejected publication remains editable and corrected data can publish',async t=>{
+ const {w,dom,rpcHandlers,calls}=await page('admin');t.after(()=>dom.window.close());
+ for(const file of ['panel-v2.js','panel-datos-v2.js','catalogo-admin-v2.js'])vm.runInContext(readFileSync(file,'utf8'),dom.getInternalVMContext(),{filename:file});
+ await w.mostrarPanel();w.abrirModalServicio();
+ const name=w.document.getElementById('serv-nombre');
+ name.value='';w.document.querySelector('.plan-precio').value='12';
+ rpcHandlers.vega_catalogo_borrador=args=>({data:{id:args.p_id,version:args.p_esperada+1,producto_id:null,producto_version:null,stock_version:null,datos:args.p_datos},error:null});
+ rpcHandlers.vega_catalogo_publicar=()=>({error:{code:'P0001',message:'Completa el nombre'}});
+ await assert.rejects(w.guardarServicio(),/Completa el nombre/);
+ assert.equal(w.document.getElementById('btn-guardar-servicio').textContent,'Revisar y publicar');
+ name.value='Corrected fixture';
+ rpcHandlers.vega_catalogo_publicar=()=>({data:{id:71},error:null});
+ rpcHandlers.vega_catalogo_pagina=()=>({data:{version:2,items:[],total:0,drafts:[],draft_total:0},error:null});
+ await w.guardarServicio();
+ const saves=calls.filter(c=>c.rpc==='vega_catalogo_borrador');
+ assert.equal(saves.length,2);assert.equal(saves[1].args.p_datos.nombre,'Corrected fixture');
+ assert.equal(saves[0].args.p_id,saves[1].args.p_id);
+});
+
+test('editor steps expose labels and support arrow-key navigation',async t=>{
+ const {w,dom}=await page('admin');t.after(()=>dom.window.close());
+ for(const file of ['panel-v2.js','panel-datos-v2.js','catalogo-admin-v2.js'])vm.runInContext(readFileSync(file,'utf8'),dom.getInternalVMContext(),{filename:file});
+ w.abrirModalServicio();
+ const tabs=[...w.document.querySelectorAll('.editor-nav [role=tab]')];
+ assert.equal(tabs.filter(b=>b.tabIndex===0).length,1);
+ tabs[0].dispatchEvent(new w.KeyboardEvent('keydown',{key:'ArrowRight',bubbles:true}));
+ assert.equal(tabs[1].getAttribute('aria-selected'),'true');
+ assert.equal(w.document.getElementById('editor-group-1').hidden,false);
+ tabs[1].dispatchEvent(new w.KeyboardEvent('keydown',{key:'End',bubbles:true}));
+ assert.equal(tabs[3].getAttribute('aria-selected'),'true');
+ assert.ok(w.document.querySelector('label[for="serv-nombre"]'));
 });
