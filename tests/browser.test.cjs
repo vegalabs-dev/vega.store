@@ -404,6 +404,30 @@ test('phase 2 navigation retains all management screens and labels the editor gr
  assert.equal(w.document.getElementById('titulo-modal-servicio').textContent,'Nuevo producto');
 });
 
+test('home expiry shortcuts reset stale filters and pages before loading services',async t=>{
+ const {w,dom,calls,rpcHandlers}=await page('admin');t.after(()=>dom.window.close());
+ for(const file of ['panel-v2.js','panel-datos-v2.js'])vm.runInContext(readFileSync(file,'utf8'),dom.getInternalVMContext(),{filename:file});
+ rpcHandlers.vega_panel_pagina=()=>({data:{version:2,profiles:[],orders:[],notices:[],catalog:[{nombre:'Canva'}],total:25,stats:{}},error:null});
+ await w.mostrarPanel();w.switchTab('ventas');await tick();
+ w.document.getElementById('page-next-ventas').click();await tick();
+ assert.equal(calls.filter(c=>c.rpc==='vega_panel_pagina').at(-1).args.p_pagina,1);
+ w.document.getElementById('buscador-clientes').value='cliente anterior';
+ w.document.getElementById('filtro-servicio').value='Canva';
+ w.switchTab('inicio');await tick();
+ w.document.getElementById('home-expiring-services').click();await tick();
+ const args=calls.filter(c=>c.rpc==='vega_panel_pagina').at(-1).args;
+ assert.equal(args.p_vista,'ventas');assert.equal(args.p_orden,'VENCIMIENTO');
+ assert.equal(args.p_pagina,0);assert.equal(args.p_busqueda,'');assert.equal(args.p_servicio,'ALL');
+ assert.equal(w.document.getElementById('filtro-orden').value,'VENCIMIENTO');
+ assert.ok(w.document.getElementById('tab-ventas').classList.contains('active'));
+ assert.equal(w.document.querySelector('.panel-subnav').hidden,false);
+ w.switchTab('inicio');await tick();
+ w.document.getElementById('home-expired-services').click();await new Promise(r=>setTimeout(r,300));
+ const expired=calls.filter(c=>c.rpc==='vega_panel_pagina').at(-1).args;
+ assert.equal(expired.p_vista,'seguimiento');assert.equal(expired.p_seguimiento,'vencidos');
+ assert.equal(w.document.getElementById('seguimiento-filtro').value,'vencidos');
+});
+
 test('phase 2 saves private drafts before publishing and preserves failed edits',async t=>{
  const {w,dom,rpcHandlers,calls}=await page('admin');t.after(()=>dom.window.close());
  for(const file of ['panel-v2.js','panel-datos-v2.js','catalogo-admin-v2.js'])vm.runInContext(readFileSync(file,'utf8'),dom.getInternalVMContext(),{filename:file});

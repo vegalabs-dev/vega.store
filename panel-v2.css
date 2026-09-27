@@ -1,8 +1,8 @@
 
 /* Phase 2: compact admin workspace and responsive product editor. */
-body.admin-v2{padding:24px 18px;background:#f5f5f9;color:#25273a}
-.admin-v2 #admin-section{max-width:1440px!important}
-.admin-v2 .panel-container{padding:0;border-radius:18px;overflow:hidden;box-shadow:0 10px 35px #29273c09}
+body.admin-v2{padding:24px 18px;background:#f5f5f9;color:#25273a;box-sizing:border-box}
+.admin-v2 #admin-section{width:100%;max-width:1680px!important;margin-inline:auto;min-width:0}
+.admin-v2 .panel-container{width:100%;max-width:none;box-sizing:border-box;padding:0;border-radius:18px;overflow:hidden;box-shadow:0 10px 35px #29273c09}
 .admin-v2 .header-panel{margin:0;padding:20px 26px;border-bottom:1px solid #e8e7ef;background:#fff}
 .admin-v2 .header-panel h1{font-size:24px;letter-spacing:-.8px}
 .admin-v2 .header-panel p{font-size:12px!important}
@@ -17,6 +17,11 @@ body.admin-v2{padding:24px 18px;background:#f5f5f9;color:#25273a}
 .panel-page-heading h2{font-size:23px;margin:0;color:var(--text-main);letter-spacing:-.6px}
 .panel-eyebrow{font-size:12px;color:var(--text-muted);margin:0 0 7px}
 .panel-note{padding:16px 18px;background:#f6f3ff;border-radius:12px;color:#5e5577;font-size:13px;line-height:1.6}
+.home-renewals{display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;padding:22px;margin:20px 0;border:1px solid #e4dcfa;border-radius:14px;background:#faf8ff}
+.home-renewals h3{margin:0 0 8px;font-size:18px}
+.home-renewals p{margin:0;color:var(--text-muted);font-size:14px;line-height:1.6;max-width:48ch}
+.home-renewals-actions{display:flex;gap:10px;flex-wrap:wrap}
+.home-renewals-actions button{min-height:44px;font-size:14px}
 .panel-subnav{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}
 .panel-subnav[hidden]{display:none}
 .panel-subnav .tab-btn{border:1px solid var(--border);font-size:13px;padding:10px 12px}
@@ -93,6 +98,9 @@ body.admin-v2{padding:24px 18px;background:#f5f5f9;color:#25273a}
  .admin-v2 .admin-nav{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}
  .admin-v2 .admin-nav .tab-btn{text-align:center;font-size:12px;padding:10px 5px}
  .admin-workspace{padding:18px 12px}
+ .home-renewals{padding:18px;gap:16px}
+ .home-renewals-actions{width:100%}
+ .home-renewals-actions button{flex:1 1 180px}
  .panel-page-heading h2{font-size:21px}
  .settings-sections{grid-template-columns:1fr}
  .admin-v2 .stats-container{grid-template-columns:1fr 1fr}

@@ -11,6 +11,14 @@ const button=(id,label,tab)=>{const b=document.createElement('button');b.id=id;b
 const home=document.createElement('section');home.id='tab-inicio';home.className='tab-content';
 home.innerHTML='<div class="panel-page-heading"><div><p class="panel-eyebrow">Tu espacio de trabajo</p><h2>Resumen de la tienda</h2></div><button class="btn-primary" onclick="registroManual()">+ Registrar venta</button></div>';
 home.append(panel.querySelector('.stats-container'),panel.querySelector('.attention-cards'));
+const renewals=document.createElement('section');renewals.className='home-renewals';
+renewals.setAttribute('aria-labelledby','home-renewals-title');
+renewals.innerHTML='<div><h3 id="home-renewals-title">Vigencias de clientes</h3><p>Revisa los servicios contratados por fecha de vencimiento y gestiona sus renovaciones.</p></div><div class="home-renewals-actions"><button id="home-expiring-services" type="button" class="btn-primary">Ver servicios por vencer</button><button id="home-expired-services" type="button" class="btn-gestionar">Ver vencidos</button></div>';
+renewals.querySelector('#home-expiring-services').onclick=()=>window.abrirServiciosPorVencer();
+renewals.querySelector('#home-expired-services').onclick=()=>{
+ byId('seguimiento-filtro').value='vencidos';verSeguimiento('vencidos');
+};
+home.append(renewals);
 const homeInfo=document.createElement('div');homeInfo.className='panel-note';
 homeInfo.textContent='Revisa solicitudes, servicios que vencen y disponibilidad. Los mensajes se preparan aquí y los envías tú desde WhatsApp.';
 home.append(homeInfo);

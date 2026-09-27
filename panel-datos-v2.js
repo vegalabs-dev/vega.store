@@ -87,6 +87,12 @@ window.filtrarClientes=()=>rendering?original.orders():search('ventas');
 window.renderizarSeguimiento=()=>rendering?original.followup():search('seguimiento');
 const switchPage=window.switchTab;
 window.switchTab=function(view){switchPage(view);if(view==='inicio')load(view).catch(mostrarErrorAdmin);};
+window.abrirServiciosPorVencer=function(){
+ clearTimeout(timer);pages.ventas=0;
+ el('buscador-clientes').value='';el('filtro-servicio').value='ALL';
+ el('filtro-orden').value='VENCIMIENTO';
+ window.switchTab('ventas');
+};
 async function detail(clientId=null,orderId=null){
  if(!adminAuthorized)throw new Error('Inicia sesión como administrador.');
  const session=epoch;
