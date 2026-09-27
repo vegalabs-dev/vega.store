@@ -19,10 +19,11 @@
     function inspect(text){
         if(typeof text!=='string'||encoder.encode(text).length>maxBytes)fail('La copia excede el tamaño admitido de 20 MB.');
         const data=parse(text);
-        if(!data||data.format!==format||data.version!==version||data.project!==project||data.schema_version!=='20260913204706')fail('Esta copia no corresponde a esta versión de VegaStore.');
-        if(!data.created_at||Number.isNaN(Date.parse(data.created_at))||!data.tables||Object.keys(data.tables).sort().join()!==[...names].sort().join())fail('La copia está incompleta.');
+        if(!data||data.format!==format||data.version!==version||data.project!==project||!['20260913204706','catalogue-v2'].includes(data.schema_version))fail('Esta copia no corresponde a esta versión de VegaStore.');
+        const tableNames=data.schema_version==='catalogue-v2'?[...names,'vega_catalogo_borradores']:names;
+        if(!data.created_at||Number.isNaN(Date.parse(data.created_at))||!data.tables||Object.keys(data.tables).sort().join()!==[...tableNames].sort().join())fail('La copia está incompleta.');
         const ids={};
-        for(const name of names){
+        for(const name of tableNames){
             const rows=data.tables[name];
             if(!Array.isArray(rows))fail('La copia está incompleta.');
             ids[name]=new Set();
@@ -32,7 +33,7 @@
                 if(name==='vega_avisos_manuales'){
                     if(!Number.isSafeInteger(row.pedido_id)||row.pedido_id<1||!/^\d{4}-\d{2}-\d{2}$/.test(row.fecha_fin)||row.tipo!=='vencimiento')fail('Hay avisos inválidos en la copia.');
                     id=[row.pedido_id,row.fecha_fin,row.tipo].join('|');
-                }else if(name==='vega_clientes'){
+                }else if(['vega_clientes','vega_catalogo_borradores'].includes(name)){
                     if(typeof id!=='string'||! /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id))fail('Hay fichas inválidas en la copia.');
                 }else if(!Number.isSafeInteger(id)||id<1)fail('Hay identificadores inválidos en la copia.');
                 if(ids[name].has(id))fail('La copia contiene registros repetidos.');
@@ -46,7 +47,11 @@
         for(const name of ['vega_movimientos','vega_avisos_manuales'])for(const row of data.tables[name]){
             if(!ids.usuarios_canva.has(row.pedido_id))fail('Falta un servicio contratado en la copia.');
         }
-        return {createdAt:data.created_at,counts:names.map((name,i)=>({name,label:labels[i],count:data.tables[name].length}))};
+        for(const row of data.tables.vega_catalogo_borradores||[]){
+            if(row.producto_id!=null&&!ids.servicios.has(row.producto_id))fail('Falta el producto de un borrador.');
+            if(row.resultado_id!=null&&!ids.servicios.has(row.resultado_id))fail('Falta el producto publicado de un borrador.');
+        }
+        return {createdAt:data.created_at,counts:tableNames.map((name,i)=>({name,label:labels[i]||'Borradores de catálogo',count:data.tables[name].length}))};
     }
     function base64(bytes){
         let binary='';for(let i=0;i<bytes.length;i+=8192)binary+=String.fromCharCode(...bytes.subarray(i,i+8192));

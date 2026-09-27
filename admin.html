@@ -199,8 +199,9 @@
         .info-box { background: #EFF6FF; border-left: 4px solid #3B82F6; padding: 15px 20px; border-radius: 0 12px 12px 0; margin-bottom: 20px; }
         .info-box p { margin: 0; color: #1E3A8A; font-size: 14px; line-height: 1.5; }
     </style>
-    <link rel="stylesheet" href="catalogo.css?v=20260913-compact1">
-    <link rel="stylesheet" href="interfaz.css?v=20260914-backup1">
+    <link rel="stylesheet" href="catalogo.css?v=20260926-phase2">
+    <link rel="stylesheet" href="interfaz.css?v=20260916-chat1">
+    <link rel="stylesheet" href="panel-v2.css?v=20260926-phase2">
 </head>
 <body>
 
@@ -458,11 +459,27 @@
         <div class="cliente-form-grid"><div class="input-group"><label for="manual-cantidad">Duración (0 = permanente)</label><input id="manual-cantidad" type="number" value="1" min="0" max="36500"></div><div class="input-group"><label for="manual-unidad">Unidad</label><select id="manual-unidad" class="filtro-select"><option value="meses">Meses</option><option value="dias">Días</option><option value="años">Años</option></select></div></div>
         <button id="manual-guardar" class="btn-primary" onclick="guardarRegistroManual()">Guardar servicio activo</button><p class="cliente-help">Después podrás revisar el mensaje de activación y enviarlo por WhatsApp.</p>
     </div></div>
-    <div id="modal-mensajes" class="modal"><div class="modal-content" style="max-width:650px;">
+    <div id="modal-mensajes" class="modal"><div class="modal-content message-composer">
         <button type="button" aria-label="Cerrar ventana" class="cerrar-modal" onclick="cerrarModal('modal-mensajes')">&times;</button>
         <h2>💬 Mensaje para el cliente</h2><p id="mensaje-cliente" class="cliente-help"></p>
         <div class="input-group"><label for="mensaje-atajo">Atajo de mensaje</label><select id="mensaje-atajo" class="filtro-select" onchange="prepararMensajeCliente()"><option value="enlace">Enlace de mis servicios</option><option value="activacion">Activación</option><option value="vencimiento">Recordatorio de vencimiento</option><option value="renovacion">Renovación</option><option value="ampliacion">Aviso de ampliación</option></select></div>
-        <div class="message-ai"><button id="mensaje-ia" class="btn-gestionar" onclick="redactarConIA()" disabled>Redactar con IA</button><span id="mensaje-ia-estado" class="cliente-help">IA pendiente de activar</span></div><label for="mensaje-texto">Revisa o ajusta el mensaje</label><textarea id="mensaje-texto" class="mensaje-editor" oninput="actualizarDestinosMensaje()"></textarea>
+        <div class="composer-grid">
+        <section class="composer-ai" aria-label="Chat de redacción">
+            <div class="ai-heading"><h3>Asistente de mensajes</h3><button type="button" class="btn-copiar" id="ia-nueva-conversacion">Nuevo chat</button></div>
+            <p id="mensaje-ia-estado" class="cliente-help" role="status">Comprobando IA…</p>
+            <div id="ia-conversacion" class="ai-conversation" role="log" aria-live="polite" aria-label="Conversación con el asistente"></div>
+            <div class="ai-shortcuts"><button type="button" data-ia-prompt="Hazlo más breve, sin perder la fecha ni el enlace.">Más corto</button><button type="button" data-ia-prompt="Usa un tono amable y hasta dos emojis.">Más cercano</button><button type="button" data-ia-prompt="Resalta lo importante con formato de WhatsApp.">Dar formato</button></div>
+            <form id="ia-formulario"><label for="ia-instruccion">¿Qué quieres cambiar?</label><textarea id="ia-instruccion" maxlength="800" rows="3" placeholder="Hazlo breve y amable. Resalta la fecha con negrita."></textarea><div class="ai-actions"><button id="ia-enviar" class="btn-primary" type="submit" disabled>Pedir ajuste</button><button id="ia-recordar" class="btn-gestionar" type="button" disabled>Recordar indicación</button></div></form>
+            <details class="ai-preferences"><summary>Estilo para futuros mensajes</summary><p class="cliente-help">Guarda tono, longitud y formato. Puedes editar o borrar el texto y guardar de nuevo. Cada cliente empieza un chat nuevo.</p><label for="ia-estilo">Tus preferencias</label><textarea id="ia-estilo" maxlength="2000" rows="4" placeholder="Mensajes cortos, tono amable y pocos emojis."></textarea><div class="ai-actions"><button id="ia-guardar-estilo" class="btn-gestionar" type="button" disabled>Guardar estilo</button><button id="ia-recargar-estilo" class="btn-copiar" type="button">Recargar</button></div><p id="ia-estilo-estado" class="cliente-help" role="status"></p></details>
+            <p class="cliente-help ai-privacy">Las instrucciones y el estilo guardado se envían a Gemini. Evita escribir datos privados. Los contactos y el enlace de esta ficha se sustituyen por marcadores al redactar.</p>
+            <details id="ia-configuracion" hidden><summary>Activar Gemini</summary><p class="cliente-help">Guarda una clave nueva como GEMINI_API_KEY en los secretos de Edge Functions de Supabase. Después vuelve a abrir esta ventana. No pegues la clave en el chat ni en GitHub.</p></details>
+        </section>
+        <section class="composer-draft" aria-label="Mensaje para WhatsApp">
+            <label for="mensaje-texto">Mensaje que vas a enviar</label><div class="wa-toolbar" aria-label="Formato de WhatsApp"><button type="button" data-wa-format="*" aria-label="Aplicar negrita"><strong>B</strong></button><button type="button" data-wa-format="_" aria-label="Aplicar cursiva"><em>I</em></button><button type="button" data-wa-format="~" aria-label="Aplicar tachado"><s>S</s></button><button type="button" data-wa-format="quote" aria-label="Aplicar cita">&gt; Cita</button><button type="button" data-wa-format="`" aria-label="Aplicar código">Código</button></div>
+            <textarea id="mensaje-texto" class="mensaje-editor" oninput="actualizarDestinosMensaje()"></textarea>
+            <details class="wa-preview-box"><summary>Vista previa aproximada de WhatsApp</summary><div id="mensaje-vista-previa" class="wa-preview"></div></details>
+            <p class="cliente-help">La IA propone; «Usar este mensaje» aplica el cambio. Los stickers se eligen dentro de WhatsApp.</p>
+        </section></div>
         <div class="cliente-actions"><a id="mensaje-whatsapp" class="btn-primary" target="_blank" rel="noopener noreferrer">Abrir WhatsApp</a><a id="mensaje-elegir-chat" class="btn-gestionar" target="_blank" rel="noopener noreferrer">Elegir otro chat</a><button class="btn-gestionar" onclick="copiarMensajeCliente()">Copiar mensaje</button></div>
         <p id="mensaje-destino" class="cliente-help"></p><p id="mensaje-copiado" class="cliente-status" role="status"></p>
         <p class="cliente-help">El mensaje incluye su enlace privado. Comprueba el destinatario y pulsa Enviar dentro de WhatsApp.</p>
@@ -498,17 +515,22 @@
         <div id="respaldo-resultado" class="backup-result" role="status" aria-live="polite"></div>
         <p class="cliente-help backup-scope">Incluye los enlaces privados de tus clientes. Conserva el archivo fuera de GitHub. Guarda las imágenes y la configuración de Supabase por separado; esta copia conserva las direcciones de las imágenes. La restauración de datos requiere revisión antes de aplicarse.</p>
     </div></div>
-    <script src="catalogo.js?v=20260913-stock1"></script>
+    <script src="catalogo.js?v=20260926-phase2"></script>
     <script src="vigencia.js?v=20260913-management1"></script>
-    <script src="interfaz.js?v=20260913-management1"></script>
+    <script src="interfaz.js?v=20260916-chat1"></script>
     <script src="security.js?v=20260913-management1"></script>
-    <script src="clientes.js?v=20260913-management1"></script>
-    <script src="admin.js?v=20260914-backup1"></script>
+    <script src="mensaje-formato.js?v=20260916-chat1"></script>
+    <script src="clientes.js?v=20260916-chat1"></script>
+    <script src="admin.js?v=20260926-phase2"></script>
 
     <script src="historial.js?v=20260913-management1"></script>
     <script src="gestion.js?v=20260913-management1"></script>
-    <script src="respaldo.js?v=20260914-backup1"></script>
+    <script src="respaldo.js?v=20260926-phase2"></script>
     <script src="respaldo-panel.js?v=20260914-backup1"></script>
+    <script src="chat-mensajes.js?v=20260916-chat1"></script>
+    <script src="panel-v2.js?v=20260926-phase2"></script>
+    <script src="panel-datos-v2.js?v=20260926-phase2"></script>
+    <script src="catalogo-admin-v2.js?v=20260926-phase2"></script>
     <script src="ventanas.js?v=20260913-management1"></script>
 </body>
 </html>

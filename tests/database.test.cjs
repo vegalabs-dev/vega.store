@@ -397,4 +397,130 @@ test('PostgreSQL enforces owner permissions, private links and restricted orders
     await db.exec('drop schema restore_check cascade');
   });
 
+  await db.exec('reset role');
+  const styleMigration=readdirSync('supabase/migrations').find(f=>f.endsWith('_message_style_preferences.sql'));
+  await db.exec(readFileSync('supabase/migrations/'+styleMigration,'utf8'));
+  await t.test('style preferences are private, persistent, clearable and reject stale updates',async()=>{
+    await role('anon');await denied('select public.vega_estilo_mensajes()');
+    await role('authenticated',outsider);await denied("select public.vega_estilo_mensajes('fake',0)");
+    assert.equal((await rows('select * from vega_private.ia_preferencias')).length,0);
+    await role('authenticated',owner);
+    assert.deepEqual((await rows('select public.vega_estilo_mensajes() prefs'))[0].prefs,{estilo:'',version:0});
+    const save=(await rows("select public.vega_estilo_mensajes('Breve y amable',0) prefs"))[0].prefs;
+    assert.deepEqual(save,{estilo:'Breve y amable',version:1});
+    await assert.rejects(db.query("select public.vega_estilo_mensajes('Stale',0)"),e=>e.code==='40001');
+    await assert.rejects(db.query("select public.vega_estilo_mensajes(repeat('x',2001),1)"),/2000/);
+    await denied(`update vega_private.ia_preferencias set actor='${outsider}'`);
+    await role('authenticated',outsider);assert.equal((await rows('select * from vega_private.ia_preferencias')).length,0);
+    await role('authenticated',owner);assert.equal((await rows('select public.vega_estilo_mensajes() prefs'))[0].prefs.estilo,'Breve y amable');
+    assert.deepEqual((await rows("select public.vega_estilo_mensajes('',1) prefs"))[0].prefs,{estilo:'',version:2});
+  });
+
+
+  await db.exec('reset role');
+  const catalogueChange=readdirSync('supabase/migrations').find(f=>f.endsWith('_catalogue_workspace.sql'));
+  await db.exec(readFileSync(catalogueChange?'supabase/migrations/'+catalogueChange:'supabase/changes/catalogue_workspace.sql','utf8'));
+  const draftId='10000000-0000-4000-8000-000000000001';
+  const newData={nombre:'Catalogue fixture',categoria:'Diseño',tipo_ingreso:'correo',geo_tipo:'todos',geo_paises:'',
+    imagen_url:null,etiqueta:'',caracteristicas:'One\nTwo',stock_modo:'limitado',stock:'5',stock_modificado:true,agotado:false,
+    activo:true,destacado:true,posicion:2,promocion_inicio:null,promocion_fin:null,
+    planes:[{cantidad:'1',unidad:'meses',precio:'12',promo:null},{cantidad:'1',unidad:'años',precio:'80',promo:null}]};
+  const saveDraft=(id,product,data,version,base,stock)=>db.query('select public.vega_catalogo_borrador($1,$2,$3,$4,$5,$6) value',[id,product,JSON.stringify(data),version,base,stock]).then(r=>r.rows[0].value);
+  const publish=(id,version)=>db.query('select public.vega_catalogo_publicar($1,$2) value',[id,version]).then(r=>r.rows[0].value);
+  let createdId;
+  await t.test('catalogue drafts and management search reject guests and unrelated users',async()=>{
+    await role('anon');await denied('select * from public.vega_catalogo_borradores');
+    await denied('select public.vega_catalogo_pagina()');
+    await assert.rejects(saveDraft(draftId,null,newData,0,null,null),e=>e.code==='42501');
+    await role('authenticated',outsider);
+    assert.equal((await rows('select * from public.vega_catalogo_borradores')).length,0);
+    await denied('select public.vega_catalogo_pagina()');
+    await assert.rejects(publish(draftId,1),e=>e.code==='42501');
+  });
+  await t.test('draft creation is private and retry-safe; publishing creates one product',async()=>{
+    await role('authenticated',owner);
+    const before=(await rows('select count(*)::int n from public.servicios'))[0].n;
+    const d=await saveDraft(draftId,null,newData,0,null,null);assert.equal(d.version,1);
+    await saveDraft(draftId,null,newData,0,null,null);
+    assert.equal((await rows('select count(*)::int n from public.servicios'))[0].n,before);
+    const result=await publish(draftId,1);createdId=result.id;
+    const retry=await publish(draftId,1);assert.equal(retry.id,createdId);assert.equal(retry.repetida,true);
+    const product=(await rows('select * from public.servicios where id='+createdId))[0];
+    assert.equal(product.planes.length,2);assert.equal(product.stock,5);assert.equal(product.destacado,true);
+    assert.equal((await rows('select count(*)::int n from public.servicios'))[0].n,before+1);
+    await role('anon');assert.equal((await rows('select id from public.servicios where id='+createdId)).length,1);
+  });
+  await t.test('catalogue publication preserves new stock if the editor did not touch stock',async()=>{
+    await role('authenticated',owner);
+    const p=(await rows('select * from public.servicios where id='+createdId))[0];
+    const id='10000000-0000-4000-8000-000000000002';
+    await saveDraft(id,createdId,{...newData,nombre:'Updated title',stock_modificado:false},0,p.catalogo_version,p.stock_version);
+    await db.query('update public.servicios set stock=stock-1 where id=$1',[createdId]);
+    await publish(id,1);
+    const result=(await rows('select * from public.servicios where id='+createdId))[0];
+    assert.equal(result.nombre,'Updated title');assert.equal(result.stock,4);
+  });
+  await t.test('concurrent product edits and stock edits reject stale publication and retain drafts',async()=>{
+    await role('authenticated',owner);
+    let p=(await rows('select * from public.servicios where id='+createdId))[0];
+    const id='10000000-0000-4000-8000-000000000003';
+    await saveDraft(id,createdId,newData,0,p.catalogo_version,p.stock_version);
+    await db.query('update public.servicios set stock=stock-1 where id=$1',[createdId]);
+    await assert.rejects(publish(id,1),e=>e.code==='40001');
+    assert.equal((await rows("select publicado from public.vega_catalogo_borradores where id='"+id+"'"))[0].publicado,false);
+    p=(await rows('select * from public.servicios where id='+createdId))[0];
+    const id2='10000000-0000-4000-8000-000000000004';
+    await saveDraft(id2,createdId,{...newData,stock_modificado:false},0,p.catalogo_version,p.stock_version);
+    await db.query('update public.servicios set nombre=$1 where id=$2',['Newer title',createdId]);
+    await assert.rejects(publish(id2,1),e=>e.code==='40001');
+    assert.equal((await rows('select nombre from public.servicios where id='+createdId))[0].nombre,'Newer title');
+  });
+  await t.test('invalid plans cannot publish and partial drafts can still be saved',async()=>{
+    await role('authenticated',owner);
+    const id='10000000-0000-4000-8000-000000000005';
+    const d=await saveDraft(id,null,{...newData,nombre:'',planes:[{cantidad:'',unidad:'meses',precio:''}]},0,null,null);
+    assert.equal(d.version,1);await assert.rejects(publish(id,1));
+    await assert.rejects(saveDraft(id,null,newData,0,null,null),e=>e.code==='40001');
+  });
+  await t.test('catalogue search paginates consistently and separates private drafts',async()=>{
+    await role('authenticated',owner);
+    const response=(await db.query("select public.vega_catalogo_pagina('', 'todos',0,2) value")).rows[0].value;
+    assert.equal(response.version,2);assert.equal(response.items.length,2);assert.ok(response.total>2);
+    const next=(await db.query("select public.vega_catalogo_pagina('', 'todos',1,2) value")).rows[0].value;
+    assert.equal(response.items.some(a=>next.items.some(b=>a.id===b.id)),false);
+    const draftPage=(await db.query("select public.vega_catalogo_pagina('', 'borradores',0,2) value")).rows[0].value;
+    assert.equal(draftPage.items.length,0);assert.equal(draftPage.drafts.length,2);assert.ok(draftPage.draft_total>=3);
+    await assert.rejects(db.query("select public.vega_catalogo_pagina('', 'todos',-1,2)"));
+  });
+  await t.test('new backups include catalogue drafts and continue supporting earlier backups',async()=>{
+    await role('authenticated',owner);
+    const backup=require('../respaldo.js');
+    const raw=(await rows('select public.vega_exportar_datos() value'))[0].value;
+    const info=backup.inspect(raw);
+    assert.ok(info.counts.some(x=>x.name==='vega_catalogo_borradores'&&x.count>=5));
+    const file=await backup.encrypt(raw,'Synthetic catalogue password 123');
+    assert.equal((await backup.decrypt(file,'Synthetic catalogue password 123')).text,raw);
+    const broken=JSON.parse(raw);broken.tables.vega_catalogo_borradores[0].producto_id=999999999;
+    assert.throws(()=>backup.inspect(JSON.stringify(broken)),/producto/);
+  });
+
+  await t.test('management pagination returns exact global counts and bounded profile pages above 1000 rows',async()=>{
+    await role('authenticated',owner);
+    const first=(await rows("select public.vega_panel_pagina('fichas','','ALL','RECIENTES',0,12,'manana') value"))[0].value;
+    const second=(await rows("select public.vega_panel_pagina('fichas','','ALL','RECIENTES',1,12,'manana') value"))[0].value;
+    assert.ok(first.total>1000);assert.equal(first.profiles.length,12);assert.equal(second.profiles.length,12);
+    assert.equal(first.profiles.some(a=>second.profiles.some(b=>a.id===b.id)),false);
+    const expected=(await rows("select count(*)::int n from public.usuarios_canva where estado='Pendiente'"))[0].n;
+    assert.equal(first.stats.pendientes,expected);
+    const search=(await rows("select public.vega_panel_buscar_fichas('Bulk fixture 1005') value"))[0].value;
+    assert.equal(search.length,1);
+    const detail=(await db.query('select public.vega_panel_detalle($1,null) value',[search[0].id])).rows[0].value;
+    assert.equal(detail.profiles[0].id,search[0].id);
+  });
+  await t.test('management search, details and pages deny non-owners',async()=>{
+    await role('anon');await denied('select public.vega_panel_pagina()');await denied('select public.vega_panel_buscar_fichas()');
+    await role('authenticated',outsider);await denied('select public.vega_panel_pagina()');
+    await denied('select public.vega_panel_detalle(null,1)');await denied('select public.vega_panel_buscar_fichas()');
+  });
+
 });

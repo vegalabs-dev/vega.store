@@ -147,3 +147,5 @@ button:disabled { opacity: .6; cursor: not-allowed !important; transform: none !
     #modal-panel-cliente .modal-content { padding: 22px 18px !important; }
 }
 @media(prefers-reduced-motion:reduce) { .offer-track { transition: none; } }
+
+.product-media{position:relative;overflow:hidden}.catalogue-sold-out-seal{position:absolute;left:0;right:0;top:50%;transform:translateY(-50%);padding:7px 2px;background:#202434d9;color:#fff;font-size:11px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;pointer-events:none}

@@ -13,7 +13,7 @@ const service = {id:1,nombre:attack,categoria:attack,etiqueta:attack,caracterist
 async function page(kind, {allowed=true, code=null}={}) {
   const html = readFileSync(kind === 'admin' ? 'admin.html' : 'index.html','utf8').replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi,'');
   const dom = new JSDOM(html, {url:'https://vegalabs-dev.github.io/vega.store/' + (kind==='admin'?'admin.html':'') + (code?'#acceso='+code:''),runScripts:'outside-only'});
-  const w = dom.window, calls = [], alerts = [], authCalls = [], rpcHandlers = {}, intervals = [];
+  const w = dom.window, calls = [], alerts = [], authCalls = [], rpcHandlers = {}, functionHandlers = {}, intervals = [];
   const originalInterval=w.setInterval.bind(w);w.setInterval=(fn,ms)=>{intervals.push({fn,ms});return originalInterval(fn,ms);};
   Object.defineProperty(w,'crypto',{value:webcrypto}); w.TextEncoder = TextEncoder; w.TextDecoder = TextDecoder;
   w.alert=x=>alerts.push(x); w.confirm=()=>true; w.open=()=>null;
@@ -24,7 +24,8 @@ async function page(kind, {allowed=true, code=null}={}) {
   w.supabase={createClient:(url,key,options={})=>({
     auth:{getSession:async()=>({data:{session:null}}),onAuthStateChange:()=>{},getUser:async()=>({data:{user:{id:'fixture'}}}),
       signInWithPassword:async()=>({error:null}),signOut:async()=>{authCalls.push('signOut');}},
-    rpc:async(name,args)=>{authCalls.push(name); calls.push({rpc:name,args}); return rpcHandlers[name] ? rpcHandlers[name](args) : {data:allowed,error:null};},
+    rpc:async(name,args)=>{authCalls.push(name); calls.push({rpc:name,args}); return rpcHandlers[name] ? rpcHandlers[name](args) : name==='vega_panel_pagina' ? {data:{version:2,profiles:[],orders:[],notices:[],catalog:data.servicios,total:0,stats:{}},error:null} : {data:allowed,error:null};},
+    functions:{invoke:async(name,args)=>{calls.push({fn:name,body:args.body});return functionHandlers[name]?functionHandlers[name](args.body):{data:{enabled:false},error:null};}},
     from(table){
       const call={table,options,op:'select',filters:[]};calls.push(call);
       const query={
@@ -43,11 +44,11 @@ async function page(kind, {allowed=true, code=null}={}) {
       };return query;
     }
   })};
-  for (const file of (kind==='admin' ? ['catalogo.js','vigencia.js','interfaz.js','security.js','clientes.js','admin.js','historial.js','gestion.js','respaldo.js','respaldo-panel.js','ventanas.js'] : ['catalogo.js','vigencia.js','interfaz.js','security.js','main.js','historial.js','ventanas.js']))
+  for (const file of (kind==='admin' ? ['catalogo.js','vigencia.js','interfaz.js','security.js','mensaje-formato.js','clientes.js','admin.js','historial.js','gestion.js','respaldo.js','respaldo-panel.js','chat-mensajes.js','ventanas.js'] : ['catalogo.js','vigencia.js','interfaz.js','security.js','main.js','historial.js','ventanas.js']))
     vm.runInContext(readFileSync(file,'utf8'),dom.getInternalVMContext(),{filename:file});
   w.VegaUI.confirm=async()=>w.confirm();w.VegaUI.toast=x=>alerts.push(x);
   await tick();
-  return {w,dom,calls,alerts,authCalls,data,rpcHandlers,intervals};
+  return {w,dom,calls,alerts,authCalls,data,rpcHandlers,functionHandlers,intervals};
 }
 
 test('private code uses cryptographic entropy, SHA-256 and a fragment removed on entry', async t=>{
@@ -343,4 +344,175 @@ test('backup form never sends passwords, exports plaintext or downloads after lo
   w.dispatchEvent(new w.Event('vega:logout'));resolve({data:'not returned to a signed-out user',error:null});await tick();
   assert.equal(downloads,0);assert.equal(byId('respaldo-clave').value,'');assert.equal(byId('respaldo-resultado').textContent,'');
   assert.equal(JSON.stringify(calls).includes(pass),false);
+});
+
+
+test('AI chat protects customer fields, previews safely and applies only after review',async t=>{
+  const {w,dom,data,rpcHandlers,functionHandlers,calls}=await page('admin');t.after(()=>dom.window.close());
+  const code='c'.repeat(48),customer='Private Customer';
+  data.vega_clientes=[{id:'00000000-0000-4000-8000-000000000001',nombre:customer,telefono:'+51999999999',codigo_privado:code}];
+  data.usuarios_canva=[{id:1,cliente_id:data.vega_clientes[0].id,servicio:'Canva Pro',estado:'Activo',meses:1,fecha_inicio:'2026-09-01',fecha_fin:'2026-10-01'}];
+  rpcHandlers.vega_estilo_mensajes=()=>({data:{estilo:'Breve y amable',version:1}});
+  let version=1;functionHandlers['vega-redactar']=body=>({data:body.action==='estado'?{enabled:true}:{respuesta:'Listo para revisar.',mensaje:'*Propuesta* '+version+'\n'+body.borrador,sticker:'gracias'}});
+  await w.mostrarPanel();await w.abrirMensajesCliente(1,'vencimiento');await tick();
+  w.confirm=()=>false;assert.equal(await w.VegaUI.canClose(w.document.getElementById('modal-mensajes')),true);
+  const editor=w.document.getElementById('mensaje-texto'),original=editor.value,form=w.document.getElementById('ia-formulario'),input=w.document.getElementById('ia-instruccion');
+  input.value='Más breve y amable';form.dispatchEvent(new w.Event('submit',{cancelable:true}));await tick();
+  const call=calls.find(c=>c.fn&&c.body.action==='chat');assert.ok(call);assert.doesNotMatch(JSON.stringify(call.body),new RegExp(code+'|Private Customer|51999999999'));
+  assert.match(call.body.borrador,/\[\[ENLACE_PRIVADO\]\]/);assert.equal(editor.value,original);
+  w.document.querySelector('[data-apply]').click();assert.match(editor.value,/Propuesta/);assert.ok(editor.value.includes(code));
+  input.value='Otro ajuste';version=2;form.dispatchEvent(new w.Event('submit',{cancelable:true}));await tick();
+  const candidate=[...w.document.querySelectorAll('[data-apply]')].at(-1);editor.value='Manual edit';candidate.click();assert.equal(editor.value,'Manual edit');
+  assert.ok(w.document.querySelector('.sticker-tip').textContent.includes('dentro de WhatsApp'));
+});
+
+test('style is saved explicitly, reloads across drafts and late chat responses cannot cross customers',async t=>{
+  const {w,dom,data,rpcHandlers,functionHandlers,calls}=await page('admin');t.after(()=>dom.window.close());
+  data.vega_clientes=[{id:'00000000-0000-4000-8000-000000000001',nombre:'Fixture',codigo_privado:'d'.repeat(48)}];
+  data.usuarios_canva=[{id:1,cliente_id:data.vega_clientes[0].id,servicio:'Test',estado:'Activo',meses:1}];
+  let style={estilo:'',version:0},resolve;
+  rpcHandlers.vega_estilo_mensajes=args=>{if(args?.p_estilo!==undefined)style={estilo:args.p_estilo,version:style.version+1};return {data:style};};
+  functionHandlers['vega-redactar']=body=>body.action==='estado'?{data:{enabled:true}}:new Promise(r=>resolve=r);
+  await w.mostrarPanel();await w.abrirMensajesCliente(1);await tick();
+  const input=w.document.getElementById('ia-instruccion');input.value='Usa pocos emojis';w.document.getElementById('ia-recordar').click();await tick();assert.equal(style.estilo,'Usa pocos emojis');
+  w.document.getElementById('ia-formulario').dispatchEvent(new w.Event('submit',{cancelable:true}));await tick();
+  w.prepararMensajeCliente();resolve({data:{respuesta:'Stale reply',mensaje:'Wrong customer',sticker:'ninguno'}});await tick();
+  assert.doesNotMatch(w.document.getElementById('ia-conversacion').textContent,/Stale reply|Wrong customer/);
+  await w.comprobarIA();await tick();assert.equal(w.document.getElementById('ia-estilo').value,'Usa pocos emojis');
+  w.document.getElementById('ia-estilo').value='';w.document.getElementById('ia-guardar-estilo').click();await tick();assert.equal(style.estilo,'');
+  assert.equal(calls.some(c=>c.table&&['usuarios_canva','vega_clientes'].includes(c.table)&&c.op!=='select'),false);
+  let loaded;rpcHandlers.vega_estilo_mensajes=()=>new Promise(r=>loaded=r);
+  await w.comprobarIA();w.VegaChat.reset();loaded({data:{estilo:'Persistent style',version:4}});await tick();
+  assert.equal(w.document.getElementById('ia-estilo').value,'Persistent style');
+  rpcHandlers.vega_estilo_mensajes=()=>({error:{message:'temporary failure'}});
+  w.document.getElementById('ia-recargar-estilo').click();await tick();
+  assert.equal(w.document.getElementById('ia-recargar-estilo').disabled,false);
+  w.dispatchEvent(new w.Event('vega:logout'));assert.equal(w.document.getElementById('ia-estilo').value,'');assert.equal(w.document.getElementById('ia-conversacion').textContent,'');
+});
+
+
+test('phase 2 navigation retains all management screens and labels the editor groups',async t=>{
+ const {w,dom}=await page('admin');t.after(()=>dom.window.close());
+ for(const file of ['panel-v2.js','panel-datos-v2.js','catalogo-admin-v2.js'])vm.runInContext(readFileSync(file,'utf8'),dom.getInternalVMContext(),{filename:file});
+ assert.equal(w.document.querySelectorAll('.admin-nav .tab-btn').length,6);
+ for(const id of ['tab-ventas','tab-fichas','tab-solicitudes','tab-papelera','tab-seguimiento','tab-catalogo'])assert.ok(w.document.getElementById(id));
+ assert.equal(w.document.querySelectorAll('.editor-group').length,4);
+ assert.ok(w.document.querySelector('#editor-group-1 #contenedor-planes'));
+ assert.ok(w.document.querySelector('#editor-group-2 #serv-stock'));
+ assert.ok(w.document.querySelector('#editor-group-3 #serv-activo'));
+ w.abrirModalServicio();
+ assert.equal(w.document.getElementById('titulo-modal-servicio').textContent,'Nuevo producto');
+});
+
+test('phase 2 saves private drafts before publishing and preserves failed edits',async t=>{
+ const {w,dom,rpcHandlers,calls}=await page('admin');t.after(()=>dom.window.close());
+ for(const file of ['panel-v2.js','panel-datos-v2.js','catalogo-admin-v2.js'])vm.runInContext(readFileSync(file,'utf8'),dom.getInternalVMContext(),{filename:file});
+ await w.mostrarPanel();
+ const byId=id=>w.document.getElementById(id);
+ w.abrirModalServicio();byId('serv-nombre').value='Draft title';
+ byId('contenedor-planes').querySelector('.plan-precio').value='10';
+ rpcHandlers.vega_catalogo_borrador=args=>({data:{id:args.p_id,producto_id:null,datos:args.p_datos,version:args.p_esperada+1,producto_version:null,stock_version:null},error:null});
+ rpcHandlers.vega_catalogo_publicar=()=>({data:null,error:{message:'Concurrent change'}});
+ byId('editor-guardar-borrador').click();await tick();
+ assert.equal(calls.filter(c=>c.rpc==='vega_catalogo_publicar').length,0);
+ assert.match(byId('editor-estado').textContent,/guardado/);
+ await assert.rejects(w.guardarServicio(),/Concurrent change/);
+ assert.equal(byId('serv-nombre').value,'Draft title');
+ assert.match(byId('editor-estado').textContent,/borrador se conserva/);
+ assert.equal(byId('editor-guardar-borrador').disabled,false);
+ w.dispatchEvent(new w.Event('vega:logout'));
+ assert.equal(byId('serv-nombre').value,'');
+});
+
+test('phase 2 catalogue uses server paging and escaped names',async t=>{
+ const {w,dom,rpcHandlers,calls}=await page('admin');t.after(()=>dom.window.close());
+ for(const file of ['panel-v2.js','panel-datos-v2.js','catalogo-admin-v2.js'])vm.runInContext(readFileSync(file,'utf8'),dom.getInternalVMContext(),{filename:file});
+ await w.mostrarPanel();
+ rpcHandlers.vega_catalogo_pagina=args=>({data:{version:2,items:[{...service,posicion:0,catalogo_version:0}],total:25,drafts:[],draft_total:0},error:null});
+ await w.cargarServicios();
+ assert.equal(w.document.querySelector('#tabla-servicios img[onerror]'),null);
+ assert.match(w.document.getElementById('tabla-servicios').textContent,/onerror/);
+ w.document.getElementById('catalogue-next').click();await tick();
+ assert.equal(calls.filter(c=>c.rpc==='vega_catalogo_pagina').at(-1).args.p_pagina,1);
+ assert.equal(calls.filter(c=>c.rpc==='vega_catalogo_pagina').at(-1).args.p_tamano,12);
+});
+
+test('catalogue priority keeps featured sold-out products after all available products',async t=>{
+ const {w,dom}=await page('store');t.after(()=>dom.window.close());
+ const ordered=w.VegaCatalog.ordenar([{id:1,activo:true,agotado:true,destacado:true,posicion:0},
+ {id:2,activo:true,stock:5,posicion:4},{id:3,activo:true,stock:1,destacado:true,posicion:8},
+ {id:4,activo:true,stock:2,posicion:1}]);
+ assert.equal(ordered.map(x=>x.id).join(','),'3,4,2,1');
+});
+
+
+test('management reads only the requested page and details remain available outside it',async t=>{
+ const {w,dom,rpcHandlers,calls}=await page('admin');t.after(()=>dom.window.close());
+ for(const file of ['panel-v2.js','panel-datos-v2.js','catalogo-admin-v2.js'])vm.runInContext(readFileSync(file,'utf8'),dom.getInternalVMContext(),{filename:file});
+ const profile={id:'10000000-0000-4000-8000-000000000111',nombre:'Page customer',codigo_privado:'a'.repeat(48)};
+ const order={id:9999,cliente_id:profile.id,servicio:'Example',estado:'Activo',meses:0,fecha_fin:null};
+ rpcHandlers.vega_panel_pagina=args=>({data:{version:2,total:37,profiles:args.p_vista==='fichas'?[profile]:[],orders:args.p_vista==='fichas'?[order]:[],notices:[],catalog:[],stats:{activos:2000,pendientes:14,manana:3,agotados:2}},error:null});
+ rpcHandlers.vega_panel_detalle=()=>({data:{profiles:[profile],orders:[order]},error:null});
+ await w.mostrarPanel();w.switchTab('fichas');await tick();
+ assert.match(w.document.getElementById('lista-fichas').textContent,/Page customer/);
+ assert.equal(w.document.getElementById('stat-activos').textContent,'2000');
+ w.document.getElementById('page-next-fichas').click();await tick();
+ assert.equal(calls.filter(c=>c.rpc==='vega_panel_pagina').at(-1).args.p_pagina,1);
+ await w.abrirFicha(profile.id);
+ assert.match(w.document.getElementById('ficha-servicios').textContent,/Example/);
+ assert.equal(calls.some(c=>c.rpc==='vega_panel_detalle'&&c.args.p_cliente_id===profile.id),true);
+ const batchReads=calls.filter(c=>['usuarios_canva','vega_clientes'].includes(c.table)&&c.op==='select');
+ assert.equal(batchReads.length,0);
+ w.dispatchEvent(new w.Event('vega:logout'));
+ assert.equal(w.document.getElementById('lista-fichas').textContent,'');
+});
+
+test('uncertain publication retries the same operation without creating another draft',async t=>{
+ const {w,dom,rpcHandlers,calls}=await page('admin');t.after(()=>dom.window.close());
+ for(const file of ['panel-v2.js','panel-datos-v2.js','catalogo-admin-v2.js'])vm.runInContext(readFileSync(file,'utf8'),dom.getInternalVMContext(),{filename:file});
+ await w.mostrarPanel();w.abrirModalServicio();
+ w.document.getElementById('serv-nombre').value='Retry fixture';
+ w.document.querySelector('.plan-precio').value='12';
+ rpcHandlers.vega_catalogo_borrador=args=>({data:{id:args.p_id,version:1,producto_id:null,producto_version:null,stock_version:null,datos:args.p_datos},error:null});
+ let attempt=0;rpcHandlers.vega_catalogo_publicar=()=>++attempt===1?Promise.reject(new Error('Network lost')):{data:{id:70,repetida:true},error:null};
+ rpcHandlers.vega_catalogo_pagina=()=>({data:{version:2,items:[],total:0,drafts:[],draft_total:0},error:null});
+ await assert.rejects(w.guardarServicio(),/Network lost/);
+ assert.equal(w.document.getElementById('btn-guardar-servicio').textContent,'Reintentar publicación');
+ await w.guardarServicio();
+ assert.equal(calls.filter(c=>c.rpc==='vega_catalogo_borrador').length,1);
+ const publications=calls.filter(c=>c.rpc==='vega_catalogo_publicar');
+ assert.equal(publications.length,2);assert.equal(publications[0].args.p_id,publications[1].args.p_id);
+});
+
+test('a rejected publication remains editable and corrected data can publish',async t=>{
+ const {w,dom,rpcHandlers,calls}=await page('admin');t.after(()=>dom.window.close());
+ for(const file of ['panel-v2.js','panel-datos-v2.js','catalogo-admin-v2.js'])vm.runInContext(readFileSync(file,'utf8'),dom.getInternalVMContext(),{filename:file});
+ await w.mostrarPanel();w.abrirModalServicio();
+ const name=w.document.getElementById('serv-nombre');
+ name.value='';w.document.querySelector('.plan-precio').value='12';
+ rpcHandlers.vega_catalogo_borrador=args=>({data:{id:args.p_id,version:args.p_esperada+1,producto_id:null,producto_version:null,stock_version:null,datos:args.p_datos},error:null});
+ rpcHandlers.vega_catalogo_publicar=()=>({error:{code:'P0001',message:'Completa el nombre'}});
+ await assert.rejects(w.guardarServicio(),/Completa el nombre/);
+ assert.equal(w.document.getElementById('btn-guardar-servicio').textContent,'Revisar y publicar');
+ name.value='Corrected fixture';
+ rpcHandlers.vega_catalogo_publicar=()=>({data:{id:71},error:null});
+ rpcHandlers.vega_catalogo_pagina=()=>({data:{version:2,items:[],total:0,drafts:[],draft_total:0},error:null});
+ await w.guardarServicio();
+ const saves=calls.filter(c=>c.rpc==='vega_catalogo_borrador');
+ assert.equal(saves.length,2);assert.equal(saves[1].args.p_datos.nombre,'Corrected fixture');
+ assert.equal(saves[0].args.p_id,saves[1].args.p_id);
+});
+
+test('editor steps expose labels and support arrow-key navigation',async t=>{
+ const {w,dom}=await page('admin');t.after(()=>dom.window.close());
+ for(const file of ['panel-v2.js','panel-datos-v2.js','catalogo-admin-v2.js'])vm.runInContext(readFileSync(file,'utf8'),dom.getInternalVMContext(),{filename:file});
+ w.abrirModalServicio();
+ const tabs=[...w.document.querySelectorAll('.editor-nav [role=tab]')];
+ assert.equal(tabs.filter(b=>b.tabIndex===0).length,1);
+ tabs[0].dispatchEvent(new w.KeyboardEvent('keydown',{key:'ArrowRight',bubbles:true}));
+ assert.equal(tabs[1].getAttribute('aria-selected'),'true');
+ assert.equal(w.document.getElementById('editor-group-1').hidden,false);
+ tabs[1].dispatchEvent(new w.KeyboardEvent('keydown',{key:'End',bubbles:true}));
+ assert.equal(tabs[3].getAttribute('aria-selected'),'true');
+ assert.ok(w.document.querySelector('label[for="serv-nombre"]'));
 });
