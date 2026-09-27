@@ -18,7 +18,7 @@ La rama incluye un flujo de pruebas sin credenciales de producción. El entorno 
 - 70 pruebas locales aprobadas: permisos, enlaces privados, stock, ampliaciones, borradores, publicación repetida, errores de conexión, corrección de datos rechazados, paginación, respaldo cifrado, IA y navegación por teclado.
 - Paginación verificada con más de 1.000 fichas sintéticas. Esta comprobación no equivale a una prueba de usuarios concurrentes.
 - La revisión visual sigue pendiente: el navegador de revisión rechazó la apertura de archivos locales por su política de acceso. No se ha certificado el diseño en computadora ni en celular.
-- La consulta de migraciones de producción confirma que `catalogue_workspace` todavía no está aplicada. No se modificaron datos reales durante estas pruebas.
+- La migración `catalogue_workspace` se aplicó el 27 de septiembre después de guardar una copia cifrada de las tablas de gestión y las 31 imágenes. Los registros existentes se conservaron.
 - El asesor de seguridad de la base actual informa que la protección frente a contraseñas filtradas está desactivada. [Referencia oficial de Supabase](https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection). Este resultado corresponde a la base actual, no certifica la migración pendiente ni sustituye una auditoría.
 
 El resultado de ejecución de GitHub Actions para cada revisión se encuentra en el PR. Antes de publicar, usar siempre el resultado del último commit.
@@ -48,5 +48,5 @@ No se envían mensajes de WhatsApp, no se consultan pasarelas y no se reutiliza 
 - `panel-v2.js` / `panel-v2.css`: navegación y disposición.
 - `panel-datos-v2.js`: páginas y búsqueda de clientes/servicios, con detalle bajo demanda.
 - `catalogo-admin-v2.js`: editor, borradores y paginación.
-- `supabase/migrations/20260926014433_catalogue_workspace.sql`: migración generada mediante CLI; CI prueba el archivo comprometido.
+- `supabase/migrations/20260927004923_catalogue_workspace.sql`: migración generada mediante CLI; CI prueba el archivo comprometido.
 - `tests/browser.test.cjs` y `tests/database.test.cjs`: permisos, conflictos, idempotencia y recuperación.
